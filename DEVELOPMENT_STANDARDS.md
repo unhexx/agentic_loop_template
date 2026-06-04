@@ -1,1 +1,1 @@
-[current from eegent after update]
+[content from X:\LocalRepo\agentic_loop_template\DEVELOPMENT_STANDARDS.md after mirror and commit in X clone]
