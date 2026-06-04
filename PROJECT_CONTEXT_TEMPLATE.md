@@ -1,0 +1,143 @@
+# PROJECT_CONTEXT.md
+
+> **Source of Truth:** `{{ TASK_SPECIFICATION.md }}`  
+> This file is updated by the **Orchestrator** (current status) and the **Reviewer** (self-improvement log).  
+> Maximum size: ~3000 tokens. Compress older entries when necessary.  
+> All content must be in English.
+
+---
+
+## Project Identification
+
+| Parameter       | Value                                      |
+|-----------------|--------------------------------------------|
+| **Project**     | `{{ Project Name }}`                       |
+| **Goal**        | `{{ Short description of the project goal }}` |
+| **Tech Stack**  | `{{ Python 3.11 / Pydantic v2 / SQLAlchemy 2.0 / PostgreSQL 15 / pytest }}` |
+| **Current Branch** | `feature-{{ feature-name }}`            |
+| **Git User**    | `{{ Real Developer Name }} <{{ email@domain.com }}>` |
+
+---
+
+## Current Status
+
+| Field                  | Value                                      |
+|------------------------|--------------------------------------------|
+| **Cycle Number**       | `{{ 0 }}`                                  |
+| **Current Phase**      | `{{ planning }}`                           |
+| **Active Role**        | `{{ Orchestrator }}`                       |
+| **Status**             | `IN_PROGRESS`                              |
+| **Confidence**         | `{{ 0.0 }}`                                |
+| **Last Commit**        | `{{ "" }}`                                 |
+| **Last Updated**       | `{{ YYYY-MM-DD HH:MM }}`                   |
+
+---
+
+## Clarification Questions Pool Settings
+
+Пользователь проекта сам задаёт регулярность обработки пула вопросов, требующих уточнения (от владельца продукта / руководителя проекта). Это позволяет петле саморазвития не блокироваться на неясностях, а накапливать их и эскалировать батчами.
+
+**Машинная конфигурация (рекомендуется):**
+- Скопируйте `.agent/project_config.example.json` в `.agent/project_config.json`
+- Настройте `question_pool.frequency` (every_3_cycles / every_5_cycles / end_of_sprint / end_of_phase / manual) и N/processors.
+
+| Parameter                  | Value / Example                  | Description |
+|----------------------------|----------------------------------|-------------|
+| **Questions Pool Frequency** | "every_3_cycles"                | Возможные: "every_N_cycles", "end_of_sprint", "end_of_phase", "manual". Задаётся пользователем в project_config.json. |
+| **Pool Processors**        | ["product_owner", "project_manager"] | Кто отвечает за обработку пула. |
+| **Escalation Method**      | "batch_summary_in_next_handoff" | Как вопросы передаются (в handoff Reviewer'а + .agent/QUESTIONS_POOL.md). |
+| **Last Processed At**      | "cycle_12"                      | Когда последний раз пул обрабатывался (questions_pool_config.last_processed_cycle). |
+
+**Процесс (с runnable collector):**
+- Orchestrator / другие роли формулируют вопрос и кладут в clarification_questions handoff'а (HANDOFF_SCHEMA.md).
+- В конце цикла Reviewer использует collector: `python -m agentic_loop_template.memory.questions_collector sync-handoff --handoff ...` (или append_question).
+- Collector пишет .agent/QUESTIONS_POOL.json (машина) + авто-обновляет .agent/QUESTIONS_POOL.md (для владельцев).
+- should_escalate / check-escalate по cadence из config.
+- После ответов владельцев — mark_reviewed через collector, уроки в LESSONS.md + память.
+
+Полный API и примеры — в agentic_loop_template/memory/questions_collector.py (docstring + CLI).
+
+Это часть механизма для работы в условиях неполной информации без постоянного вмешательства человека.
+
+---
+
+## Key Files
+
+```
+{{ project_root }}/
+├── {{ TASK_SPECIFICATION.md }}   ← source of truth
+├── PROJECT_CONTEXT.md            ← this file (living memory + self-improvement)
+├── SPRINTPLAN.md                 ← current sprint plan
+├── AGENT_ROLES.md                ← role instructions
+├── HANDOFF_SCHEMA.md             ← role transition contract
+├── TOOLS_REGISTRY.md             ← available tools
+├── SYSTEM_PROMPT.md              ← main system prompt
+├── input/                        ← sample input data
+│   ├── example_1.txt
+│   └── example_2.txt
+├── src/
+├── tests/
+├── scripts/
+│   └── setup_env.ps1
+├── pyproject.toml
+└── README.md
+```
+
+---
+
+## Cycle History (Self-Improvement Log)
+
+| Cycle | Role         | Phase    | Status     | Key Outcomes |
+|-------|--------------|----------|------------|--------------|
+| 0     | Orchestrator | planning | —          | *(fill after first cycle)* |
+
+---
+
+## Key Decisions & Rationale
+
+> Architectural and process decisions made during development.
+
+- *(to be filled during work)*
+
+---
+
+## Known Limitations and Risks
+
+- *(to be filled in the first cycle)*
+
+---
+
+## Agentic Loop Self-Improvement Log
+
+> Maintained by the **Reviewer** after each completed external cycle.  
+> Focus: How effectively the agentic process itself is working.
+
+### Critical Rule — Code Comments and Documentation (Strict)
+
+When **any role** (especially Coder, Debugger, or Reviewer) modifies source code:
+
+- All comments, docstrings, and documentation inside the code **must be written in natural Russian**.
+- Write as a real mid/senior human developer who has been actively working on this project for several months.
+- Use natural, professional Russian language.
+- **Never** mention AI, LLM, agent, MiniMax, Grok, Claude, "neural network", "as an assistant", or any other indication that the changes were generated or assisted by an AI system.
+- The same rule applies to git commit messages.
+
+The Reviewer is responsible for enforcing this rule before approving a cycle.
+
+---
+
+## Permanent Rules (Crystallized from Experience)
+
+> These rules must be followed strictly. They are updated by the Reviewer when new lessons are learned.
+
+1. Re-read the full `{{ TASK_SPECIFICATION.md }}` at the beginning of every cycle.
+2. Never commit broken code — only working, tested states.
+3. Always populate `issues_found` in handoff JSON. Do not skip discovered problems.
+4. If confidence is below 0.7 — do not hand off to the next role until uncertainty is resolved.
+5. Database roundtrip tests are mandatory starting from the first cycle.
+
+*(Add new permanent rules as they are discovered)*
+
+---
+
+*(The Reviewer appends detailed cycle reviews below after each full loop)*
