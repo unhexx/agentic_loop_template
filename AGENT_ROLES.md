@@ -69,6 +69,8 @@ Focus:
 - Write production-grade code (full typing, error handling, logging)
 - Create minimal but useful test structure
 - **When using the powershell tool**: re-read "Windows PowerShell Command Hygiene" in DEVELOPMENT_STANDARDS.md first. The classic Linux-bias + cmd.exe mixing mistakes (shown in real sessions) are now explicitly forbidden.
+- For any Windows/Linux/dev tool commands (git, python/venv, docker, install, sync, etc.): use ONLY exact verified blocks from agentic_loop_template/TOOLS_INSTRUCTIONS.md (M2.7 few-shot examples included). Never invent commands.
+- When editing large files (main.py, services etc.) or adding UI/partials/endpoints: apply modularization per TOOLS_INSTRUCTIONS.md (FastAPI section) — extract HTML/JS to templates/ and static/ if file >1200 lines or many inline strings. Keep main.py thin as composition root. Always verify: py_compile + gateway run + UI partials + WS live + real dogfood. Reference in handoff.
 - Never leave TODOs or stubs that block the next role
 
 **CRITICAL RULE (see DEVELOPMENT_STANDARDS.md):**
@@ -109,6 +111,7 @@ Focus:
 - Run pytest with coverage
 - Identify flaky tests and edge cases
 - Never mark a task as ready if coverage or test quality is poor
+- For any test commands or OS ops: use ONLY exact blocks from TOOLS_INSTRUCTIONS.md
 
 After testing:
 - Run the environment bootstrap if needed
@@ -137,6 +140,7 @@ Focus:
 - Fix root causes (not just symptoms)
 - Improve error messages and logging where helpful
 - Re-run tests after every meaningful fix
+- For any debug commands or OS ops: use ONLY exact blocks from TOOLS_INSTRUCTIONS.md
 
 After debugging:
 - Run the environment bootstrap if needed
@@ -162,6 +166,7 @@ Focus:
 - Compare the result against `{{ SPEC_FILE }}` ruthlessly
 - Check architecture, tests, documentation, and edge cases
 - Decide: DONE or send back to Orchestrator
+- For any review of commands or OS ops: verify use of exact TOOLS_INSTRUCTIONS.md blocks
 - Update PROJECT_CONTEXT.md, SPRINTPLAN.md and SELF_IMPROVEMENT_LOG.md with lessons learned
 - **Perform Context Distillation** (see below) when this is the end of a full cycle or when context feels heavy
 - **Update Workspace Memory**: extract 1–3 concrete, actionable patterns from the cycle (lessons_learned, issues_found, distillation) and call the memory helper (DEVELOPMENT_STANDARDS.md §9). Always set `memory_updated` + `patterns_merged` in the handoff JSON.
@@ -205,5 +210,13 @@ Follow DEVELOPMENT_STANDARDS.md ruthlessly. Compare against spec. Enforce all ru
 - Never ignore open questions; never let pool grow unbounded. Blocking questions (priority: "blocking") can force immediate escalation.
 
 Update Workspace Memory with 1–3 patterns (see §9) + any new compression opportunities discovered. Set memory_updated + patterns_merged in handoff. Decide DONE or return with clear feedback. Suggest concrete improvements to PROMPT_COMPRESSION_GUIDE.md if you see them.
+
+**REVIEW_WAVE output rule (critical to prevent duplication across waves):**
+When producing REVIEW_WAVE_<wave-id>.md (or the wave review section in handoff/output):
+- Create a **dedicated section "Выполненные задачи в этой волне (Completed tasks in this wave ONLY)"**.
+- List **exclusively and only** the sub-tasks, INVEST items, and concrete deliverables that were marked [DONE] or completed **during this specific wave/cycle** (determine delta from: recent todo_updates in the last handoff, EXECUTION_LOG entries since previous wave marker, changes to TODO.md [DONE] tags in this cycle, and the current subtask chain).
+- **Strictly do not copy, re-list or duplicate the full historical list of completed tasks** from previous REVIEW_WAVE_*.md files, the entire [DONE] sections of TODO.md, LOOP_STATE historical entries, or earlier waves.
+- For prior work use a short reference only: "Предыдущие выполненные задачи и волны — см. REVIEW_WAVE_XXX.md, исторические разделы TODO.md и LOOP_STATE.md. В этой волне завершено (delta): ...".
+- This rule is mandatory. The Reviewer must enforce it in every wave review to keep outputs clean and non-duplicative across waves.
 
 This is the final quality + context gate.
