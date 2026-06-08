@@ -159,7 +159,7 @@ You can add your own — the main thing is that the description is specific and 
 $mem = & '.\agentic_loop_template\memory\Invoke-AgenticMemory.ps1' snapshot | ConvertFrom-Json
 
 # Targeted query for top patterns (reliable way)
-& ".\\.venv\\Scripts\\python.exe" -m agentic_loop_template.memory query --top 5 --category 'Common Failure Patterns'
+& ".\.venv\Scripts\python.exe" -m agentic_loop_template.memory query --top 5 --category 'Common Failure Patterns'
 
 # Record a pattern (Reviewer)
 & '.\agentic_loop_template\memory\Invoke-AgenticMemory.ps1' update `
@@ -176,8 +176,8 @@ $mem = & '.\agentic_loop_template\memory\Invoke-AgenticMemory.ps1' snapshot | Co
 
 Direct Python call (when the venv is already activated or the exact path is known):
 ```powershell
-& ".\\.venv\\Scripts\\python.exe" -m agentic_loop_template.memory snapshot
-& ".\\.venv\\Scripts\\python.exe" -m agentic_loop_template.memory query --top 3
+& ".\.venv\Scripts\python.exe" -m agentic_loop_template.memory snapshot
+& ".\.venv\Scripts\python.exe" -m agentic_loop_template.memory query --top 3
 ```
 
 **Important**: old examples with `& { . 'path.ps1'; info }` should no longer be used — they are unreliable. Always call the script directly.
