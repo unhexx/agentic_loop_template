@@ -458,6 +458,7 @@ def apply_safe_proposals(dry_run: bool = True, ids: Optional[List[str]] = None) 
         p["applied_at"] = _now_iso()
         if did_edit:
             p["notes"] = p.get("notes", "") + " (auto-appended to file)"
+        update_performance_ledger(p["id"], p.get("expected_impact", "applied via meta"))
         applied += 1
 
     if applied > 0 or dry_run:
