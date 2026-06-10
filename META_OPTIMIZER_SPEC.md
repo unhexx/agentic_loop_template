@@ -217,4 +217,15 @@ See separate INVEST list in the proposal response. Minimal first slice: harvest 
 
 **This spec is intentionally narrow and evolutionary** — it adds one new collector/analyzer on top of the existing excellent self-improvement machinery rather than replacing any of it.
 
+## Dogfood Application (on main, post-merge)
+В процессе доводки фичи на main был выполнен полный цикл:
+- Создан mock high-quality handoff с явным маркером SYNC_DONE.
+- Запущен harvest (получен T-043-...).
+- Analyze + propose (сгенерированы кандидаты, включая safe few-shot).
+- apply_safe_proposals(dry_run=False) реально дописал verified harvested пример в PROMPT_COMPRESSION_GUIDE.md (в секцию meta-harvested).
+
+Это подтверждает работоспособность механизма: meta сам предложил и применил улучшение к документации шаблона.
+
+Соответствующий коммит: "Внёс harvested пример из meta-анализа в PROMPT_COMPRESSION_GUIDE.md."
+
 Maintainer note: After implementation, update this file with "Implemented in v3.2" marker and move detailed examples of harvested trajectories / proposals into the file itself or SELF_IMPROVEMENT_LOG.
