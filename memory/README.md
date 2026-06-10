@@ -42,6 +42,46 @@ See: DEVELOPMENT_STANDARDS.md §10, .agent/QUESTIONS_POOL.md (human view for PO/
 
 The collector maintains .agent/QUESTIONS_POOL.json (state) + auto .md report. Cadence from project_config.json. Questions survive across cycles and are processed in batches at user-defined frequency (cycles / sprints / phases).
 
+## Meta-Optimizer & Trajectory Harvesting (meta_harvester, v3.x)
+
+Новый слой самоулучшения **самого цикла** (harness / prompts / стандарты / стратегии).
+
+В отличие от обычной памяти (паттерны ошибок проекта) и clarification pool (внешние вопросы), meta_harvester собирает **успешные траектории** (golden trajectories) на высококачественных DONE-циклах и превращает их в конкретные предложения по улучшению:
+
+- Few-shot примеры в PROMPT_COMPRESSION_GUIDE.md
+- Постоянные правила и гигиена в DEVELOPMENT_STANDARDS.md
+- Использование памяти и эффективные стратегии планирования
+- Кандидаты в micro-prompt'ы ролей
+
+**Основные команды (Reviewer / Orchestrator):**
+
+```powershell
+# После успешного Reviewer-цикла (если качество позволяет по конфигу)
+& ".\.venv\Scripts\python.exe" -m agentic_loop_template.memory.meta_harvester harvest `
+    --handoff .agent/last_handoff.json --cycle 17 --outcome DONE
+
+# Анализ и генерация предложений
+& ".\.venv\Scripts\python.exe" -m agentic_loop_template.memory.meta_harvester analyze --recent 5
+& ".\.venv\Scripts\python.exe" -m agentic_loop_template.memory.meta_harvester propose --limit 3
+
+# Применение безопасных (dry-run по умолчанию)
+& ".\.venv\Scripts\python.exe" -m agentic_loop_template.memory.meta_harvester apply-safe --dry-run
+```
+
+**Хранение:**
+- `.agent/TRAJECTORIES.json` (машинный индекс)
+- `.agent/META_PROPOSALS.md` (человекочитаемый + список предложений)
+- Высококачественные паттерны автоматически попадают в workspace memory (категории "Effective Loop Strategies", "High-Value Compression Patterns", "Meta Improvement Patterns").
+
+**Конфигурация** — в `.agent/project_config.json` (секция `meta_optimizer`), полностью аналогично `question_pool`. См. META_OPTIMIZER_SPEC.md (полный формат траекторий, proposal schema, правила safe_to_auto).
+
+**Обязанности Reviewer (см. AGENT_ROLES.md):**
+- При высоком качестве цикла (DONE + confidence + 0 violations) — вызывать harvest.
+- Рассматривать свежие meta-предложения перед финальным handoff.
+- Переносить полезные паттерны в обычную память и distillation.
+
+Полная спецификация формата, эвристик анализа и roadmap — в `META_OPTIMIZER_SPEC.md` (в корне шаблона).
+
 ---
 
 ## File Format (human + machine readable)
@@ -188,9 +228,13 @@ When first enabling the memory system on an existing project that has a rich `SE
 - `store.py` — `update_memory` (dedup + counters + compaction + atomic write + cross-platform lock), `snapshot`, `query_memory`, `read_memory`
 - `Invoke-AgenticMemory.ps1` — the agent-friendly PowerShell surface (safe Python, correct args)
 - `__main__.py` / `__init__.py` — CLI and public Python API
+- `questions_collector.py` — Clarification Questions Pool (неблокирующий сбор внешних вопросов)
+- `meta_harvester.py` — Meta-Optimizer & Trajectory Harvesting (v3.x: сбор успешных траекторий и генерация предложений по улучшению самого harness'а)
 
-All changes to the memory format or behaviour must be reflected here and in `DEVELOPMENT_STANDARDS.md` §9.
+All changes to the memory format or behaviour must be reflected here and in `DEVELOPMENT_STANDARDS.md` §9 (and the new §12 for meta).
 
 ---
 
 **This is now the single source of truth for recurring project-specific knowledge that the agentic loop must not forget.**
+
+**v3.x addition**: meta_harvester добавляет слой улучшения *самой петли* (траектории успешных циклов → предложения по промптам/правилам/компрессии). Полная документация — META_OPTIMIZER_SPEC.md.
