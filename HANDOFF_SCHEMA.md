@@ -130,6 +130,16 @@
   // Не блокирует цикл — вопросы накапливаются collector'ом (questions_collector.py) и обрабатываются батчами по расписанию пользователя (project_config.json).
   // После handoff Reviewer делает sync-handoff. См. DEVELOPMENT_STANDARDS.md §10, questions_collector.py, PROJECT_CONTEXT_TEMPLATE.md.
 
+  "meta_harvest": {
+    "performed": true,
+    "trajectories_captured": 1,
+    "proposals_generated": 1,
+    "proposals_auto_applied": 0,
+    "notes": "Harvested successful sync-worktree trajectory; one compression pattern proposed"
+  },
+  // Meta-Optimizer trajectory harvesting (v3.x). Заполняется Reviewer на качественных DONE циклах.
+  // Используйте memory.meta_harvester. См. DEVELOPMENT_STANDARDS §12 и META_OPTIMIZER_SPEC.md.
+
   "questions_pool_config": {
     "frequency": "every_3_cycles",
     // Возможные значения: "every_N_cycles", "end_of_sprint", "end_of_phase", "manual"
@@ -138,6 +148,17 @@
     "processors": ["product_owner", "project_manager"]
   }
   // Конфиг частоты обработки пула (каденс). Обновляется Reviewer при эскалации / sync. Используйте questions_collector для актуализации.
+
+  "meta_harvest": {
+    "performed": true,
+    "trajectories_captured": 1,
+    "proposals_generated": 2,
+    "proposals_auto_applied": 1,
+    "notes": "Harvested golden trajectory for sync-worktree; added compression few-shot example"
+  }
+  // Заполняется Reviewer при высококачественном DONE (см. DEVELOPMENT_STANDARDS.md §12 и META_OPTIMIZER_SPEC.md).
+  // Используйте python -m agentic_loop_template.memory.meta_harvester harvest ...
+  // Опционально, но обязательно на циклах с высоким качеством. Backward-compatible.
 }
 ```
       "Быстрая реализация моделей",

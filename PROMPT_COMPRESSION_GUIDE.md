@@ -130,9 +130,35 @@ Why good: short summary + delta (what was done, commits, evidence), links instea
 
 Добавь такие примеры в свои handoff'ы. Reviewer должен хвалить/критиковать сжатие.
 
+## Meta-harvested few-shot examples (v3.x+)
+
+Начиная с v3.2, Reviewer + meta_harvester автоматически собирают реальные успешные компрессии с высококачественных DONE-циклов и предлагают их как verified few-shot.
+
+**Как это работает:**
+- При успешном цикле (особенно с заметным выигрышем по размеру handoff / скорости планирования) вызывается harvest.
+- analyze/propose генерирует кандидатов вида "add_few_shot_example" в этот файл.
+- Безопасные предложения (safe_to_auto) могут применяться автоматически или по команде `meta_harvester apply-safe`.
+- Reviewer обязан явно упомянуть в distillation / handoff, если meta-пример был использован или улучшен.
+
+**Правила для хорошего meta-примера:**
+- Короткий, с реальными цифрами (цикл, размер, что именно дало выигрыш).
+- Содержит ссылку на "evidence" (grep, маркер, тест).
+- Не повторяет общие правила — только конкретный приём, который сработал.
+- Обновляйте этот раздел при каждом принятом meta-предложении.
+
+Пример (harvested):
+```
+**Meta-harvested (cycle 17, sync-worktree hardening):**
+Compressed state + explicit SYNC_DONE marker + link to previous wave.
+Evidence: test passed on -VerifyOnly, git log in both clones.
+Result: Orchestrator handoff ~40% короче, меньше возвратов.
+```
+
+Reviewer / meta должны поддерживать этот раздел актуальным. Это один из главных каналов, через который петля улучшает собственную эффективность сжатия.
+
 ---
 
-*Maintained as part of the agentic_loop_template optimization effort.*
+*Maintained as part of the agentic_loop_template optimization effort. Meta contributions are now first-class.*
 
 ## Concrete small-context examples for M2.5+ (Blackbox, limited resources, no GPU) — 2026-06
 

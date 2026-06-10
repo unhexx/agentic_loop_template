@@ -145,8 +145,11 @@ Memory is **not a replacement** for SELF_IMPROVEMENT_LOG.md. The log tracks proc
 - Testing & Quality Strategies
 - Context & Prompt Hygiene
 - Project-Specific Architectural Decisions
+- Effective Loop Strategies (meta-harvested)
+- High-Value Compression Patterns (meta)
+- Meta Improvement Patterns
 
-You can add your own — the main thing is that the description is specific and useful for future cycles.
+You can add your own — the main thing is that the description is specific and useful for future cycles. Meta categories are populated primarily by meta_harvester (see §12).
 
 ### How to use (working examples)
 
@@ -305,5 +308,40 @@ This requirement was introduced for reliable operation with parallel flows (Prod
 **This document is the single source of truth for development standards in this project.**
 
 When in doubt, re-read this file. The Reviewer will hold all roles accountable to these standards.
+
+## 12. Meta-Optimizer and Trajectory Harvesting (v3.x+)
+
+**Цель**: систематически превращать собственные успешные циклы петли в улучшения *самого harness'а* (промпты, few-shot примеры, правила, стратегии сжатия, использование памяти).
+
+Это естественное развитие §3 (Self-Improvement Discipline) и §9 (Workspace Memory). Если обычная память и distillation фиксируют "что пошло не так в проекте", то Meta-Optimizer фиксирует "что сработало в процессе разработки и как это сделать ещё эффективнее в следующий раз".
+
+### Обязанности
+- **Reviewer** (конец успешного цикла, status=DONE + высокие quality signals):
+  - Вызвать `python -m agentic_loop_template.memory.meta_harvester harvest --handoff ... --cycle N --outcome DONE` (если цикл прошёл все гейты).
+  - При необходимости запустить `analyze` / `propose`.
+  - Рассмотреть сгенерированные предложения (особенно safe_to_auto).
+  - Перенести 1–2 самых ценных паттерна в обычную workspace memory (категории "Effective Loop Strategies", "High-Value Compression Patterns", "Meta Improvement Patterns").
+  - Зафиксировать `meta_harvest` в handoff (performed, trajectories_captured, proposals_generated).
+- **Orchestrator** (начало цикла):
+  - Запрашивать свежие meta-паттерны вместе с обычным memory snapshot.
+  - Учитывать их при планировании (особенно на повторяющихся классах задач: sync, infra, context-heavy).
+- **Enforcement**: Reviewer отклоняет handoff, если при наличии высокого качества цикла harvest не был вызван (аналогично sync и memory).
+
+### Конфигурация
+См. `.agent/project_config.json` → `meta_optimizer` (полностью параллельно `question_pool`):
+- `frequency`: "after_every_done_cycle" | "every_2_done" | "end_of_sprint" | "manual"
+- `min_quality`: пороги (confidence, tests_failed, process_violations)
+- `auto_apply_safe`: true/false (только для безопасных типов изменений — добавление few-shot, мелкие tips по компрессии)
+- `max_proposals_per_cycle`
+
+Полный формат траекторий (Trajectory), предложений (Proposal), API и примеры — в `META_OPTIMIZER_SPEC.md` (корень шаблона) и `memory/meta_harvester.py`.
+
+### Интеграция с существующими механизмами
+- Предложения, принятые meta, могут становиться кандидатами в **Permanent Rules** (§3) и обновления **PROMPT_COMPRESSION_GUIDE.md**.
+- Успешные паттерны из траекторий улетают в workspace memory (та же compaction/dedup механика).
+- Все действия meta отражаются в `SELF_IMPROVEMENT_LOG.md` / distillation и в `.agent/META_PROPOSALS.md`.
+- Git self-cycle (§11) обязателен и для изменений, инициированных meta (если они затрагивают файлы шаблона).
+
+**Reviewer несёт личную ответственность** за то, чтобы meta-слой реально работал и не превращался в "ещё один неиспользуемый лог".
 
 **Current eeagent architecture context (2026-06, for all loops)**: MCP Layer (MCPBaseSkill + registry + AgentExecutionSkill with real TaskService/Executor + isolation_hint), Strong Isolation (Persistent Firecracker guest + Windows JobObject + stubs + MCP-aware sandbox routing via sandbox_requirements), Live HTMX Control Plane, Vision Grounding (LocateAnything). See .agent/PLAN.md (single source) and docs/ARCHITECTURE.md. All new skills and tools must integrate with PolicyEngine + routing.

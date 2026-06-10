@@ -59,6 +59,32 @@
 
 Это часть механизма для работы в условиях неполной информации без постоянного вмешательства человека.
 
+## Meta Optimizer Settings (v3.x)
+
+Аналогично Clarification Questions Pool, но для самоулучшения *самого процесса разработки* (harness).
+
+**Машинная конфигурация (рекомендуется):**
+- Скопируйте `.agent/project_config.example.json` в `.agent/project_config.json`
+- Настройте `meta_optimizer.frequency`, `min_quality`, `auto_apply_safe`, `max_proposals_per_cycle`.
+
+| Parameter                  | Value / Example                     | Description |
+|----------------------------|-------------------------------------|-------------|
+| **Enabled**                | true                                | Включить сбор траекторий и генерацию предложений. |
+| **Frequency**              | "after_every_done_cycle"            | Когда запускать harvest: after_every_done_cycle \| every_2_done \| end_of_sprint \| manual. |
+| **Min Quality**            | {"confidence": 0.85, "tests_failed": 0} | Пороги для автоматического захвата траектории. |
+| **Auto Apply Safe**        | true                                | Автоматически применять только безопасные предложения (few-shot examples, мелкие tips). |
+| **Max Proposals per Cycle**| 3                                   | Ограничение на количество генерируемых предложений за цикл. |
+| **Last Harvested Cycle**   | 12                                  | Служебное. |
+
+**Процесс:**
+- Reviewer на качественном DONE-цикле вызывает `python -m agentic_loop_template.memory.meta_harvester harvest ...`
+- Генерируются предложения (см. `.agent/META_PROPOSALS.md`).
+- Безопасные могут применяться автоматически или через явный `apply-safe`.
+- Ценные паттерны попадают в workspace memory и distillation.
+- Полная спецификация формата Trajectory / Proposal — `META_OPTIMIZER_SPEC.md` + `memory/meta_harvester.py`.
+
+Это прямое усиление механизма self-improvement (§3 и §12 DEVELOPMENT_STANDARDS).
+
 ---
 
 ## Key Files
@@ -135,8 +161,9 @@ The Reviewer is responsible for enforcing this rule before approving a cycle.
 3. Always populate `issues_found` in handoff JSON. Do not skip discovered problems.
 4. If confidence is below 0.7 — do not hand off to the next role until uncertainty is resolved.
 5. Database roundtrip tests are mandatory starting from the first cycle.
+6. На высококачественных DONE-циклах (confidence + тесты чистые) — всегда запускать meta_harvester harvest (см. §12 DEVELOPMENT_STANDARDS).
 
-*(Add new permanent rules as they are discovered)*
+*(Add new permanent rules as they are discovered — meta proposals часто становятся хорошими кандидатами)*
 
 ---
 
