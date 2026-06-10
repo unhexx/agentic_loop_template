@@ -243,4 +243,4 @@ All changes to the memory format or behaviour must be reflected here and in `DEV
 - `seed_example_trajectory()` — для сидинга примера "золотой" траектории.
 - `update_performance_ledger()` — простая заглушка сбора метрик (пишет в LOOP_PERFORMANCE.md).
 
-Полная документация и примеры — META_OPTIMIZER_SPEC.md и .agent/TRAJECTORIES/example-*.json.
+Полная документация и примеры — META_OPTIMIZER_SPEC.md, .agent/TRAJECTORIES/example-*.json и `python memory/demo_meta.py` (интерактивная демонстрация всего цикла).
