@@ -1,0 +1,16 @@
+{
+  "id": "T-EXAMPLE-001",
+  "cycle": 1,
+  "outcome": "DONE",
+  "quality_signals": {
+    "confidence": 0.92,
+    "tests_failed": 0
+  },
+  "success_patterns": [
+    "machine-verifiable marker",
+    "delta + links for compression"
+  ],
+  "lessons_learned": [
+    "Always surface verifiable completion markers"
+  ]
+}

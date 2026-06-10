@@ -65,6 +65,15 @@ def test_basic():
         n = mh.apply_safe_proposals(dry_run=True)
         print("✓ apply_safe_proposals (dry) обработал", n)
 
+        # Тест новых функций (seed + ledger)
+        seeded = mh.seed_example_trajectory()
+        print("✓ seed_example_trajectory создал", seeded)
+
+        mh.update_performance_ledger("P-DEMO-001", "demo impact on compression")
+        ledger = Path(".agent/LOOP_PERFORMANCE.md")
+        assert ledger.exists()
+        print("✓ update_performance_ledger записал метрику")
+
         # Восстанавливаем пути
         mh.TRAJECTORIES_INDEX = orig_index
         mh.META_PROPOSALS_MD = orig_md

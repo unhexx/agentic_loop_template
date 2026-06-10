@@ -465,6 +465,83 @@ def apply_safe_proposals(dry_run: bool = True, ids: Optional[List[str]] = None) 
     return applied
 
 
+def seed_example_trajectory() -> str:
+    """
+    Создаёт пример "золотой" траектории для демонстрации и сидинга.
+    Полезно для первых запусков и тестов.
+    Возвращает id созданной траектории.
+    """
+    _ensure_agent_dir()
+    index = _load_index()
+    trajs = index.setdefault("trajectories", [])
+
+    # Простая проверка, чтобы не дублировать пример
+    for t in trajs:
+        if t.get("id", "").startswith("T-EXAMPLE"):
+            return t["id"]
+
+    tid = "T-EXAMPLE-001"
+    example = {
+        "id": tid,
+        "cycle": 1,
+        "timestamp": _now_iso(),
+        "outcome": "DONE",
+        "task_ref": "initial meta-harvester integration",
+        "spec_ref": "META_OPTIMIZER_SPEC.md",
+        "quality_signals": {
+            "confidence": 0.92,
+            "tests_total": 8,
+            "tests_failed": 0,
+            "coverage": 85.0,
+            "tool_calls": 6,
+            "elapsed_minutes": 7.0,
+            "process_tags": []
+        },
+        "compressed_handoff_chain": [
+            {
+                "role": "Reviewer",
+                "summary": "Успешно внедрил meta_harvester, применил первый harvested пример.",
+                "context_delta": "Добавлен модуль, обновлены стандарты и роли.",
+                "lessons": ["Meta-анализ даёт конкретные улучшения в few-shot и правилах"]
+            }
+        ],
+        "lessons_learned": [
+            "Запускать harvest на всех высококачественных DONE-циклах",
+            "Safe apply позволяет быстро интегрировать выигрышные паттерны"
+        ],
+        "success_patterns": [
+            "Явный machine-verifiable маркер в скриптах и handoff'ах",
+            "Delta-first подход + ссылки на предыдущие волны для сжатия"
+        ],
+        "git_evidence": {
+            "branch": "feature/meta-optimizer",
+            "last_commit": "Внёс harvested пример из meta-анализа"
+        },
+        "compression_metrics": {
+            "handoff_avg_chars": 980,
+            "win": "delta + external evidence"
+        }
+    }
+    trajs.append(example)
+    _save_index(index)
+    return tid
+
+
+def update_performance_ledger(proposal_id: str, impact: str = "") -> None:
+    """
+    Простая заглушка для сбора метрик производительности петли.
+    В будущем здесь можно агрегировать cycle stats, violation rate, token efficiency.
+    Пока пишет в .agent/LOOP_PERFORMANCE.md (человекочитаемо).
+    """
+    _ensure_agent_dir()
+    ledger = Path(".agent/LOOP_PERFORMANCE.md")
+    lines = []
+    if ledger.exists():
+        lines = ledger.read_text(encoding="utf-8").splitlines()
+    lines.append(f"- { _now_iso() } | proposal {proposal_id} | {impact or 'applied'}")
+    ledger.write_text("\n".join(lines[-50:]) + "\n", encoding="utf-8")  # keep last 50 entries
+
+
 def _cli() -> None:
     """CLI, полностью аналогичный по стилю questions_collector."""
     p = argparse.ArgumentParser(description="Meta-Optimizer Trajectory Harvester")
