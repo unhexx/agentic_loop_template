@@ -466,6 +466,43 @@ def apply_safe_proposals(dry_run: bool = True, ids: Optional[List[str]] = None) 
     return applied
 
 
+def basic_replay_harness(task_spec: str, proposal: dict = None) -> dict:
+    """
+    Простая заглушка replay harness для объективной оценки влияния meta-предложений.
+
+    В реальной реализации здесь можно было бы:
+    - Взять предыдущий handoff/траекторию
+    - "Переиграть" с применённым предложением (например, с новым few-shot)
+    - Сравнить метрики (tool_calls, elapsed, confidence, violations)
+
+    Пока возвращает mock-результаты. Использовать для демонстрации before/after.
+    """
+    baseline = {
+        "task": task_spec[:80] + "...",
+        "tool_calls": 9,
+        "elapsed_minutes": 8.2,
+        "confidence": 0.81,
+        "violations": 1
+    }
+
+    if proposal:
+        # Имитируем улучшение от применения предложения
+        improved = baseline.copy()
+        improved["tool_calls"] = max(5, baseline["tool_calls"] - 2)
+        improved["elapsed_minutes"] = round(baseline["elapsed_minutes"] * 0.75, 1)
+        improved["confidence"] = min(0.95, baseline["confidence"] + 0.1)
+        improved["violations"] = 0
+        improved["proposal_applied"] = proposal.get("id", "unknown")
+        improved["delta"] = {
+            "tool_calls": improved["tool_calls"] - baseline["tool_calls"],
+            "elapsed_minutes": round(improved["elapsed_minutes"] - baseline["elapsed_minutes"], 1),
+            "confidence": round(improved["confidence"] - baseline["confidence"], 2),
+        }
+        return {"baseline": baseline, "with_proposal": improved}
+
+    return {"baseline": baseline, "note": "No proposal provided — baseline only"}
+
+
 def seed_example_trajectory() -> str:
     """
     Создаёт пример "золотой" траектории для демонстрации и сидинга.
