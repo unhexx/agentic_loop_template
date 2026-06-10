@@ -132,6 +132,13 @@ Why good: short summary + delta (what was done, commits, evidence), links instea
 
 ## Meta-harvested few-shot examples (v3.x+)
 
+### Demo: harvested marker example from cycle 43
+
+**Harvested (demo cycle 43):** explicit SYNC_DONE + VerifyOnly in handoff delta. Evidence: tests + git log in clones.
+
+*Добавлено meta_harvester cycle T-043-03f8*
+
+
 Начиная с v3.2, Reviewer + meta_harvester автоматически собирают реальные успешные компрессии с высококачественных DONE-циклов и предлагают их как verified few-shot.
 
 **Как это работает:**
