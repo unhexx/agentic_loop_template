@@ -237,4 +237,10 @@ All changes to the memory format or behaviour must be reflected here and in `DEV
 
 **This is now the single source of truth for recurring project-specific knowledge that the agentic loop must not forget.**
 
-**v3.x addition**: meta_harvester добавляет слой улучшения *самой петли* (траектории успешных циклов → предложения по промптам/правилам/компрессии). Полная документация — META_OPTIMIZER_SPEC.md.
+**v3.x addition**: meta_harvester добавляет слой улучшения *самой петли* (траектории успешных циклов → предложения по промптам/правилам/компрессии). 
+
+Дополнительно:
+- `seed_example_trajectory()` — для сидинга примера "золотой" траектории.
+- `update_performance_ledger()` — простая заглушка сбора метрик (пишет в LOOP_PERFORMANCE.md).
+
+Полная документация и примеры — META_OPTIMIZER_SPEC.md и .agent/TRAJECTORIES/example-*.json.
