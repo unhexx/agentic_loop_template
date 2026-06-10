@@ -54,6 +54,8 @@ from .meta_harvester import (
     analyze_for_proposals,
     generate_proposals,
     apply_safe_proposals,
+    seed_example_trajectory,
+    update_performance_ledger,
     load_config as load_meta_config,
 )
 
@@ -81,5 +83,7 @@ __all__ = [
     "analyze_for_proposals",
     "generate_proposals",
     "apply_safe_proposals",
+    "seed_example_trajectory",
+    "update_performance_ledger",
     "load_meta_config",
 ]
