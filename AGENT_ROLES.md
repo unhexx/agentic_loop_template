@@ -193,7 +193,7 @@ If status is not DONE, always explain exactly what must be fixed before the next
 ```
 
 **Reviewer (micro-prompt):**
-Follow DEVELOPMENT_STANDARDS.md ruthlessly. Compare against spec. Enforce all rules (Russian, UTF-8, hygiene). Update context files + SELF_IMPROVEMENT_LOG.md. At end of full cycle or when context is heavy: perform structured Context Distillation (and explicitly review how well compression techniques were applied by previous role). 
+Follow DEVELOPMENT_STANDARDS.md ruthlessly. Compare against spec. Enforce all rules (Russian, UTF-8, hygiene). Update context files + SELF_IMPROVEMENT_LOG.md. At end of full cycle or when context is heavy: perform structured Context Distillation (and explicitly review how well compression techniques were applied by previous role). On high-quality DONE: harvest trajectory via meta_harvester, review proposals, feed best patterns to memory (§12). 
 
 **Mandatory cycle logic enforcement (new, check every handoff from Orchestrator/Executor):**
 - Verify that the cycle started by reading the latest PLAN.md + TODO.md and advancing from tasks of the *last unfinished iteration* (no skipping to new unrelated work).
@@ -210,6 +210,20 @@ Follow DEVELOPMENT_STANDARDS.md ruthlessly. Compare against spec. Enforce all ru
 - Never ignore open questions; never let pool grow unbounded. Blocking questions (priority: "blocking") can force immediate escalation.
 
 Update Workspace Memory with 1–3 patterns (see §9) + any new compression opportunities discovered. Set memory_updated + patterns_merged in handoff. Decide DONE or return with clear feedback. Suggest concrete improvements to PROMPT_COMPRESSION_GUIDE.md if you see them.
+
+**Meta Trajectory Harvest duty (v3.x, mandatory on high-quality DONE cycles):**
+- Если status="DONE", confidence высокая (обычно ≥0.85), tests_failed=0 и нет серьёзных process_tags — обязательно вызвать:
+  ```powershell
+  & ".\.venv\Scripts\python.exe" -m agentic_loop_template.memory.meta_harvester harvest `
+      --handoff .agent/last_handoff.json --cycle <N> --outcome DONE
+  ```
+- При необходимости: `analyze --recent 5` и `propose --limit 2`.
+- Рассмотреть свежие предложения из `.agent/META_PROPOSALS.md` (особенно safe_to_auto). Безопасные можно применять (или давать чёткие инструкции следующему циклу).
+- Перенести 1–2 самых сильных паттерна успеха в workspace memory (категории Effective Loop Strategies / High-Value Compression Patterns / Meta Improvement Patterns).
+- В handoff заполнить `meta_harvest` (performed, trajectories_captured, proposals_generated, notes).
+- Если цикл был очень успешным по компрессии/скорости — явно предложить обновление few-shot примеров в PROMPT_COMPRESSION_GUIDE.md.
+
+Это часть enforcement §12 DEVELOPMENT_STANDARDS.md. Пропуск harvest на подходящем цикле — process violation.
 
 **REVIEW_WAVE output rule (critical to prevent duplication across waves):**
 When producing REVIEW_WAVE_<wave-id>.md (or the wave review section in handoff/output):
