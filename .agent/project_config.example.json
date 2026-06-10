@@ -16,5 +16,11 @@
     "auto_apply_safe": true,
     "max_proposals_per_cycle": 3,
     "last_harvested_cycle": 0
+  },
+  "daily_decomposition_ritual": {
+    "enabled": true,
+    "frequency": "every_10_cycles",
+    "N": 10,
+    "last_ritual_cycle": 0
   }
 }

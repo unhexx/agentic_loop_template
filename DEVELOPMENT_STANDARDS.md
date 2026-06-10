@@ -344,4 +344,58 @@ When in doubt, re-read this file. The Reviewer will hold all roles accountable t
 
 **Reviewer несёт личную ответственность** за то, чтобы meta-слой реально работал и не превращался в "ещё один неиспользуемый лог".
 
+## 13. Periodic Self-Correction Rituals (every 10 cycles, v1.5+)
+
+**Цель**: Через каждые 10 циклов (или по конфигу) запускать два связанных ритуала для повышения автономности и качества декомпозиции/рефайнмента:
+
+1. **Daily Decomposition Ritual** — превратить ОДНУ приоритетную задачу в 3–5 крайне узких, измеримых, безопасных подзадач (с binary acceptance criteria, риском, mitigation, буфером, инструментами). Использовать state discovery из .agent/ файлов + уроки последних циклов + meta-траектории.
+2. **Lessons → Prompt Refinement** (сразу после первого) — превратить реальные уроки в одно модульное, small-context-friendly улучшение промпта/блока инструментов/роли (только English для улучшений; Before→After + rationale + точный diff).
+
+Это естественное развитие §3 (Self-Improvement), §9 (Memory), §12 (Meta) и существующей Reviewer-centric кристаллизации (distillation + lessons → permanent rules / GUIDE / STANDARDS / memory). Ритуалы используют тот же паттерн collectors/config/cycle_number/handoff flags, что questions_pool и meta_harvester.
+
+### Конфигурация (в .agent/project_config.json)
+```json
+{
+  "daily_decomposition_ritual": {
+    "frequency": "every_10_cycles",
+    "N": 10,
+    "last_ritual_cycle": 0,
+    "enabled": true
+  }
+}
+```
+(Параллельно question_pool / meta_optimizer. last_ritual_cycle обновляется после выполнения.)
+
+### Обязанности
+- **Reviewer (конец цикла, после lessons/distillation/memory/questions/meta)**: 
+  - Проверить cadence: `if (cycle_number % 10 == 0 || (cycle_number - last_ritual) >= 10)`.
+  - Сначала запустить **Daily Decomposition Ritual** (используя последние 10 циклов lessons/trajectories/distillations + чтение .agent/LOOP_STATE/LESSONS/DECISIONS/TODO/PLAN/DEVELOPMENT_STANDARDS и т.д.).
+  - Сразу после — **Lessons → Prompt Refinement** (на основе выбранных уроков + результатов decomposition).
+  - Записать отчёты (decomposition_report.json + refinement report), заполнить handoff-флаги (`decomposition_ritual.performed`, `prompt_refinement.refinements_applied`, report_path), обновить memory (новые категории "Decomposition Patterns", "Prompt Refinement Patterns"), отметить consumed (напр. "consumed_by_prompt2").
+  - Обновить permanent rules / PROMPT_COMPRESSION_GUIDE при необходимости.
+- **Orchestrator (начало следующего цикла, после git self-cycle + memory snapshot)**: 
+  - Прочитать недавние ritual reports (как meta proposals).
+  - Применить одобренные prompt refinements к активным ролям/промптам (через search_replace/append).
+  - Учитывать новые подзадачи/декомпозицию при планировании INVEST.
+- **Enforcement**: Пропуск ритуала на cadence — process violation (Reviewer фиксирует в process_tags / SELF_IMPROVEMENT_LOG и может вернуть BLOCKED).
+
+### Интеграция с существующими механизмами
+- Вход: `lessons_learned[]` из handoff'ов + meta trajectories + distillation + .agent/ state (точно как требует decomposition ritual).
+- Выход: Улучшения в AGENT_ROLES (micro-prompts), SYSTEM_PROMPT, PROMPT_COMPRESSION_GUIDE, DEVELOPMENT_STANDARDS (permanent rules), memory categories. Refinements — модульные, M2.7-friendly (короткие, с deltas).
+- Git: Вся работа ритуалов — на feature branch + dedicated worktree + полный §11 self-cycle (push/merge/sync/verify). Commit messages — естественный русский, от лица обычного mid/senior разработчика (никаких упоминаний ИИ/агента/ритуала/нейросети).
+- Язык: Все улучшения промптов/инструкций — **только английский**. Русские коммиты — только в Working Instructions ритуалов (и строго в человеческом стиле).
+- Малый контекст (Minimax M2.7): Ритуалы уже оптимизированы (короткие, структурированные, без повторов, с machine JSON + self-scoring). Выходы — агрессивно сжатые (summary + delta + on-demand, как в PROMPT_COMPRESSION_GUIDE).
+- Безопасность: Никогда не трогать core templates независимого локального loop. Сохранять backward compatibility. Следовать DEVELOPMENT_STANDARDS (включая §1 Russian rule для кода/коммитов, §11 git, изоляцию).
+- Связь с meta: Ритуалы могут питать meta_harvester (уроки → trajectories) или запускаться вокруг него (decomp для планирования + refinement для prompt-улучшений).
+
+### Обязательный формат ритуалов (адаптировано под шаблон, v1.5 M2.7-optimized)
+
+**Daily Decomposition Ritual** (цель + шаги + checklist + output table + self-critique/scoring + machine JSON — см. полный текст в предоставленных пользователем инструкциях; встраивать в AGENT_ROLES как роль/ритуал-блок. Использовать .agent/ файлы + последние 10 циклов lessons + meta-траектории. После — сразу Prompt Refinement.)
+
+**Lessons → Prompt Refinement** (выбрать high-priority lesson → Before/After на английском + rationale + exact diff + запись в .agent/DECISIONS.md + Russian human commit. Self-scoring + machine JSON. Mark source as consumed.)
+
+Полные оптимизированные тексты ритуалов (с учётом M2.7 small context, English-only для улучшений, русского человеческого коммита только в Working Instructions, feature+worktree+§11) хранятся/встраиваются в AGENT_ROLES.md и/или отдельные файлы prompts/ (см. план реализации).
+
+**Reviewer несёт личную ответственность** за выполнение ритуалов на cadence и качество их выходов (narrowness, clarity, risk awareness, lessons alignment, loop usefulness — по self-scoring ритуалов).
+
 **Current eeagent architecture context (2026-06, for all loops)**: MCP Layer (MCPBaseSkill + registry + AgentExecutionSkill with real TaskService/Executor + isolation_hint), Strong Isolation (Persistent Firecracker guest + Windows JobObject + stubs + MCP-aware sandbox routing via sandbox_requirements), Live HTMX Control Plane, Vision Grounding (LocateAnything). See .agent/PLAN.md (single source) and docs/ARCHITECTURE.md. All new skills and tools must integrate with PolicyEngine + routing.

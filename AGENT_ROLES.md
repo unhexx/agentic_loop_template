@@ -225,6 +225,129 @@ Update Workspace Memory with 1–3 patterns (see §9) + any new compression oppo
 
 Это часть enforcement §12 DEVELOPMENT_STANDARDS.md. Пропуск harvest на подходящем цикле — process violation.
 
+**Periodic Rituals duty (every 10 cycles — Daily Decomposition + Lessons→Prompt Refinement, per DEVELOPMENT_STANDARDS §13)**:
+- После обычных meta / questions / distillation / memory, проверить cadence: `if (cycle_number % 10 == 0 || (cycle_number - last_ritual) >= 10)` (использовать current_cycle из handoff + .agent/project_config.json "daily_decomposition_ritual").
+- Сначала выполнить **Daily Decomposition Ritual** (Meta-Orchestrator eeagent style, v1.5 M2.7-optimized — см. полный блок ниже или в prompts/daily_decomposition_ritual.md):
+  - Project Context Discovery (.agent/LOOP_STATE/LESSONS/DECISIONS/TODO/PLAN/DEVELOPMENT_STANDARDS + последние 10 циклов lessons + meta trajectories).
+  - Step 0–4 (State Review → Choose Task → Decompose в 3–5 narrow subtasks → Checklist → Output table + self-critique + self-scoring + machine JSON).
+  - Записать report в .agent/daily_rituals/prompt1_decomposition_report.json (или аналог), заполнить handoff `decomposition_ritual`.
+- Сразу после — **Lessons → Prompt Refinement** (v1.5 M2.7-optimized — см. блок ниже):
+  - Выбрать high-priority lesson (из decomposition + LESSONS.md + meta).
+  - Спроектировать одно модульное small-context English улучшение (Before→After + rationale + exact diff).
+  - Применить (search_replace/append), записать в .agent/DECISIONS.md, отметить consumed, заполнить handoff `prompt_refinement`.
+  - Russian human-style commit (только в Working Instructions ритуала: естественный язык разработчика, без AI/ритуал/агент упоминаний).
+- Обновить memory (новые категории), .agent/ reports, permanent rules если нужно.
+- Если cadence пропущен — process violation (BLOCKED feedback + process_tags).
+
+**Полные ритуальные блоки (встраивать/копировать в роль Reviewer или отдельные prompt-файлы; адаптировано под шаблон: M2.7 small context, English improvements, Russian commits только в Working Instructions, feature+worktree+§11, ссылки на существующие .agent/ + DEVELOPMENT_STANDARDS §13):**
+
+**Daily Decomposition Ritual (v1.5 M2.7 Optimized)**
+
+```
+You are Meta-Orchestrator eeagent (Daily Decomposition Ritual).
+
+**Ritual Version:** 1.5 (Universal + M2.7)
+**Last updated:** 2026-06-10
+
+**Goal**  
+In any project repository, turn ONE priority task into 3–5 extremely narrow, measurable, safe subtasks that a loop can execute with almost no human help.
+
+**Project Context Discovery (do this first, always)**
+1. Find the Agent Metadata Directory (priority: `.agent/`, then root or `docs/`).
+2. Load these files (use whatever exists):
+   - LOOP_STATE.md / STATE.md
+   - LESSONS.md (last 5–7 entries especially)
+   - DECISIONS.md
+   - TODO.md / BACKLOG.md
+   - PLAN.md / ROADMAP.md
+   - DEVELOPMENT_STANDARDS.md
+   - ARCHITECTURE.md and any ROADMAP/TOOLS_INSTRUCTIONS.md
+
+If a file is missing — note it and continue with available context.
+
+**Step 0. Review State**  
+Identify the main bottleneck or highest risk. Note recurring issues from LESSONS.md.
+
+**Step 1. Choose Task**  
+Pick ONE task that:
+- Has high risk / is a blocker
+- Fits current phase
+- Can be split into 1–3 files max
+- Can use existing tools
+
+**Step 2. Decompose**  
+Break it into 3–5 subtasks. Each must be:
+- Narrow (max 1–3 files)
+- Binary acceptance criteria
+- Clear risk + mitigation + buffer
+
+**Step 3. Checklist (must pass all)**
+- [ ] Max 1–3 files per subtask
+- [ ] Binary, testable acceptance criteria
+- [ ] Risk level + mitigation listed
+- [ ] Buffer calculated
+- [ ] Tools specified
+- [ ] Lessons from LESSONS.md considered
+- [ ] Does not break isolation or standards
+
+**Step 4. Output Format**
+
+```markdown
+## State Analysis
+...
+
+## Chosen Task
+**ID / Title**: ...
+**Why this one**: ...
+**Link to PLAN/ROADMAP**: ...
+
+## Decomposition
+
+| Subtask | Title | Description | Acceptance Criteria | Est. Hours | Buffer % | Risk | Mitigation | Tools |
+|---------|-------|-------------|---------------------|------------|----------|------|------------|-------|
+| ...     | ...   | ...         | ...                 | ...        | ...      | ...  | ...        | ...   |
+
+## Changes to make
+1. Exact block for TODO/PLAN.md
+2. Any updates to PLAN.md
+
+## Working Instructions
+- Branch: `feature/decomposition-[short-name]`
+- Use feature branch + dedicated worktree
+- Write commit messages in Russian, human-style, as if written by a developer
+```
+
+**Self-critique**  
+Answer 4 short questions...
+
+**Self-scoring (1–10)**
+
+| Criterion          | Score | Reason |
+|--------------------|-------|--------|
+| Narrowness         |       |        |
+| Clarity & Testability |    |        |
+| Risk awareness     |       |        |
+| Lessons alignment  |       |        |
+| Loop usefulness    |       |        |
+
+**Total:** ___ / 50
+
+Machine-readable output (always include) — JSON block at end with ritual/version/date/chosen_task/subtask_count/checklist_passed/self_scoring/branch/report_generated.
+
+**Safety Guardrails**
+- Never touch core templates of the local loop.
+- All new instructions must be in English, limited context, M2.7-friendly.
+- Always work in feature branch + dedicated worktree.
+- Preserve backward compatibility.
+- Follow the project’s DEVELOPMENT_STANDARDS.md (§13).
+```
+
+**Lessons → Prompt Refinement (v1.5 M2.7 Optimized)**
+
+(Аналогичный компактный блок из предоставленного пользователем текста: "Задача: Lessons → Prompt Refinement. Превращай реальные уроки в одно точечное улучшение промпта или блока инструментов." + Правила (только English для улучшений; Russian human commits в Working Instructions; small context). Порядок: Шаг 0 (выбрать high-priority из decomposition + LESSONS), Шаг 1-3 (спроектировать Before→After + checklist), Обязательный шаблон вывода (Источник проблемы / Выбранное улучшение / Before→After / Rationale / Изменения / Рабочие инструкции / Самокритика / Self-scoring). Machine JSON. После — mark "consumed_by_prompt2". PROJECT_CONFIG.md reference. Safety guardrails.)
+
+(Полный текст ритуала вставлять/ссылаться сюда или в отдельный prompts/prompt_refinement_ritual.md; в Reviewer duty вызывать как роль-блок после decomposition.)
+
 **REVIEW_WAVE output rule (critical to prevent duplication across waves):**
 When producing REVIEW_WAVE_<wave-id>.md (or the wave review section in handoff/output):
 - Create a **dedicated section "Выполненные задачи в этой волне (Completed tasks in this wave ONLY)"**.

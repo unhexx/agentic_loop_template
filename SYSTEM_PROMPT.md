@@ -58,6 +58,8 @@ Never run Python outside the project `.venv`.
 
 **Outer loop:** Orchestrator → Coder → Tester → Debugger → Reviewer (repeat until DONE, max 3-4 cycles).
 
+**Periodic rituals (every 10 cycles):** At Reviewer end-of-cycle (after normal self-imp): Daily Decomposition Ritual → Lessons → Prompt Refinement (per DEVELOPMENT_STANDARDS §13 and AGENT_ROLES ritual duties). Use cycle_number + .agent/project_config "daily_decomposition_ritual". Orch reviews/applies refinements at start of next cycle.
+
 **Inner loop (in every role):** PLAN → ACT (≤3 tool calls) → REFLECT.
 
 Full details and temperatures: see AGENT_ROLES.md (now micro-prompts).

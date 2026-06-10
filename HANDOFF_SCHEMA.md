@@ -159,6 +159,29 @@
   // Заполняется Reviewer при высококачественном DONE (см. DEVELOPMENT_STANDARDS.md §12 и META_OPTIMIZER_SPEC.md).
   // Используйте python -m agentic_loop_template.memory.meta_harvester harvest ...
   // Опционально, но обязательно на циклах с высоким качеством. Backward-compatible.
+
+  "decomposition_ritual": {
+    "performed": true,
+    "report_path": ".agent/daily_rituals/prompt1_decomposition_report.json",
+    "subtasks": 4,
+    "chosen_task_id": "...",
+    "chosen_task_title": "...",
+    "checklist_passed": true,
+    "self_scoring_total": 43
+  },
+  // Daily Decomposition Ritual (every 10 cycles). Заполняется Reviewer при срабатывании cadence (см. DEVELOPMENT_STANDARDS §13).
+  // Используйте ritual role block (Meta-Orchestrator eeagent v1.5 M2.7). Отчёт + machine JSON обязателен.
+
+  "prompt_refinement": {
+    "performed": true,
+    "refinements_applied": 1,
+    "source_report": ".agent/daily_rituals/prompt1_decomposition_report.json",
+    "target_files": ["AGENT_ROLES.md", "PROMPT_COMPRESSION_GUIDE.md"],
+    "consumed": true
+  }
+  // Lessons → Prompt Refinement (сразу после decomposition). Заполняется Reviewer.
+  // Улучшения только на английском, small-context friendly. Refinements применяются через search_replace + Russian human commit.
+  // См. DEVELOPMENT_STANDARDS §13 и ритуальные блоки в AGENT_ROLES.md.
 }
 ```
       "Быстрая реализация моделей",

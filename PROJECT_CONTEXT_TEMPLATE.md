@@ -85,6 +85,36 @@
 
 Это прямое усиление механизма self-improvement (§3 и §12 DEVELOPMENT_STANDARDS).
 
+## Daily Decomposition Ritual Settings (every 10 cycles, v1.5+)
+
+Пользователь/Reviewer задаёт частоту (по умолчанию every_10_cycles). Ритуал превращает одну приоритетную задачу в 3–5 узких подзадач с binary criteria, риском, mitigation.
+
+| Parameter                  | Value / Example              | Description |
+|----------------------------|------------------------------|-------------|
+| **Frequency**              | "every_10_cycles"            | every_10_cycles / every_N_cycles / manual. |
+| **N**                      | 10                           | Для every_N_cycles. |
+| **Last Ritual Cycle**      | 40                           | last_ritual_cycle в .agent/project_config.json. |
+| **Enabled**                | true                         | Включить ритуал. |
+| **Report Path**            | .agent/daily_rituals/        | Куда писать decomposition_report.json. |
+
+**Процесс**: Reviewer (после meta/questions) проверяет cadence по cycle_number. Выполняет Daily Decomposition Ritual (state discovery из .agent/ + последние 10 циклов lessons + meta trajectories). Выводит таблицу + self-scoring + machine JSON. Записывает отчёт, обновляет handoff + memory.
+
+См. DEVELOPMENT_STANDARDS §13, AGENT_ROLES (Reviewer ritual duty + полный блок ритуала), HANDOFF_SCHEMA (decomposition_ritual field).
+
+## Prompt Refinement Ritual Settings (сразу после decomposition)
+
+| Parameter                  | Value / Example                  | Description |
+|----------------------------|----------------------------------|-------------|
+| **Trigger**                | Immediately after decomposition  | Lessons → one modular English prompt/tool improvement. |
+| **Language of Improvements**| English only                    | Улучшения промптов/инструкций — только английский. |
+| **Commits**                | Russian human-style (Working Instructions only) | Естественный язык разработчика, без AI/ритуал упоминаний. |
+| **Last Refinement Cycle**  | 40                               | Связан с last_ritual_cycle. |
+| **Consumed Marking**       | "consumed_by_prompt2"            | Отмечать исходный decomposition report. |
+
+**Процесс**: После decomposition — выбрать high-priority lesson → Before/After (small context friendly) + rationale + exact diff. Применить, записать в DECISIONS.md, handoff `prompt_refinement`, memory. Self-scoring + machine JSON.
+
+См. DEVELOPMENT_STANDARDS §13 и ритуальные блоки в AGENT_ROLES.md.
+
 ---
 
 ## Key Files

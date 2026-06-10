@@ -242,5 +242,6 @@ All changes to the memory format or behaviour must be reflected here and in `DEV
 Дополнительно:
 - `seed_example_trajectory()` — для сидинга примера "золотой" траектории.
 - `update_performance_ledger()` — простая заглушка сбора метрик (пишет в LOOP_PERFORMANCE.md).
+- Ритуалы (v1.5+): каждые 10 циклов Reviewer запускает Daily Decomposition Ritual + Lessons→Prompt Refinement (см. DEVELOPMENT_STANDARDS §13, AGENT_ROLES ritual duty). Используют тот же паттерн (config cadence, .agent/ reports, handoff flags, memory feed). Лёгкая поддержка через существующие collectors + meta_harvester (или отдельный ritual_collector по аналогии).
 
-Полная документация и примеры — META_OPTIMIZER_SPEC.md, .agent/TRAJECTORIES/example-*.json и `python memory/demo_meta.py` (интерактивная демонстрация всего цикла).
+Полная документация и примеры — META_OPTIMIZER_SPEC.md, .agent/TRAJECTORIES/example-*.json и `python memory/demo_meta.py` (интерактивная демонстрация всего цикла). Ритуалы документированы в DEVELOPMENT_STANDARDS §13 и AGENT_ROLES.md.
