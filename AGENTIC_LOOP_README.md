@@ -1,11 +1,10 @@
-# Agentic Loop Template (eeagent context, 2026)
+# Agentic Loop Template
 
-> Self-improving multi-role agentic development loop for eeagent project.
+> Self-improving multi-role agentic development loop template.
 > Version: 3+ (updated for current state: MCP, vision grounding, strong isolation, self-cycle tools).
 > Platform: Windows (PowerShell) + cross (Arch/Win10 demo).
-> Используется в eeagent для Product (MCP, isolation, vision/LocateAnything) и Meta (prompt compression, sync enforcement) потоков.
 
-# Примечание: обновлено в Documentation Actualization Sprint — отражает реальный прогресс (MCP skills, Florence-2 grounding, persistent sandbox, Windows JobObject, sync-worktree improvements, тесты collector/gui, policy для gui/vision).
+# Note: updated in Documentation Actualization Sprint — reflects real progress (MCP skills, Florence-2 grounding, persistent sandbox, Windows JobObject, sync-worktree improvements, collector/gui tests, policy for gui/vision).
 
 ---
 
@@ -30,7 +29,7 @@ The agent works iteratively until the task fully meets the specification.
 
 ```
 agentic_loop_template/
-├── README.md                          # This file (updated for eeagent: MCP, vision, isolation, self-cycle)
+├── README.md                          # This file (updated for MCP, vision, isolation, self-cycle)
 ├── SYSTEM_PROMPT.md                   # Main system prompt (fill {{placeholders}})
 ├── AGENT_ROLES.md                     # Detailed instructions for each role (incl. compression, git sync per §11)
 ├── HANDOFF_SCHEMA.md                  # JSON handoff contract (git_sync_status, clarification_questions)
@@ -38,13 +37,13 @@ agentic_loop_template/
 ├── PROJECT_CONTEXT_TEMPLATE.md        # Template for PROJECT_CONTEXT.md
 ├── SPRINTPLAN_TEMPLATE.md             # Template for SPRINTPLAN.md
 ├── setup_env.ps1                      # Robust Python venv + requirements bootstrap
-├── Agent-Init.ps1                     # One-command setup (использовать .venv python)
+├── Agent-Init.ps1                     # One-command setup (use .venv python)
 ├── Agent-Init.md                      # Detailed launch guide
 ├── memory/                            # questions_collector, structured memory (for pool, sync enforcement)
 └── ... (PROMPT_COMPRESSION_GUIDE.md, etc. for M2.7 long-context)
 ```
 
-**Актуальные фичи (2026-06):** vision grounding (Florence-2 in gui.find + MCP), MCP skills с sandbox routing, persistent isolation (Firecracker/JobObject), self-cycle tools (sync-worktree.ps1 с -VerifyOnly, тесты enforcement), collector для пула вопросов, TEST_PLAN integration.
+**Current features (2026-06):** vision grounding (Florence-2 in gui.find + MCP), MCP skills with sandbox routing, persistent isolation (Firecracker/JobObject), self-cycle tools (sync-worktree.ps1 with -VerifyOnly, enforcement tests), collector for questions pool, TEST_PLAN integration.
 
 ---
 
@@ -168,3 +167,7 @@ For maximum automation you can combine it with opening the file:
 - Maximum recommended 3–4 full cycles before doing an architecture review.
 
 This template is specifically tuned for reliable autonomous development when using **Blackbox AI** with the **MiniMax 2.5** model in Visual Studio Code.
+
+---
+
+**Maintained by exception.expert**
