@@ -16,14 +16,14 @@ The goal: the agentic loop accumulates real "институциональная 
 The memory file is chosen by a stable identifier derived **only** from the git remote (or fallback to `.git` common dir / cwd).
 
 Example for this repo:
-- Remote `https://github.com/.../eeagent.git` or `git@github.com:.../eeagent.git`
-- Canonicalized to `github.com/.../eeagent`
-- SHA-256 prefix (12 hex) → `eegent-b5ba3fe3655e`
-- File: `~/.grok/agentic-loop-memory/eegent-b5ba3fe3655e.md`
+- Remote `https://github.com/yourorg/your-project.git` or `git@github.com:yourorg/your-project.git`
+- Canonicalized to `github.com/yourorg/your-project`
+- SHA-256 prefix (12 hex) → `your-project-b5ba3fe3655e`
+- File: `~/.grok/agentic-loop-memory/your-project-b5ba3fe3655e.md`
 
 **This means**:
 - All worktrees of the same clone share the memory.
-- The user's `X:\LocalRepo\eeagent` and Grok's `C:\Users\ROOT\.grok\worktrees\...` automatically see the same memory (once the `.md` file exists in the home directory).
+- The user's `X:\LocalRepo\your-project` and Grok's `C:\Users\ROOT\.grok\worktrees\...` automatically see the same memory (once the `.md` file exists in the home directory).
 - Different remotes (forks, different orgs) get separate memory files — correct isolation.
 
 Run `python -m agentic_loop_template.memory info` (or the PS1) to see the ID and paths for the current workspace.
