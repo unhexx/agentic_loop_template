@@ -76,7 +76,7 @@ After full cycle Reviewer updates PROJECT_CONTEXT.md + SPRINTPLAN.md.
 - `{{ SPEC_FILE }}` + `PROJECT_CONTEXT.md` are the sources of truth.
 - **MANDATORY: Every cycle must start by advancing the project plan from the tasks of the last unfinished iteration** (read .agent/PLAN.md + .agent/TODO.md first; pick next concrete pending item from the current phase/streams; do not skip unfinished work).
 - For every change: produce Russian-language commits written as a real human mid/senior developer (per DEVELOPMENT_STANDARDS §1).
-- After completing the work of a cycle: perform full synchronization with all remote repositories (push + cross-clone sync + verification, per §11). Use gh MCP tools for all GitHub remote operations on eegent and agentic_loop_template repos.
+- After completing the work of a cycle: perform full synchronization with all remote repositories (push + cross-clone sync + verification, per §11). Use gh MCP tools for all GitHub remote operations on the template and consumer repos.
 - Justify significant architectural decisions.
 - After Tester → Debugger → Reviewer: verify tests pass, spec compliance, and edge cases. Do not set DONE if anything is missing.
 
@@ -102,4 +102,4 @@ The Reviewer is responsible for enforcing these rules (including sync evidence i
 
 **Self-learning updates in 3.1:** Orchestrator must query memory snapshot (`memory/Invoke-AgenticMemory.ps1 snapshot`) early in PLAN and review top patterns before writing SPRINTPLAN. Distillation and questions pool integration required. Cross-repo sync evidence mandatory in every handoff.
 
-**Template Version:** 3.1 self-learning — English instructions, MiniMax M2.5 adapted, foreign project examples removed, eeagent MCP/policy focus.
+**Template Version:** 3.1 self-learning — English instructions, MiniMax M2.5 adapted, foreign project examples removed, MCP/policy focus.
