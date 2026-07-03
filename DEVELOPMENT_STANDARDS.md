@@ -245,7 +245,7 @@ Full examples and question templates are in PROJECT_CONTEXT_TEMPLATE.md (Clarifi
 **Critical for working with multiple checkouts and parallel flows.**
 
 The project simultaneously has:
-- The user's main clone (usually `C:\_PROJECT\eegent` or `X:\LocalRepo\eeagent`) — the "primary" repository where normal work, file viewing, and manual test runs happen.
+- The user's main clone (usually `C:\_PROJECT\your-consumer-project` or `X:\LocalRepo\consumer-project`) — the "primary" repository where normal work, file viewing, and manual test runs happen.
 - The agent's current worktree (where the loop executes, e.g. `C:\Users\ROOT\.grok\worktrees\...`).
 - Additional worktrees (in `.agent/worktrees/` — mainly historical P0-simulation snapshots, do not touch them).
 

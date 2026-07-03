@@ -133,6 +133,19 @@ Why good: short summary + delta (what was done, commits, evidence), links instea
 
 ## Meta-harvested few-shot examples (v3.x+)
 
+### Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)
+
+```markdown
+**Harvested: include 'performance' delta in every handoff (from 20+ loops)**
+- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed
+- success_patterns for ledger/metrics wins
+- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.
+Example: "performance": {"cycle": 21, "elapsed_minutes": 3.5, "tool_calls": 12, "confidence": 0.9, "meta_applied": 8}
+```
+
+*Добавлено meta_harvester cycle T-020-03f8*
+
+
 ### Demo: harvested marker example from cycle 43
 
 **Harvested (demo cycle 43):** explicit SYNC_DONE + VerifyOnly in handoff delta. Evidence: tests + git log in clones.

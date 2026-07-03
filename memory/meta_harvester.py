@@ -322,6 +322,9 @@ def analyze_for_proposals(recent: int = 5, min_confidence: float = 0.8) -> List[
     compression_wins = 0
     # Эвристика 4: уроки -> кандидаты в permanent rules
     rule_candidates = []
+    # Эвристика 5: P1 metrics/ledger в паттернах -> few-shot для handoff с метриками (full P4)
+    metrics_ledger_wins = 0
+    ledger_patterns = 0
 
     for t in trajs:
         text = json.dumps(t, ensure_ascii=False).lower()
@@ -335,6 +338,12 @@ def analyze_for_proposals(recent: int = 5, min_confidence: float = 0.8) -> List[
         for lesson in t.get("lessons_learned", []):
             if "всегда" in lesson.lower() or "обязательно" in lesson.lower():
                 rule_candidates.append(lesson)
+        # New P4 full heuristics for metrics/ledger
+        if "performance" in text or "ledger" in text or "metrics" in text or "roi" in text:
+            metrics_ledger_wins += 1
+        sp = " ".join(t.get("success_patterns", [])).lower()
+        if "performance" in sp or "ledger" in sp or "metrics" in sp:
+            ledger_patterns += 1
 
     index = _load_index()
     existing_props = index.setdefault("proposals", [])
@@ -393,6 +402,27 @@ def analyze_for_proposals(recent: int = 5, min_confidence: float = 0.8) -> List[
             "safe_to_auto": True,
             "confidence": 0.72,
             "expected_impact": "Лучшая дисциплина сжатия у будущих ролей",
+            "status": "pending",
+            "created_at": _now_iso(),
+        }
+        proposals.append(prop)
+        existing_props.append(prop)
+
+    # Full P4 heuristics for metrics/ledger (P1 integration)
+    if metrics_ledger_wins >= 1 or ledger_patterns >= 1:
+        pid = _next_prop_id(existing_props)
+        prop = {
+            "id": pid,
+            "from_trajectories": [t["id"] for t in trajs[-max(1, metrics_ledger_wins):]],
+            "target_file": "agentic_loop_template/PROMPT_COMPRESSION_GUIDE.md",
+            "change_type": "add_few_shot_example",
+            "title": "Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)",
+            "rationale": f"В {max(metrics_ledger_wins, ledger_patterns)} циклах успех коррелировал с явным включением performance metrics (elapsed, tool_calls, confidence, meta_applied) + success_patterns в сжатые handoff'ы. Позволяет лучше отслеживать ROI и компрессию.",
+            "proposed_text": "```markdown\n**Harvested: include 'performance' delta in every handoff (from 20+ loops)**\n- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed\n- success_patterns for ledger/metrics wins\n- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.\nExample: \"performance\": {\"cycle\": 21, \"elapsed_minutes\": 3.5, \"tool_calls\": 12, \"confidence\": 0.9, \"meta_applied\": 8}\n```",
+            "insertion_anchor": "После примера с compression_metrics",
+            "safe_to_auto": True,
+            "confidence": 0.85,
+            "expected_impact": "Лучшее отслеживание эффективности, автоматическая эволюция метрик в циклах",
             "status": "pending",
             "created_at": _now_iso(),
         }

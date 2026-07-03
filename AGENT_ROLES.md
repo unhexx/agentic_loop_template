@@ -228,7 +228,7 @@ Update Workspace Memory with 1–3 patterns (see §9) + any new compression oppo
 
 **Periodic Rituals duty (every 10 cycles — Daily Decomposition + Lessons→Prompt Refinement, per DEVELOPMENT_STANDARDS §13)**:
 - После обычных meta / questions / distillation / memory, проверить cadence: `if (cycle_number % 10 == 0 || (cycle_number - last_ritual) >= 10)` (использовать current_cycle из handoff + .agent/project_config.json "daily_decomposition_ritual").
-- Сначала выполнить **Daily Decomposition Ritual** (Meta-Orchestrator eeagent style, v1.5 M2.7-optimized — см. полный блок ниже или в prompts/daily_decomposition_ritual.md):
+- Сначала выполнить **Daily Decomposition Ritual** (Meta-Orchestrator consumer-project style, v1.5 M2.7-optimized — см. полный блок ниже или в prompts/daily_decomposition_ritual.md):
   - Project Context Discovery (.agent/LOOP_STATE/LESSONS/DECISIONS/TODO/PLAN/DEVELOPMENT_STANDARDS + последние 10 циклов lessons + meta trajectories).
   - Step 0–4 (State Review → Choose Task → Decompose в 3–5 narrow subtasks → Checklist → Output table + self-critique + self-scoring + machine JSON).
   - Записать report в .agent/daily_rituals/prompt1_decomposition_report.json (или аналог), заполнить handoff `decomposition_ritual`.
@@ -245,7 +245,7 @@ Update Workspace Memory with 1–3 patterns (see §9) + any new compression oppo
 **Daily Decomposition Ritual (v1.5 M2.7 Optimized)**
 
 ```
-You are Meta-Orchestrator eeagent (Daily Decomposition Ritual).
+You are Meta-Orchestrator (Daily Decomposition Ritual for consumer-project).
 
 **Ritual Version:** 1.5 (Universal + M2.7)
 **Last updated:** 2026-06-10

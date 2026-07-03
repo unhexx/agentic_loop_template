@@ -186,6 +186,30 @@
       }
     }
   ],
-  "proposals": [],
-  "updated_at": "2026-07-03T01:14:21.103720+00:00"
+  "proposals": [
+    {
+      "id": "P-001",
+      "from_trajectories": [
+        "T-020-03f8",
+        "T-015-03f8",
+        "T-010-03f8",
+        "T-005-03f8",
+        "T-001-03f8"
+      ],
+      "target_file": "agentic_loop_template/PROMPT_COMPRESSION_GUIDE.md",
+      "change_type": "add_few_shot_example",
+      "title": "Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)",
+      "rationale": "В 5 циклах успех коррелировал с явным включением performance metrics (elapsed, tool_calls, confidence, meta_applied) + success_patterns в сжатые handoff'ы. Позволяет лучше отслеживать ROI и компрессию.",
+      "proposed_text": "```markdown\n**Harvested: include 'performance' delta in every handoff (from 20+ loops)**\n- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed\n- success_patterns for ledger/metrics wins\n- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.\nExample: \"performance\": {\"cycle\": 21, \"elapsed_minutes\": 3.5, \"tool_calls\": 12, \"confidence\": 0.9, \"meta_applied\": 8}\n```",
+      "insertion_anchor": "После примера с compression_metrics",
+      "safe_to_auto": true,
+      "confidence": 0.85,
+      "expected_impact": "Лучшее отслеживание эффективности, автоматическая эволюция метрик в циклах",
+      "status": "applied",
+      "created_at": "2026-07-03T01:19:00.058898+00:00",
+      "applied_at": "2026-07-03T01:19:00.059821+00:00",
+      "notes": " (auto-appended to file)"
+    }
+  ],
+  "updated_at": "2026-07-03T01:19:00.061706+00:00"
 }

@@ -162,9 +162,15 @@ For maximum automation you can combine it with opening the file:
 
 ## Limitations
 
-- Optimized for Windows + PowerShell + Blackbox + MiniMax 2.5.
+- Optimized for Windows + PowerShell + Blackbox + MiniMax 2.5 (P1/P4 focus in current iteration).
+- Cross-platform (Linux/Mac) support in progress (P2): bash shims, path handling, venv notes added in later updates.
 - The local runner must support the tools defined in `TOOLS_REGISTRY.md`.
 - Maximum recommended 3–4 full cycles before doing an architecture review.
+
+## P2+ Progress (after 20+ loops)
+- Basic cross-platform notes: use .venv/bin/python on *nix, adapt Agent-Init for bash.
+- Start documenting multi-frontend (Claude, Cursor) adapters in future sprints.
+- See TASK_SPECIFICATION.md for full P2 items.
 
 This template is specifically tuned for reliable autonomous development when using **Blackbox AI** with the **MiniMax 2.5** model in Visual Studio Code.
 
