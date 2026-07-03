@@ -15,10 +15,26 @@
       "meta_applied": 1,
       "success_patterns": [],
       "notes": "Cycle 0 bootstrap + ledger integration for business recs"
+    },
+    {
+      "cycle": 1,
+      "timestamp": "2026-07-03T00:45:58.282717+00:00",
+      "outcome": "IN_PROGRESS",
+      "elapsed_minutes": 3.2,
+      "tool_calls": 6,
+      "tokens_est": 0,
+      "confidence": 0.88,
+      "tests_total": 0,
+      "tests_failed": 0,
+      "violations": 0,
+      "meta_generated": 0,
+      "meta_applied": 0,
+      "success_patterns": [],
+      "notes": "Coder integration of ledger references into schema, AGENT_ROLES, short_reviewer_prompt and template"
     }
   ],
   "summary": {
-    "total_cycles": 1,
-    "last_updated": "2026-07-03T00:43:18.696529+00:00"
+    "total_cycles": 2,
+    "last_updated": "2026-07-03T00:45:58.282733+00:00"
   }
 }
