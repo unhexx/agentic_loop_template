@@ -19,6 +19,7 @@
 - [x] P0-SYNC-01: Perform complete §11 self-cycle after all bootstrap files written (natural Russian commit, push if applicable, verify in worktree + note main clone sim, update LOOP_STATE). (Multiple pushes done)
 
 **Completion gate for iteration:** All above checked by Reviewer + at least 1 meta proposal applied or documented win + first performance numbers in reports + git verified. Then mark iteration complete and plan next (P1 continuation or P2).
+(After 20 loops: P1 complete, P4 advanced with multiple harvests, hygiene partial, memory done, 20+ cycles in ledger showing gains. Iteration ~70% done.)
 
 ## Future Iterations (DO NOT START YET)
 
