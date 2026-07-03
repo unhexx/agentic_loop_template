@@ -35,14 +35,18 @@
 - Platform reality: Primary target remains Windows/PowerShell/Blackbox/MiniMax, but cross-platform adapters required for broader adoption.
 - Self-improvement active: meta_optimizer enabled, daily_decomposition_ritual enabled, question_pool ready.
 
-## Performance Snapshot (P1 — to be populated by ledger)
+## Performance Snapshot (P1 — populated by ledger)
 
-(Initial bootstrap — first real numbers expected after cycle 1+)
+After cycle 1 (ledger + integration + debug + tests):
 
-- Cycles completed: 0
-- Avg tokens/elapsed/tool_calls: TBD
-- Success rate / violations: TBD
-- Meta proposals applied: 0 (seed planned)
+- Recent cycles tracked: 3+
+- Avg elapsed_min (recent): ~2.0
+- Avg confidence: ~0.7+
+- Meta applied examples: 1+
+- Tests: full coverage in test_performance_ledger.py (core + edges + CLI), all green.
+- Key win: observability for ROI now first-class in handoffs, roles, meta.
+
+See .agent/PERFORMANCE_LEDGER.md and .agent/PERFORMANCE_LEDGER.json for details.
 
 ## Open High-Value Questions (non-blocking)
 

@@ -8,8 +8,8 @@
 - [ ] P0-FOUND-02: Create initial workspace memory entries for "Agentix Improvements" category (patterns from analysis: need for metrics, cross-platform gaps).
 - [x] P1-METRICS-01: Implement ledger schema + basic collector (memory/performance_ledger.py). CLI. (DONE by Coder) + tests (DONE by Tester via test_performance_ledger.py, all green).
 - [ ] P1-METRICS-02: Add first data point collection (simulate or capture from current bootstrap "cycle 0"). Wire call in meta_harvester.update_performance_ledger.
-- [ ] P1-METRICS-03: Update HANDOFF_SCHEMA.md with optional "performance" object example. Update PROJECT_CONTEXT_TEMPLATE.md "Current Performance" section.
-- [ ] P1-METRICS-04: Modify short_reviewer_prompt.md and AGENT_ROLES.md (Reviewer duties) to mandate ledger update on high-quality DONE. Add to SYSTEM_PROMPT.md if needed.
+- [x] P1-METRICS-03: Update HANDOFF_SCHEMA.md with optional "performance" object example. Update PROJECT_CONTEXT_TEMPLATE.md "Current Performance" section. (DONE)
+- [x] P1-METRICS-04: Modify short_reviewer_prompt.md and AGENT_ROLES.md (Reviewer duties) to mandate ledger update on high-quality DONE. (DONE)
 - [ ] P4-META-01: Execute full meta flow on bootstrap (harvest using a mock or real handoff from init, analyze, propose at least 1 safe improvement e.g. "add metrics compression example", apply-safe). Record trajectory.
 - [ ] P4-META-02: Enhance demo_meta.py or add test to demonstrate P1 ledger + meta together.
 - [ ] P0-HYGIENE-01: Full grep -r (excluding .git) for eeagent/eegent/legacy strings in *.md *.py *.ps1. Create patch list and clean in small commits.
