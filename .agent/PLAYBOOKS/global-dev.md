@@ -6,3 +6,5 @@ Scope: global
 - [1.00] playbook + performance delta is mandatory  (tags: ['auto-from-reflection'])
 - [1.00] Consult playbooks before tool use for better outcomes  (tags: ['auto-from-reflection'])
 - [1.00] Cross-platform paths need portable playbook bullets  (tags: ['auto-from-reflection'])
+- [0.65] Playbooks must be consulted before every tool use for full cycle compliance  (tags: ['auto-from-reflection'])
+- [0.65] Add WorkflowBlueprint for continuous dev loop  (tags: ['auto-from-reflection'])

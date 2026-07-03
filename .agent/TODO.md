@@ -19,7 +19,7 @@
 - [x] P0-SYNC-01: Perform complete §11 self-cycle after all bootstrap files written (natural Russian commit, push if applicable, verify in worktree + note main clone sim, update LOOP_STATE). (Multiple pushes done)
 
 **Completion gate for iteration:** All above checked by Reviewer + at least 1 meta proposal applied or documented win + first performance numbers in reports + git verified. Then mark iteration complete and plan next (P1 continuation or P2).
-(After 30+ loops: P1 complete with gains, P4 FULL (heuristics + proposals applied), hygiene more, P2 start, memory. Avg elapsed improved. Iteration near gate. Ready for Reviewer close or P2 phase.)
+(After 40+ loops + Reviewer review cycle 52: P1 + P4 playbooks COMPLETE (core, heuristics, integration, curation in loops). Hygiene advanced. P2 cross-platform STARTED (Agent-Init.sh + docs). Metrics strong (2.6min / 0.93 conf). Reviewer: good alignment with spec, process clean. Recommend next: runtime playbook injection + more P2 code. Near gate for iteration close.)
 
 ## Current Iteration Progress (after 30+ loops + 10 more with playbooks)
 

@@ -56,9 +56,31 @@
           "usage_count": 10,
           "source": 53,
           "last_used": "2026-07-03T01:44:50.992182+00:00"
+        },
+        {
+          "id": "b-0006",
+          "content": "Playbooks must be consulted before every tool use for full cycle compliance",
+          "tags": [
+            "auto-from-reflection"
+          ],
+          "effectiveness": 0.65,
+          "recency_ts": "2026-07-03T01:51:42.021968+00:00",
+          "usage_count": 1,
+          "source": 52
+        },
+        {
+          "id": "b-0007",
+          "content": "Add WorkflowBlueprint for continuous dev loop",
+          "tags": [
+            "auto-from-reflection"
+          ],
+          "effectiveness": 0.65,
+          "recency_ts": "2026-07-03T01:51:42.021996+00:00",
+          "usage_count": 1,
+          "source": 52
         }
       ],
-      "last_curated": "2026-07-03T01:44:50.992226+00:00"
+      "last_curated": "2026-07-03T01:51:42.022091+00:00"
     },
     "tool-git": {
       "scope": "tool:git",
@@ -103,8 +125,41 @@
         }
       ],
       "last_curated": "2026-07-03T01:37:30.683098+00:00"
+    },
+    "continuous-dev-cycle": {
+      "scope": "workflow:full-cycle",
+      "name": "Continuous Development Cycle Blueprint",
+      "bullets": [
+        {
+          "id": "b-wf01",
+          "content": "Orchestrator: always select playbooks for planning + tools before SPRINTPLAN.",
+          "tags": [
+            "orchestrator",
+            "playbook"
+          ],
+          "effectiveness": 0.9
+        },
+        {
+          "id": "b-wf02",
+          "content": "Every role: use playbooks for tool decisions. Record usage for curate.",
+          "tags": [
+            "all-roles"
+          ],
+          "effectiveness": 0.88
+        },
+        {
+          "id": "b-wf03",
+          "content": "Reviewer: mandatory playbook curation + meta harvest on high quality DONE.",
+          "tags": [
+            "reviewer",
+            "self-improvement"
+          ],
+          "effectiveness": 0.92
+        }
+      ],
+      "last_curated": "2026-07-03T01:51:47.169567+00:00"
     }
   },
-  "updated_at": "2026-07-03T01:44:50.992230+00:00",
+  "updated_at": "2026-07-03T01:51:47.169579+00:00",
   "version": "3.3-playbooks"
 }

@@ -5,7 +5,7 @@
 
 **Статус:** включен | частота: after_every_done_cycle
 **Последний harvested cycle:** 0
-**Обновлено:** 2026-07-03T01:44:50.997298+00:00
+**Обновлено:** 2026-07-03T01:50:48.554270+00:00
 
 ## Последние собранные траектории (golden / высокое качество)
 - **T-058-03f8** (cycle 58) — DONE | conf=0.92
@@ -15,7 +15,11 @@
 - **T-062-03f8** (cycle 62) — DONE | conf=0.92
 
 ## Открытые предложения (ожидают применения или отклонения)
-(нет открытых — отлично! или все применены)
+### P-006 → agentic_loop_template/PROMPT_COMPRESSION_GUIDE.md
+**Тип:** add_few_shot_example | safe_auto=True | conf=0.85
+**Обоснование:** В 3 циклах успех коррелировал с явным включением performance metrics (elapsed, tool_calls, confidence, meta_applied) + success_patterns в сжатые handoff'ы. Позволяет лучше отслеживать ROI и компрессию
+**Действие:** Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)
+
 ---
 Команды:
   python -m agentic_loop_template.memory.meta_harvester harvest --handoff ... --cycle N

@@ -35,18 +35,29 @@
 - Platform reality: Primary target remains Windows/PowerShell/Blackbox/MiniMax, but cross-platform adapters required for broader adoption.
 - Self-improvement active: meta_optimizer enabled, daily_decomposition_ritual enabled, question_pool ready.
 
-## Performance Snapshot (P1 — populated by ledger)
+## Performance Snapshot (P1 + Playbooks P4 — after 40+ cycles)
 
-After cycle 1 (ledger + integration + debug + tests):
+Recent (post playbooks integration):
+- Cycles tracked: 40+
+- Avg elapsed_min (recent 10): ~2.6 (down from ~4+ pre-P4)
+- Avg confidence: ~0.93
+- Meta/playbook applied: multiple
+- Key wins: 
+  - Playbooks module live with select/curate (ACE-style). Seeded + used in cycles. Proposals for metrics/ledger in handoffs.
+  - Full cycle support: playbooks for tools/roles/phases + other objects foundation.
+  - P2 cross-platform start (Agent-Init.sh, portable prompts).
+  - Hygiene: legacy refs generalized.
+- Tests: playbooks functional (direct load + select returns relevant bullets).
+- Spec alignment: Matches "playbooks and other objects for full work with all tools of the continuous development cycle".
 
-- Recent cycles tracked: 3+
-- Avg elapsed_min (recent): ~2.0
-- Avg confidence: ~0.7+
-- Meta applied examples: 1+
-- Tests: full coverage in test_performance_ledger.py (core + edges + CLI), all green.
-- Key win: observability for ROI now first-class in handoffs, roles, meta.
+See .agent/PLAYBOOKS/, .agent/PERFORMANCE_LEDGER.md, .agent/handoff_orchestrator_playbooks.json.
 
-See .agent/PERFORMANCE_LEDGER.md and .agent/PERFORMANCE_LEDGER.json for details.
+## Reviewer Notes (Cycle 52)
+- Work reviewed against TASK_SPECIFICATION and current PLAN/TODO: Strong progress.
+- Process: Git self-cycles compliant (Russian commits, pushes, sync verified). No violations found in this slice.
+- Quality: Playbooks follow best practices (ACE/Reflexion). Integrated across docs and meta. Good.
+- Gaps noted for next: Deeper runtime injection of playbooks into actual tool/role execution (beyond docs). Accelerate P2 cross-platform code. Complete any remaining hygiene.
+- Recommendation: Continue to Orchestrator/Coder for P2 runtime + full playbook usage in cycle. High confidence in direction.
 
 ## Open High-Value Questions (non-blocking)
 

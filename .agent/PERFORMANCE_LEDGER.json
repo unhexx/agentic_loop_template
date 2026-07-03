@@ -1,22 +1,6 @@
 {
   "cycles": [
     {
-      "cycle": 17,
-      "timestamp": "2026-07-03T01:14:21.109262+00:00",
-      "outcome": "DONE",
-      "elapsed_minutes": 3.1,
-      "tool_calls": 14,
-      "tokens_est": 11297,
-      "confidence": 0.82,
-      "tests_total": 12,
-      "tests_failed": 0,
-      "violations": 0,
-      "meta_generated": 2,
-      "meta_applied": 1,
-      "success_patterns": [],
-      "notes": "Cycle 17 of business efficiency improvements. P4 meta progress, hygiene tasks."
-    },
-    {
       "cycle": 18,
       "timestamp": "2026-07-03T01:14:21.109912+00:00",
       "outcome": "DONE",
@@ -799,10 +783,26 @@
       "meta_applied": 1,
       "success_patterns": [],
       "notes": "proposal:P-005 impact:Лучшее отслеживание эффективности, автоматическая эволюция метрик в циклах"
+    },
+    {
+      "cycle": 52,
+      "timestamp": "2026-07-03T01:51:42.023908+00:00",
+      "outcome": "REVIEWED",
+      "elapsed_minutes": 1.5,
+      "tool_calls": 5,
+      "tokens_est": 0,
+      "confidence": 0.95,
+      "tests_total": 0,
+      "tests_failed": 0,
+      "violations": 0,
+      "meta_generated": 0,
+      "meta_applied": 1,
+      "success_patterns": [],
+      "notes": "Reviewer cycle: playbooks validated, P4 good, P2 advancing"
     }
   ],
   "summary": {
     "total_cycles": 51,
-    "last_updated": "2026-07-03T01:44:50.996330+00:00"
+    "last_updated": "2026-07-03T01:51:42.023932+00:00"
   }
 }

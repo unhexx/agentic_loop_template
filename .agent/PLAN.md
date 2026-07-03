@@ -23,7 +23,7 @@ Advance ONLY tasks from the *last unfinished iteration*. Do not start new phases
 
 **Goal of this iteration:** Establish the loop artifacts for the initiative, implement core scaffolding for performance ledger/metrics (P1), initialize full meta_harvester usage + first eval seeds (P4), perform hygiene cleanup, update docs. Produce measurable first data points.
 
-**Status:** ADVANCED after 35+ loops (P1 full + gains, P4 FULL — heuristics + playbooks core + curation live, hygiene expanded, P2 started in docs + cross notes). Playbooks now first-class for full cycle (all tools). Avg ~2.6min, conf 0.93. See 20_LOOPS_SUMMARY, PLAYBOOKS/. Iteration ready for close + P2/P3 expansion.
+**Status:** REVIEWED (cycle 52, 40+ loops). P1 + P4 playbooks FULL (core module, heuristics generating proposals, live curate in cycles, docs+roles+handshakes integrated). P2 cross-platform initiated (Agent-Init.sh stub, portable notes). Hygiene advanced. Reviewer: good, process compliant, aligns with TASK_SPEC for playbooks enabling full cycle with all tools. Metrics improving. Recommend next slice for runtime injection + P2 code.
 
 ### INVEST Tasks for Current Iteration (priority order)
 

@@ -299,6 +299,19 @@ def seed_initial_playbooks() -> int:
             "last_curated": _now_iso(),
         }
 
+    # New: WorkflowBlueprint for full continuous dev cycle (per user request for other objects)
+    if "continuous-dev-cycle" not in pbs:
+        pbs["continuous-dev-cycle"] = {
+            "scope": "workflow:full-cycle",
+            "name": "Continuous Development Cycle Blueprint",
+            "bullets": [
+                {"id": "b-wf01", "content": "Orchestrator: always select playbooks for planning + tools before SPRINTPLAN.", "tags": ["orchestrator", "playbook"], "effectiveness": 0.9},
+                {"id": "b-wf02", "content": "Every role: use playbooks for tool decisions. Record usage for curate.", "tags": ["all-roles"], "effectiveness": 0.88},
+                {"id": "b-wf03", "content": "Reviewer: mandatory playbook curation + meta harvest on high quality DONE.", "tags": ["reviewer", "self-improvement"], "effectiveness": 0.92},
+            ],
+            "last_curated": _now_iso(),
+        }
+
     _save_index(index)
     return len(pbs)
 
