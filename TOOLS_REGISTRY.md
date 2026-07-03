@@ -25,7 +25,7 @@ This document is the single source of truth for tool schemas, parameter names, a
   "path": "gateway/app/mcp/server.py",
   "lines_from": 1,
   "lines_to": 120,
-  "purpose": "Review current implementation of MCP tool registration and skill loading before extending eeagent tools"
+  "purpose": "Review current implementation of MCP tool registration and skill loading before extending consumer-project tools"
 }
 ```
 
