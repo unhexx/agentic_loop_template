@@ -56,6 +56,7 @@ When targeting Blackbox + Minimax M2.5:
 - The model has excellent nominal long context, but in the loop (Blackbox CLI, no local GPU for extra inference/processing, resource limits on the executor side) the effective window is small in practice.
 - Always: ultra-aggressive first compression pass before any planning.
 - Use summary + delta + few-shot from real successful compressed handoffs (examples in this guide and SELF_IMPROVEMENT_LOG from previous M2.5 cycles).
+- For metrics/ROI tasks (P1): always include "performance" object (elapsed, tool_calls, confidence, meta_applied) + success_patterns in deltas for handoff compression. Example from cycle 1: "performance": {"cycle":1, "elapsed_minutes":2.1, "tool_calls":9, "confidence":0.92}. Reduces verbose repeats.
 - External memory (.agent/LOOP_STATE, PLAN, TODO, DECISIONS, LESSONS) is primary — prompt should contain only pointers + compact deltas.
 - Structured JSON output preferred (easier parsing, less tokens wasted on prose).
 - Token awareness: before sending, estimate and cut to budget. Non-interactive Blackbox mode benefits from clear, dense instructions without fluff.

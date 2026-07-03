@@ -52,7 +52,8 @@ Advance ONLY tasks from the *last unfinished iteration*. Do not start new phases
    - Run analyze + propose + at least one safe apply (e.g. add a compression example or rule).  
    - Wire update_performance_ledger call.  
    - Create demo trajectory for P1 work.  
-   - Criteria: At least 1 proposal generated/applied, recorded in .agent/META_PROPOSALS.md and memory. Run `python -m ... meta_harvester` commands successfully.
+   - Criteria: At least 1 proposal generated/applied, recorded in .agent/META_PROPOSALS.md and memory. Run `python -m ... meta_harvester` commands successfully.  
+   (Progress: harvest fixed and succeeded T-001-03f8; patterns seeded for ledger/metrics; proposal generation needs heuristic update)
 
 5. **[P0-HYGIENE] Legacy cleanup + initial docs/roadmap hygiene**  
    - Grep for remaining "eeagent|eegent" references across non-history files and remove/generalize.  
