@@ -581,8 +581,14 @@ def update_performance_ledger(proposal_id: str, impact: str = "", cycle_stats: d
     ledger.write_text("\n".join(lines[-50:]) + "\n", encoding="utf-8")
 
     # New structured ledger (business efficiency P1)
+    # Use direct file load to avoid package __init__ recursion/circular import issues
+    # (consistent with test_performance_ledger.py and guarded __init__.py)
     try:
-        from . import performance_ledger as pl
+        import importlib.util
+        pl_path = Path(__file__).parent / "performance_ledger.py"
+        spec = importlib.util.spec_from_file_location("pl", str(pl_path))
+        pl = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pl)
         if cycle_stats:
             pl.append_cycle(**cycle_stats)
         else:
