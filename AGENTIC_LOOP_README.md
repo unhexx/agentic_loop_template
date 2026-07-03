@@ -51,17 +51,20 @@ agentic_loop_template/
 
 ### 1. One-time environment preparation
 
+**Windows:**
 ```powershell
 cd X:\Your\Project\Root
 .\agentic_loop_template\Agent-Init.ps1
 ```
 
-This script will:
-- Create and activate the local Python virtual environment (`.venv`)
-- Install dependencies from `pyproject.toml`
-- Install `posh-bash-chaining` (for `&&`, `||`, `|&` support)
-- Set environment variables optimized for Blackbox agents
-- Optionally generate a ready-to-paste starter prompt
+**Linux / macOS:**
+```bash
+cd /path/to/your/project
+bash agentic_loop_template/Agent-Init.sh
+source .venv/bin/activate
+```
+
+Bootstrap creates `.venv`, installs deps, and prepares the loop environment. See [docs/getting-started.md](docs/getting-started.md).
 
 ### 2. Recommended Blackbox Configuration
 
@@ -160,17 +163,24 @@ For maximum automation you can combine it with opening the file:
 
 ---
 
+## Cross-Platform & Multi-Frontend (P2 Complete)
+
+- Platform-adaptive bootstrap in all `prompts/short_*.md` and `AGENT_ROLES.md`.
+- `Agent-Init.sh` for Linux/Mac; `Agent-Init.ps1` for Windows.
+- Multi-frontend adapters: Blackbox, Cursor, Claude Code — see [docs/multi-frontend.md](docs/multi-frontend.md).
+
+## Productization (P3)
+
+- Documentation site: [docs/](docs/)
+- Consumer starter: [examples/consumer-starter/](examples/consumer-starter/)
+- Agentix Hub: `python -m memory.playbooks export --format hub` → [docs/hub/](docs/hub/)
+- Pro tier hooks: [docs/pro-tier.md](docs/pro-tier.md)
+
 ## Limitations
 
-- Optimized for Windows + PowerShell + Blackbox + MiniMax 2.5 (P1/P4 focus in current iteration).
-- Cross-platform (Linux/Mac) support in progress (P2): bash shims, path handling, venv notes added in later updates.
-- The local runner must support the tools defined in `TOOLS_REGISTRY.md`.
-- Maximum recommended 3–4 full cycles before doing an architecture review.
-
-## P2+ Progress (after 20+ loops)
-- Basic cross-platform notes: use .venv/bin/python on *nix, adapt Agent-Init for bash.
-- Start documenting multi-frontend (Claude, Cursor) adapters in future sprints.
-- See TASK_SPECIFICATION.md for full P2 items.
+- Hosted Hub SaaS not included in v3.3.0 (static JSON + CLI only).
+- The local runner must support tools in `TOOLS_REGISTRY.md`.
+- Max recommended 3–4 full cycles before architecture review.
 
 This template is specifically tuned for reliable autonomous development when using **Blackbox AI** with the **MiniMax 2.5** model in Visual Studio Code.
 

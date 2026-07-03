@@ -22,5 +22,17 @@
     "frequency": "every_10_cycles",
     "N": 10,
     "last_ritual_cycle": 0
+  },
+  "tier": {
+    "level": "free",
+    "feature_flags": {
+      "hub_premium": false,
+      "eval_harness": false,
+      "enterprise_governance": false
+    }
+  },
+  "playbooks": {
+    "enabled": true,
+    "auto_curate": true
   }
 }

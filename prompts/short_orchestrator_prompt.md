@@ -9,7 +9,10 @@
 ## Mandatory Process (execute in strict order)
 
 ### 1. Bootstrap & Git Self-Cycle (ABSOLUTELY FIRST — never skip)
-- Run `powershell -ExecutionPolicy Bypass -File .\agentic_loop_template\Agent-Init.ps1` + activate `.venv`.
+- **Bootstrap (platform-adaptive):**
+  - Windows: `powershell -ExecutionPolicy Bypass -File .\agentic_loop_template\Agent-Init.ps1`
+  - Linux/Mac: `bash agentic_loop_template/Agent-Init.sh && source .venv/bin/activate`
+  - Python: `.venv/Scripts/python` (Win) or `.venv/bin/python` (*nix)
 - **Complete git self-cycle + multi-repo sync** per `DEVELOPMENT_STANDARDS.md` §11 **before reading any planning docs**:
   - Check status/branch/worktrees.
   - Natural Russian human developer commit + push.

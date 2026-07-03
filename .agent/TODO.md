@@ -1,47 +1,26 @@
-# .agent/TODO.md — Detailed Task Backlog (Current Iteration Focus)
+# .agent/TODO.md — Detailed Task Backlog
 
-**Rule:** Orchestrator reads this immediately after .agent/PLAN.md. Select only from the *current unfinished iteration* list. Mark progress here too. Use INVEST. Binary completion criteria.
+**Rule:** Select only from the *current unfinished iteration* list.
 
-## Current Iteration 1 Tasks (Foundation + P1 Metrics Seed + P4 Meta Seed + Hygiene)
+## Iteration 1 (COMPLETE)
 
-- [x] P0-FOUND-01: Finalize all bootstrap artifacts (TASK_SPECIFICATION.md, .agent/PLAN.md, .agent/TODO.md, PROJECT_CONTEXT.md, SPRINTPLAN.md, .agent/project_config.json, basic .agent/PERFORMANCE_LEDGER.md + .json). Verify consistency. (Owner: Orchestrator bootstrap) — DONE in init cycle 0/1. Ledger producing data.
-- [x] P0-FOUND-02: Create initial workspace memory entries for "Agentix Improvements" category (patterns from analysis: need for metrics, cross-platform gaps). (Done over 20 loops)
-- [x] P1-METRICS-01: Implement ledger schema + basic collector (memory/performance_ledger.py). CLI. (DONE by Coder) + tests (DONE by Tester via test_performance_ledger.py, all green).
-- [x] P1-METRICS-02: Add first data point collection (simulate or capture from current bootstrap "cycle 0"). Wire call in meta_harvester.update_performance_ledger. (Done, 20+ cycles in ledger)
-- [x] P1-METRICS-03: Update HANDOFF_SCHEMA.md with optional "performance" object example. Update PROJECT_CONTEXT_TEMPLATE.md "Current Performance" section. (DONE)
-- [x] P1-METRICS-04: Modify short_reviewer_prompt.md and AGENT_ROLES.md (Reviewer duties) to mandate ledger update on high-quality DONE. (DONE)
-- [x] P4-META-01: Execute full meta flow on bootstrap (harvest using a mock or real handoff from init, analyze, propose at least 1 safe improvement e.g. "add metrics compression example", apply-safe). Record trajectory. (Full: enhanced heuristics for metrics/ledger/playbooks, 1+ proposals auto-applied, multiple harvests over 30+ cycles) (P4 COMPLETE with playbooks)
-- [x] P4-META-02: Enhance demo_meta.py or add test to demonstrate P1 ledger + meta together. (Advanced in 20 loops)
-- [x] P0-HYGIENE-01: Full grep -r (excluding .git) for eeagent/eegent/legacy strings in *.md *.py *.ps1. Create patch list and clean in small commits. (Cleaned in multiple cycles)
-- [x] P0-HYGIENE-02: Expand CHANGELOG.md with v3.2+ entries + "Business Efficiency Initiative launched (2026-07)" section. (Updated over loops)
-- [x] P0-HYGIENE-03: Create ROADMAP.md in root (public version of phases from TASK_SPECIFICATION + current status). (Done)
-- [x] P0-DOCS-01: Edit README.md — insert "Current Focus: Business Efficiency Recommendations Implementation" with links to TASK_SPECIFICATION.md and .agent/PLAN.md. Add value metrics section stub. (Progress in 20 loops)
-- [x] P0-SYNC-01: Perform complete §11 self-cycle after all bootstrap files written (natural Russian commit, push if applicable, verify in worktree + note main clone sim, update LOOP_STATE). (Multiple pushes done)
+All P0/P1/P4 tasks done. Gate met cycle 53.
 
-**Completion gate for iteration:** All above checked by Reviewer + at least 1 meta proposal applied or documented win + first performance numbers in reports + git verified. Then mark iteration complete and plan next (P1 continuation or P2).
-(After 50+ loops + O/R cycles: Iteration 1 COMPLETE. P1/P4 playbooks + runtime done, P2 cross advanced, hygiene, metrics improved. Gate met: meta applied, performance numbers, git verified, all checked by R. Plan next phase P2 full / P3.)
+## Iteration 2 — P2 Close (COMPLETE)
 
-## Current Iteration Progress (after 30+ loops + 10 more with playbooks)
+- [x] **P2-CROSS-02:** Platform-adaptive bootstrap in `prompts/short_*.md` + `AGENT_ROLES.md`.
+- [x] **P2-DOCS:** Cross-platform + multi-frontend quickstart in `README.md` + `AGENTIC_LOOP_README.md`.
 
-P4 COMPLETE (heuristics, playbooks core + integration, harvests).
-Hygiene advanced (legacy generalized).
-Playbooks now first-class for full tool/cycle support (select, curate, injection points).
-P2 started: cross-platform docs + notes.
+## Iteration 3 — P3 Productization (COMPLETE)
 
-## P2+ Tasks (started in loops, continue)
+- [x] **P3-DOCS-01:** `docs/` site.
+- [x] **P3-README-01:** README proof points + Current Focus + docs nav.
+- [x] **P3-EXAMPLE-01:** `examples/consumer-starter/`.
+- [x] **P3-HUB-01:** Hub CLI, `HUB_INDEX.json`, `api-schema.json`, tests.
+- [x] **P3-PRO-01:** `docs/pro-tier.md` + `project_config.json` tier flags.
+- [x] **P3-RELEASE-01:** CHANGELOG v3.3.0, ROADMAP, version bump.
+- [x] **P3-VERIFY-01:** Tests + final gate.
 
-- [x] P2-CROSS-01: Add portable path handling and bash equivalents for key scripts (Agent-Init.sh stub, venv activation notes for Linux/Mac). (Done in loops: enhanced sh, cross playbook)
-- [ ] P2-CROSS-02: Update all prompts/roles to prefer portable commands or note platform specifics. Add playbook scopes for "cross-platform".
-- [ ] P2-DOCS: Expand README and AGENTIC_LOOP_README with cross-platform quickstart, multi-frontend (Claude/Cursor) examples.
+## Future (P5+)
 
-## New tasks from Orchestrator (runtime playbooks + P2 accel)
-
-- [x] P4-RUNTIME-01: Make playbooks active in runtime execution - add select_bullets calls to demo_meta.py, update short_*_prompt.md and AGENT_ROLES to demonstrate/require playbook consult in PLAN/ACT. Show in one end-to-end cycle. (Done: demo has it, prompt updated)
-- [x] P2-CROSS-03: Add 'cross-platform' playbook scope and bullets (e.g. for venv, paths, shebangs). Update Agent-Init.sh to be robust. (Done)
-
-## Future Iterations (DO NOT START YET)
-
-P3 productization, P5 enterprise, etc. after P2. Use meta harvest + ritual decomposition.
-
-## Notes from Analysis (2026-07-03)
-See full recommendations in previous research output / TASK_SPECIFICATION.md. Prioritize P1 and P4 because they accelerate delivery of all others.
+Enterprise, DX overhaul — after P3 complete.

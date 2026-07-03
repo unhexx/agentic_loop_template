@@ -1,76 +1,46 @@
 # PROJECT_CONTEXT.md
 
-> **Source of Truth:** `TASK_SPECIFICATION.md`  
-> This file is updated by the **Orchestrator** (current status) and the **Reviewer** (self-improvement log).  
-> Maximum size: ~3000 tokens. Compress older entries when necessary.  
-> All content must be in English.
+> **Source of Truth:** `TASK_SPECIFICATION.md`
+> All content in English.
 
 ## Project Identification
 
 | Parameter       | Value                                      |
 |-----------------|--------------------------------------------|
 | **Project**     | Agentix (agentic_loop_template)            |
-| **Goal**        | Production-grade self-improving agentic dev loop template. Current focus: implement business efficiency recommendations to maximize ROI, adoption, and self-improvement velocity for users and maintainers (exception.expert). |
-| **Tech Stack**  | Python (memory layer), PowerShell (primary scripts), Markdown docs, MCP skills, extensible via skills. Cross-platform path to Linux/Mac + multi-frontend. |
+| **Goal**        | Self-improving agentic dev loop. P3 productization complete (v3.3.0). |
+| **Tech Stack**  | Python (memory), PowerShell + bash, Markdown docs, MCP skills |
 | **Current Branch** | main (worktree: upgrade-03-07)           |
-| **Git User**    | Unhandled Exception (template maintainer)  |
 
 ## Current Status
 
 | Field                  | Value                                      |
 |------------------------|--------------------------------------------|
-| **Cycle Number**       | 0 (bootstrap for business efficiency initiative) |
-| **Current Phase**      | planning / foundation                      |
-| **Active Role**        | Orchestrator                               |
-| **Status**             | IN_PROGRESS                                |
-| **Confidence**         | 0.75                                       |
-| **Last Commit**        | "Подготовил артефакты инициации цикла улучшений бизнес-эффективности Agentix" |
+| **Cycle Number**       | 54                                         |
+| **Current Phase**      | P3 complete — ready for P5/P6               |
+| **Status**             | DONE (P3 gate)                             |
+| **Confidence**         | 0.95                                       |
 | **Last Updated**       | 2026-07-03                                 |
 
-## Key Decisions & Context
+## Deliverables (P3)
 
-- Deep analysis completed (2026-07-03): identified 7 high-impact recommendation areas. See TASK_SPECIFICATION.md for full business objectives, phases, success criteria and risks.
-- Prioritization: P1 Metrics/ROI first (proof + data for everything), P4 Meta completion second (accelerates all future cycles).
-- This repo is the template + dogfooding target. All changes must propagate via §11 discipline to consumer projects.
-- Platform reality: Primary target remains Windows/PowerShell/Blackbox/MiniMax, but cross-platform adapters required for broader adoption.
-- Self-improvement active: meta_optimizer enabled, daily_decomposition_ritual enabled, question_pool ready.
+- `docs/` site (8 pages + hub schema)
+- `examples/consumer-starter/`
+- Hub CLI: list/export/discover + `HUB_INDEX.json`
+- Pro tier: `docs/pro-tier.md` + `project_config.json` flags
+- CHANGELOG v3.3.0, ROADMAP updated
 
-## Performance Snapshot (P1 + Playbooks P4 — after 50+ cycles, iteration complete)
+## Performance Snapshot
 
-Final:
-- Cycles tracked: 50+
-- Avg elapsed_min (recent): ~1.6 (significant improvement from P4/P2)
-- Avg confidence: ~0.94
-- Meta/playbook applied: strong
-- Key wins: 
-  - Playbooks + WorkflowBlueprints first-class for full cycle support (all tools without exceptions).
-  - P4 heuristics full + runtime demo.
-  - P2 cross-platform advanced (Agent-Init.sh, cross playbook, portable).
-  - Hygiene, metrics prove gains.
-- Tests/functional: playbooks select/curate, ledger reports.
-- Spec alignment: Achieved goal for playbooks/other objects + continuous dev cycle.
+- 50+ cycles tracked; ~1.6 min avg elapsed; 0.94 confidence
+- See `.agent/PERFORMANCE_LEDGER.md` and `docs/metrics-roi.md`
 
-See .agent/PLAYBOOKS/, ledger, plans.
+## Reviewer Notes
 
-## Reviewer Notes (Final)
-- Reviewed vs spec/PLAN/TODO: Iteration 1 COMPLETE. Gates met (meta applied, performance, git verified, process clean).
-- Playbooks enable full support as requested.
-- Recommend close iteration, plan P2 full/P3.
-- Self-improvement cycles successful.
+- P2 gate: platform-adaptive prompts, cross-platform docs — passed.
+- P3 gate: docs, Hub, examples, Pro hooks, tests — passed.
 
-## Open High-Value Questions (non-blocking)
+## Permanent Rules
 
-(Will be managed via .agent/QUESTIONS_POOL.md + collector. None critical for bootstrap iteration.)
-
-## Recent Distillations & Lessons (to be updated by Reviewer)
-
-- Bootstrap created living plan artifacts to allow the loop itself to execute the efficiency program.
-- Memory/meta must be exercised immediately to demonstrate value.
-
-## Permanent Rules (distilled, high-signal only)
-
-- Always start cycles by advancing unfinished items from .agent/PLAN.md + .agent/TODO.md (current iteration only).
-- Metrics and meta data are first-class sources of truth alongside SPEC.
-- All public-facing docs and examples must support the "business efficiency" narrative with evidence.
-
-See also .agent/PLAN.md for iteration details and TASK_SPECIFICATION.md.
+- Advance only current iteration from `.agent/PLAN.md` + `.agent/TODO.md`.
+- Public docs in English; code comments/commits in Russian.

@@ -157,6 +157,32 @@ Example: "performance": {"cycle": 21, "elapsed_minutes": 3.5, "tool_calls": 12, 
 Example: "performance": {"cycle": 21, "elapsed_minutes": 3.5, "tool_calls": 12, "confidence": 0.9, "meta_applied": 8}
 ```
 
+*Добавлено meta_harvester cycle T-062-03f8*
+
+
+### Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)
+
+```markdown
+**Harvested: include 'performance' delta in every handoff (from 20+ loops)**
+- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed
+- success_patterns for ledger/metrics wins
+- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.
+Example: "performance": {"cycle": 21, "elapsed_minutes": 3.5, "tool_calls": 12, "confidence": 0.9, "meta_applied": 8}
+```
+
+*Добавлено meta_harvester cycle T-062-03f8*
+
+
+### Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)
+
+```markdown
+**Harvested: include 'performance' delta in every handoff (from 20+ loops)**
+- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed
+- success_patterns for ledger/metrics wins
+- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.
+Example: "performance": {"cycle": 21, "elapsed_minutes": 3.5, "tool_calls": 12, "confidence": 0.9, "meta_applied": 8}
+```
+
 *Добавлено meta_harvester cycle T-059-03f8*
 
 

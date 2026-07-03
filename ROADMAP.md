@@ -1,40 +1,40 @@
 # Agentix Public Roadmap
 
-**Current Version:** 3.2+ (unified, MCP/vision/isolation, meta ready)
+**Current Version:** 3.3.0
 **Status Date:** 2026-07-03
 
-This is a high-level public view. Detailed living plan lives in .agent/PLAN.md and TASK_SPECIFICATION.md (used by the agentic loop itself).
+High-level public view. Living plan: `.agent/PLAN.md` and `TASK_SPECIFICATION.md`.
 
-## In Progress — Business Efficiency Initiative (v3.3 target)
+## Completed — Business Efficiency Initiative (v3.3)
 
-The loop is now self-directing implementation of high-ROI improvements identified via deep analysis:
+### P1 Metrics, Observability & ROI — DONE
+- Performance ledger, trends, Reviewer integration, proof in docs/metrics-roi.md
 
-### Current Iteration Focus (Foundation + P1 + P4 seeds)
-- Planning artifacts + performance ledger scaffolding
-- Meta-harvester full exercise + first auto-improvements captured
-- Legacy hygiene, docs refresh, public roadmap
-- Git discipline closure
+### P4 Meta-Optimizer — DONE
+- Trajectory harvesting, playbooks runtime, safe auto-apply proposals
 
-### Upcoming High-Impact Streams (prioritized)
-1. **P1 Metrics, Observability & ROI Proof** — Ledger, trends, dashboard, automatic reporting. Enables evidence-based claims and faster self-tuning.
-2. **P4 Meta-Optimizer Hardening** — Complete trajectory harvesting, eval harness, playbook export, performance correlation. The harness improves itself measurably.
-3. **P2 Cross-Platform & Multi-Frontend** — Linux/Mac first-class + adapters for Claude Code, Cursor, generic agents.
-4. **P3 Productization & GTM** — Polished docs, examples, Hub foundation, Pro tier signals.
-5. **P5 Enterprise** — Governance flows, audit, integrations (Actions, trackers), policy stories.
-6. **P6 DX & Onboarding** — Better init, templates, quickstarts.
-7. **P7 Efficiency & Sustain** — Compression wins, recovery, dogfooding, case studies.
+### P2 Cross-Platform & Multi-Frontend — DONE
+- Agent-Init.sh, platform-adaptive prompts, Cursor/Claude/Blackbox adapters
 
-## Recent Major Milestones
-- v3.2: Experience extraction tools, short role prompts, rebrand to Agentix, meta + rituals foundations.
-- Multi-repo sync discipline (§11) production hardened.
-- MCP + vision + isolation capabilities.
+### P3 Productization & GTM — DONE
+- docs/ site, consumer-starter example, Agentix Hub (CLI + schema), Pro tier hooks, v3.3.0 release
+
+## In Progress / Upcoming
+
+1. **P5 Enterprise** — Governance flows, audit, integrations (Actions, trackers)
+2. **P6 DX & Onboarding** — Interactive init wizard, stack templates, extension stubs
+3. **P7 Efficiency & Sustain** — Compression wins, dogfooding case studies, hosted Hub (optional)
+
+## Recent Milestones
+
+- v3.3.0: Full productization — docs, Hub, Pro tier, cross-platform
+- v3.2: Experience extraction, meta + rituals foundations, MCP/vision/isolation
+- Multi-repo sync discipline (§11) production hardened
 
 ## Guiding Principles
-- Self-improving via memory + meta-harvester + rituals.
-- Strict process (handoffs, INVEST, Russian human commits, sync verification).
-- Business value first: velocity, cost, adoption, trust.
-- Dogfood on the template itself.
 
-Full details and task status: see TASK_SPECIFICATION.md and run the agentic loop.
+- Self-improving via memory + meta-harvester + playbooks
+- Strict process (handoffs, INVEST, evidence-based claims)
+- Business value first: velocity, cost, adoption, trust
 
 Contributions via the loop process or issues welcome. Maintained by exception.expert.

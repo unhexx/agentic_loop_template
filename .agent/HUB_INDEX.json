@@ -1,4 +1,55 @@
 {
+  "version": "1.0",
+  "generated_at": "2026-07-03T02:20:57.628289+00:00",
+  "source": ".agent/PLAYBOOKS.json",
+  "item_count": 5,
+  "items": [
+    {
+      "id": "global-dev",
+      "scope": "global",
+      "name": "Global Development & Process Best Practices",
+      "bullet_count": 7,
+      "avg_effectiveness": 0.879,
+      "last_curated": "2026-07-03T01:51:42.022091+00:00",
+      "install_path": ".agent/PLAYBOOKS/global-dev.md"
+    },
+    {
+      "id": "tool-git",
+      "scope": "tool:git",
+      "name": "Git & Sync Playbook",
+      "bullet_count": 2,
+      "avg_effectiveness": 0.96,
+      "last_curated": "2026-07-03T01:37:44.180954+00:00",
+      "install_path": ".agent/PLAYBOOKS/tool-git.md"
+    },
+    {
+      "id": "tool-ledger",
+      "scope": "tool:performance_ledger",
+      "name": "Performance & ROI Tracking",
+      "bullet_count": 1,
+      "avg_effectiveness": 0.88,
+      "last_curated": "2026-07-03T01:37:30.683098+00:00",
+      "install_path": ".agent/PLAYBOOKS/tool-ledger.md"
+    },
+    {
+      "id": "continuous-dev-cycle",
+      "scope": "workflow:full-cycle",
+      "name": "Continuous Development Cycle Blueprint",
+      "bullet_count": 3,
+      "avg_effectiveness": 0.9,
+      "last_curated": "2026-07-03T01:51:47.169567+00:00",
+      "install_path": ".agent/PLAYBOOKS/continuous-dev-cycle.md"
+    },
+    {
+      "id": "cross-platform",
+      "scope": "phase:cross-platform",
+      "name": "Cross-Platform Support Playbook (P2)",
+      "bullet_count": 2,
+      "avg_effectiveness": 0.875,
+      "last_curated": "2026-07-03",
+      "install_path": ".agent/PLAYBOOKS/cross-platform.md"
+    }
+  ],
   "playbooks": {
     "global-dev": {
       "scope": "global",
@@ -184,7 +235,5 @@
       ],
       "last_curated": "2026-07-03"
     }
-  },
-  "updated_at": "2026-07-03T02:20:57.513480+00:00",
-  "version": "3.3-playbooks"
+  }
 }

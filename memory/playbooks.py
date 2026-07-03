@@ -316,6 +316,65 @@ def seed_initial_playbooks() -> int:
     return len(pbs)
 
 
+HUB_INDEX_PATH = Path(".agent/HUB_INDEX.json")
+
+
+def list_playbooks() -> List[Dict[str, Any]]:
+    """Возвращает каталог всех playbooks для Hub discovery."""
+    index = _load_index()
+    items: List[Dict[str, Any]] = []
+    for pid, pb in index.get("playbooks", {}).items():
+        bullets = pb.get("bullets", [])
+        effs = [float(b.get("effectiveness", 0.5)) for b in bullets]
+        avg_eff = sum(effs) / len(effs) if effs else 0.0
+        items.append({
+            "id": pid,
+            "scope": pb.get("scope", ""),
+            "name": pb.get("name", pid),
+            "bullet_count": len(bullets),
+            "avg_effectiveness": round(avg_eff, 3),
+            "last_curated": pb.get("last_curated"),
+            "install_path": f".agent/PLAYBOOKS/{pid}.md",
+        })
+    return items
+
+
+def discover_items(query: str, scope: Optional[str] = None, k: int = 10) -> List[Dict[str, Any]]:
+    """Поиск bullets по запросу для Hub search UI."""
+    scopes = [scope] if scope else None
+    results = select_bullets(query, scopes=scopes, k=k, min_effect=0.0)
+    return [
+        {
+            "playbook_id": r.get("_playbook"),
+            "bullet_id": r.get("id"),
+            "content": r.get("content"),
+            "tags": r.get("tags", []),
+            "effectiveness": r.get("effectiveness"),
+            "score": r.get("_score"),
+        }
+        for r in results
+    ]
+
+
+def export_hub_index(fmt: str = "hub", output: Optional[Path] = None) -> Dict[str, Any]:
+    """Экспортирует индекс для Agentix Hub (discovery + install metadata)."""
+    index = _load_index()
+    items = list_playbooks()
+    hub_data: Dict[str, Any] = {
+        "version": "1.0",
+        "generated_at": _now_iso(),
+        "source": str(PLAYBOOKS_INDEX),
+        "item_count": len(items),
+        "items": items,
+        "playbooks": index.get("playbooks", {}),
+    }
+    if fmt == "hub":
+        out = output or HUB_INDEX_PATH
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(hub_data, ensure_ascii=False, indent=2), encoding="utf-8")
+    return hub_data
+
+
 def _cli() -> None:
     p = argparse.ArgumentParser(description="Playbooks & Knowledge Objects for Agentix loop")
     sub = p.add_subparsers(dest="cmd")
@@ -331,6 +390,16 @@ def _cli() -> None:
 
     sp2 = sub.add_parser("seed", help="Засеять начальные playbooks из стандартов")
     sp2.add_argument("--from-standards", action="store_true")
+
+    lp = sub.add_parser("list", help="Каталог playbooks для Hub")
+    ep = sub.add_parser("export", help="Экспорт HUB_INDEX.json")
+    ep.add_argument("--format", choices=["json", "hub"], default="hub")
+    ep.add_argument("--output", default=str(HUB_INDEX_PATH))
+
+    dp = sub.add_parser("discover", help="Поиск bullets для Hub")
+    dp.add_argument("--query", required=True)
+    dp.add_argument("--scope", default=None)
+    dp.add_argument("--k", type=int, default=10)
 
     args = p.parse_args()
     if args.cmd == "select":
@@ -350,6 +419,14 @@ def _cli() -> None:
     elif args.cmd == "seed":
         n = seed_initial_playbooks()
         print(f"Seeded {n} playbooks")
+    elif args.cmd == "list":
+        print(json.dumps(list_playbooks(), ensure_ascii=False, indent=2))
+    elif args.cmd == "export":
+        data = export_hub_index(fmt=args.format, output=Path(args.output))
+        print(json.dumps({"exported": args.output, "item_count": data["item_count"]}, ensure_ascii=False))
+    elif args.cmd == "discover":
+        res = discover_items(args.query, scope=args.scope, k=args.k)
+        print(json.dumps(res, ensure_ascii=False, indent=2))
     else:
         p.print_help()
 

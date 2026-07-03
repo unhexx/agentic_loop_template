@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Agentix Hub API",
+  "version": "1.0",
+  "description": "Web-ready schema for Agentix Hub discovery and install endpoints",
+  "endpoints": {
+    "list": {
+      "method": "GET",
+      "path": "/hub/v1/items",
+      "response": "HubIndex"
+    },
+    "discover": {
+      "method": "GET",
+      "path": "/hub/v1/search",
+      "query": ["q", "scope", "k"]
+    },
+    "install": {
+      "method": "POST",
+      "path": "/hub/v1/install",
+      "body": "InstallRequest",
+      "response": "InstallResult"
+    }
+  },
+  "definitions": {
+    "HubItem": {
+      "type": "object",
+      "required": ["id", "scope", "name", "bullet_count"],
+      "properties": {
+        "id": { "type": "string" },
+        "scope": { "type": "string" },
+        "name": { "type": "string" },
+        "bullet_count": { "type": "integer" },
+        "avg_effectiveness": { "type": "number" },
+        "last_curated": { "type": "string", "format": "date-time" },
+        "install_path": { "type": "string" }
+      }
+    },
+    "HubIndex": {
+      "type": "object",
+      "required": ["version", "generated_at", "items"],
+      "properties": {
+        "version": { "type": "string" },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "source": { "type": "string" },
+        "item_count": { "type": "integer" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/HubItem" }
+        },
+        "playbooks": { "type": "object" }
+      }
+    },
+    "DiscoverResult": {
+      "type": "object",
+      "properties": {
+        "playbook_id": { "type": "string" },
+        "bullet_id": { "type": "string" },
+        "content": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "effectiveness": { "type": "number" },
+        "score": { "type": "number" }
+      }
+    },
+    "InstallRequest": {
+      "type": "object",
+      "required": ["playbook_ids"],
+      "properties": {
+        "playbook_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "target_path": {
+          "type": "string",
+          "default": ".agent/PLAYBOOKS.json"
+        }
+      }
+    },
+    "InstallResult": {
+      "type": "object",
+      "properties": {
+        "installed": { "type": "array", "items": { "type": "string" } },
+        "skipped": { "type": "array", "items": { "type": "string" } },
+        "target_path": { "type": "string" }
+      }
+    }
+  }
+}

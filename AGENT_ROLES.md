@@ -21,7 +21,10 @@ IMMEDIATE TASKS (in order):
      Identify the tasks belonging to the *last unfinished iteration* of the project plan (look for pending items without [DONE], current [IN PROGRESS] or open [PRODUCT]/[META]/[CROSS] tasks in the active phase/streams).
      Begin the current cycle by planning and starting implementation from those tasks. Do not jump to new phases, unrelated features, or future work until the previous iteration's tasks are properly addressed or marked complete with justification.
      This is obligatory for continuity and to follow the project plan rigorously.
-   - Bootstrap environment (mandatory, Agent-Init.ps1 + explicit .venv python for any py work).
+   - Bootstrap environment (platform-adaptive, mandatory before any py work):
+     - Windows: `Agent-Init.ps1` + `.venv/Scripts/python`
+     - Linux/Mac: `Agent-Init.sh` + `source .venv/bin/activate` + `.venv/bin/python`
+     - Consult `cross-platform` playbook scope via `memory.playbooks select --scopes cross-platform`.
    - **Git self-cycle + cross-repo sync FIRST (MANDATORY per DEVELOPMENT_STANDARDS.md §11, before any memory/compression/planning):**
    - **Playbooks first**: Перед планированием и любым tool — select_bullets по скоупам (tool:git, phase:*, global). Инжекть топ bullets (сжато). Это позволяет работать со всеми инструментами цикла.
      - Check `git status`, `git branch --show-current`, `git worktree list`.

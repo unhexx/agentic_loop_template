@@ -145,7 +145,7 @@ Playbook = структурированная коллекция bullets (стр
 
 См. memory/playbooks.py, HANDOFF_SCHEMA, AGENT_ROLES (playbook duties), PROMPT_COMPRESSION_GUIDE (injection discipline), TASK_SPECIFICATION P4.
 
-Playbooks экспортируемы и являются частью P3 marketplace.
+Playbooks экспортируемы и являются частью P3 marketplace. Premium scopes (`hub:premium:*`) gated via `tier.feature_flags.hub_premium` in `.agent/project_config.json`.
 
 The system stores structured patterns by categories with counters, automatically deduplicates and compacts records. Memory is bound to the workspace ID based on the git remote — it is automatically shared between all clones and worktrees of a single repository and lives in `~/.grok/agentic-loop-memory/`.
 

@@ -6,7 +6,29 @@
 
 **A production-grade, self-contained template for closed-loop, self-improving multi-role agentic development cycles.**
 
-Powered by frontier LLMs (MiniMax 2.5 / M2.7 via Blackbox, or compatible agents). Optimized for complex, long-running software projects requiring autonomy, consistency, safety, and continuous self-improvement.
+Powered by frontier LLMs (MiniMax 2.5 / M2.7 via Blackbox, Cursor, Claude Code, or compatible agents). Optimized for complex, long-running software projects requiring autonomy, consistency, safety, and continuous self-improvement.
+
+---
+
+## Current Focus: Business Efficiency & Productization (v3.3.0)
+
+Agentix is dogfooding its own loop to deliver measurable ROI and adoption readiness.
+
+- **Spec:** [TASK_SPECIFICATION.md](TASK_SPECIFICATION.md)
+- **Plan:** [.agent/PLAN.md](.agent/PLAN.md)
+- **Roadmap:** [ROADMAP.md](ROADMAP.md)
+- **Docs:** [docs/README.md](docs/README.md)
+
+### Measured Results (50+ self-improvement cycles)
+
+| Metric | Value |
+|--------|-------|
+| Avg cycle elapsed (recent) | ~1.6 min |
+| Avg confidence | 0.94 |
+| Meta/playbook improvements | Applied each qualifying cycle |
+| Cross-platform | Linux + Windows bootstrap |
+
+Source: [.agent/PERFORMANCE_LEDGER.md](.agent/PERFORMANCE_LEDGER.md). See [docs/metrics-roi.md](docs/metrics-roi.md).
 
 ---
 
@@ -14,7 +36,7 @@ Powered by frontier LLMs (MiniMax 2.5 / M2.7 via Blackbox, or compatible agents)
 
 This template transforms how you build and maintain sophisticated software systems:
 
-- **10x Productivity Boost for Complex Tasks**: The structured **Orchestrator → Coder → Tester → Debugger → Reviewer** loop allows the LLM to iteratively plan, implement, test, debug, and validate changes until the Reviewer confirms completion. No more one-shot prompts or lost context.
+- **Measurable Productivity Gains**: The structured **Orchestrator → Coder → Tester → Debugger → Reviewer** loop reduces cycle time to ~1.6 min avg with 0.94 confidence over 50+ dogfood cycles (see ledger). Iterative plan → implement → test → debug → validate until Reviewer confirms DONE.
 
 - **Self-Improving & Knowledge Retention**: Every cycle crystallizes lessons, decisions, and questions into persistent memory (`PROJECT_CONTEXT.md`, `SPRINTPLAN.md`, questions pool, meta-harvester). The system gets smarter over time without manual intervention.
 
@@ -38,24 +60,40 @@ This template transforms how you build and maintain sophisticated software syste
 
 ---
 
-## Quick Start (Blackbox + MiniMax 2.5 Recommended)
+## Quick Start
 
-1. **Prepare Environment** (one-time per project):
-   ```powershell
-   cd C:\Path\To\Your\Project
-   .\agentic_loop_template\Agent-Init.ps1
-   ```
-   This creates `.venv`, installs deps, sets up PowerShell enhancements, and generates a ready-to-use starter prompt.
+### Windows (PowerShell)
 
-2. **Configure Your AI Agent (Blackbox / VS Code)**:
-   - Model: MiniMax 2.5 (or highest quality available)
-   - Add Custom Instructions from `Agent-Init.md` (includes core rules, commit style, loop discipline).
+```powershell
+cd C:\Path\To\Your\Project
+.\agentic_loop_template\Agent-Init.ps1
+```
 
-3. **Launch the Loop**:
-   Paste the generated prompt (or content of `first_message.md` / short orchestrator prompt) as your first message to the LLM.
-   The agent starts as Orchestrator, creates/updates context files, and begins the cycle.
+### Linux / macOS (bash)
 
-See `Agent-Init.md` for full Blackbox launch guide, recommended settings, and troubleshooting.
+```bash
+cd /path/to/your/project
+bash agentic_loop_template/Agent-Init.sh
+source .venv/bin/activate
+```
+
+### Launch the Loop
+
+1. **Configure your agent** (Blackbox, Cursor, or Claude Code) — see [docs/multi-frontend.md](docs/multi-frontend.md).
+2. Paste `prompts/short_orchestrator_prompt.md` (or generated starter) as the first message.
+3. Agent starts as Orchestrator, updates context files, and begins the cycle.
+
+Full guide: [docs/getting-started.md](docs/getting-started.md). Consumer template: [examples/consumer-starter/](examples/consumer-starter/).
+
+## Multi-Frontend Adapters
+
+| Frontend | Entry point |
+|----------|-------------|
+| Blackbox + VS Code | `Agent-Init.ps1` / `Agent-Init.md` |
+| Cursor | `prompts/short_orchestrator_prompt.md` + `AGENT_ROLES.md` blocks |
+| Claude Code | Same prompts + strict JSON handoffs |
+
+See [docs/multi-frontend.md](docs/multi-frontend.md) for adapter details.
 
 **Important for Consumer Projects**:
 - Add `agentic_loop_template/` (and any generated cycle artifacts like `PROJECT_CONTEXT.md`, handoff JSONs, logs) to your project's `.gitignore`.
@@ -97,8 +135,11 @@ Reviewer can loop back or approve. All state transferred via strict JSON (`HANDO
 | `setup_env_template.ps1` | Environment bootstrap (venv, deps, PowerShell modules). |
 | `memory/` | Persistent structured memory: questions collector, meta harvester, schema, store, workspace for cross-cycle learning and sync enforcement. |
 | `prompts/` | Optimized starter and short orchestrator prompts for M2.5. |
+| `docs/` | Documentation site (getting-started, architecture, Hub, Pro tier) |
+| `examples/consumer-starter/` | Adoption template for new consumer projects |
+| `.agent/HUB_INDEX.json` | Agentix Hub discovery index (export via `playbooks export`) |
 
-See also `AGENTIC_LOOP_README.md` for additional context details.
+See also `AGENTIC_LOOP_README.md` and [docs/README.md](docs/README.md).
 
 ## Configuration & Multi-Repo Best Practices
 
@@ -126,7 +167,7 @@ For heavy data or enterprise projects: add dedicated validation roles or data sa
 
 ## Limitations & Recommendations
 
-- Optimized for Windows + PowerShell + Blackbox + MiniMax-class models. Adaptable to Linux/Mac with minor script changes.
+- Primary target: Windows + PowerShell + Blackbox. Linux/Mac and Cursor/Claude supported via platform-adaptive bootstrap (see [docs/cross-platform.md](docs/cross-platform.md)).
 - Max recommended 3-4 full cycles before architecture review to avoid context bloat (use compression & memory).
 - For very large monorepos: combine with dedicated sub-agents or LangGraph-style orchestration seeds.
 
@@ -134,7 +175,7 @@ For heavy data or enterprise projects: add dedicated validation roles or data sa
 
 Current unified version incorporates refinements from production usage (expanded tools registry & instructions for rich MCP skillset, improved memory module with structured store/workspace, updated prompts and setup scripts, multi-repo sync discipline, environment separation best practices).
 
-**Template Version: 3.2+ (unified, production-hardened, MCP/vision/isolation ready, 2026-06) — by exception.expert**
+**Template Version: 3.3.0 (metrics, playbooks, cross-platform, Hub foundation, 2026-07) — by exception.expert**
 
 ## Contributing & Governance
 
