@@ -23,7 +23,7 @@ Advance ONLY tasks from the *last unfinished iteration*. Do not start new phases
 
 **Goal of this iteration:** Establish the loop artifacts for the initiative, implement core scaffolding for performance ledger/metrics (P1), initialize full meta_harvester usage + first eval seeds (P4), perform hygiene cleanup, update docs. Produce measurable first data points.
 
-**Status:** IN_PROGRESS (bootstrap)
+**Status:** IN_PROGRESS (P1 ledger slice complete: code, tests, debug fixes, doc integration, push done. See cycle 1 handoffs)
 
 ### INVEST Tasks for Current Iteration (priority order)
 
