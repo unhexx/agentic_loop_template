@@ -1,14 +1,27 @@
 # Architecture
 
+[![Main README](https://img.shields.io/badge/Main-README-blue)](../README.md)
+[![Handoff Schema](https://img.shields.io/badge/spec-handoff%20schema-lightgrey)](../HANDOFF_SCHEMA.md)
+
+How the Agentix loop is structured: roles, state transfer, and self-improvement layers.
+
+---
+
 ## Loop Overview
 
-```
-Orchestrator → Coder → Tester → Debugger → Reviewer
-     ↑ (if NOT DONE) ─────────────────────────────┘
-     DONE → lessons crystallized → memory + ledger
+```mermaid
+flowchart LR
+    O[Orchestrator] --> C[Coder]
+    C --> T[Tester]
+    T --> D[Debugger]
+    D --> R[Reviewer]
+    R -->|NOT DONE| O
+    R -->|DONE| Done[Lessons saved]
 ```
 
 Each role: **PLAN → ACT (≤3 tool calls) → REFLECT → handoff JSON**.
+
+---
 
 ## Core Components
 
@@ -16,17 +29,46 @@ Each role: **PLAN → ACT (≤3 tool calls) → REFLECT → handoff JSON**.
 |-------|----------|---------|
 | Roles & prompts | `AGENT_ROLES.md`, `prompts/` | Per-role discipline |
 | Handoffs | `HANDOFF_SCHEMA.md` | State transfer contract |
-| Memory | `memory/` | questions_collector, meta_harvester, playbooks, performance_ledger |
+| Memory | `memory/` | questions_collector, meta_harvester, playbooks, ledger |
 | Planning | `.agent/PLAN.md`, `.agent/TODO.md` | Iteration continuity |
-| Playbooks | `.agent/PLAYBOOKS.json` | Structured knowledge bullets (ACE scoring) |
+| Playbooks | `.agent/PLAYBOOKS.json` | Knowledge bullets (ACE scoring) |
 | Hub | `.agent/HUB_INDEX.json` | Exportable discovery index |
+| Audit | `memory/audit_log.py` | Enterprise trail (P5) |
+| Resume | `memory/resume.py` | Crash recovery (P7) |
+
+---
+
+## Handoff Example
+
+Every role ends with exactly one JSON object:
+
+```json
+{
+  "handoff_to": "Coder",
+  "role": "Orchestrator",
+  "summary": "Planned next INVEST task. Git sync verified.",
+  "next_input_files": [".agent/TODO.md"],
+  "git_sync_status": { "verified": true },
+  "confidence": 0.9,
+  "status": "IN_PROGRESS"
+}
+```
+
+Full schema: [HANDOFF_SCHEMA.md](../HANDOFF_SCHEMA.md).
+
+---
 
 ## Self-Improvement Stack
 
-1. **Performance Ledger** — cycle metrics (elapsed, confidence, meta impact)
-2. **Meta Harvester** — trajectory capture, proposals, safe auto-apply
-3. **Playbooks** — select at PLAN, curate at REFLECT
-4. **Questions Pool** — batched clarification for product owner
+| Module | CLI | When |
+|--------|-----|------|
+| Performance Ledger | `python -m memory.performance_ledger` | Reviewer on DONE |
+| Meta Harvester | `python -m memory.meta_harvester harvest` | High-quality cycles |
+| Playbooks | `python -m memory.playbooks select/curate` | PLAN / REFLECT |
+| Questions Pool | `python -m memory.questions_collector` | Non-blocking approvals |
+| Eval Harness | `python -m memory.eval_harness` | Trajectory scoring |
+
+---
 
 ## Data Flow
 
@@ -41,4 +83,10 @@ flowchart TD
     Playbooks --> Hub[HUB_INDEX export]
 ```
 
-See [Metrics & ROI](metrics-roi.md) for measured gains and [Hub](hub/README.md) for marketplace foundation.
+---
+
+## Related
+
+- [Metrics & ROI](metrics-roi.md) — measured cycle gains
+- [Hub](hub/README.md) — playbook marketplace
+- [memory/README.md](../memory/README.md) — memory layer API

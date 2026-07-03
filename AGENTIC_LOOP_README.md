@@ -1,189 +1,106 @@
-# Agentic Loop Template
+# Agentic Loop — Operations Guide
 
-> Self-improving multi-role agentic development loop template.
-> Version: 3+ (updated for current state: MCP, vision grounding, strong isolation, self-cycle tools).
-> Platform: Windows (PowerShell) + cross (Arch/Win10 demo).
+[![Version](https://img.shields.io/badge/version-3.4.0-blue.svg)](CHANGELOG.md)
+[![Main README](https://img.shields.io/badge/Main-README-blue)](README.md)
 
-# Note: updated in Documentation Actualization Sprint — reflects real progress (MCP skills, Florence-2 grounding, persistent sandbox, Windows JobObject, sync-worktree improvements, collector/gui tests, policy for gui/vision).
+> **Start here:** [README.md](README.md) — quick start, examples, badges, full documentation map.
 
----
-
-## What This Is
-
-A complete, production-oriented template for running a closed-loop, self-improving agentic development cycle where **MiniMax 2.5** (via Blackbox) sequentially takes on the roles of:
-
-**Orchestrator → Coder → Tester → Debugger → Reviewer**
-
-The agent works iteratively until the task fully meets the specification.
-
-### Key Characteristics
-
-- **Closed loop**: The Reviewer can send control back to the Orchestrator if the task is not complete.
-- **Self-improving**: Lessons from each cycle are crystallized into permanent rules in `PROJECT_CONTEXT.md` and `SPRINTPLAN.md`.
-- **Deterministic**: Strict JSON handoff between roles for reliable state transfer.
-- **Blackbox & non-interactive friendly**: Designed to work reliably when Blackbox spawns new PowerShell processes.
+This guide covers **loop operations**: roles, temperatures, launch commands, and runtime rules.
 
 ---
 
-## Directory Structure
+## Roles
 
 ```
-agentic_loop_template/
-├── README.md                          # This file (updated for MCP, vision, isolation, self-cycle)
-├── SYSTEM_PROMPT.md                   # Main system prompt (fill {{placeholders}})
-├── AGENT_ROLES.md                     # Detailed instructions for each role (incl. compression, git sync per §11)
-├── HANDOFF_SCHEMA.md                  # JSON handoff contract (git_sync_status, clarification_questions)
-├── TOOLS_REGISTRY.md                  # Available tools for the local runner
-├── PROJECT_CONTEXT_TEMPLATE.md        # Template for PROJECT_CONTEXT.md
-├── SPRINTPLAN_TEMPLATE.md             # Template for SPRINTPLAN.md
-├── setup_env.ps1                      # Robust Python venv + requirements bootstrap
-├── Agent-Init.ps1                     # One-command setup (use .venv python)
-├── Agent-Init.md                      # Detailed launch guide
-├── memory/                            # questions_collector, structured memory (for pool, sync enforcement)
-└── ... (PROMPT_COMPRESSION_GUIDE.md, etc. for M2.7 long-context)
+Orchestrator → Coder → Tester → Debugger → Reviewer
+     ↑ (if NOT DONE) ─────────────────────────┘
+     DONE → lessons crystallized
 ```
 
-**Current features (2026-06):** vision grounding (Florence-2 in gui.find + MCP), MCP skills with sandbox routing, persistent isolation (Firecracker/JobObject), self-cycle tools (sync-worktree.ps1 with -VerifyOnly, enforcement tests), collector for questions pool, TEST_PLAN integration.
+Inner loop per role: **PLAN → ACT (≤3 tool calls) → REFLECT → JSON handoff**.
 
 ---
 
-## Quick Start (Blackbox + MiniMax 2.5 in VSCode)
+## Launch
 
-### 1. One-time environment preparation
+### Windows
 
-**Windows:**
 ```powershell
-cd X:\Your\Project\Root
-.\agentic_loop_template\Agent-Init.ps1
+.\Agent-Init.ps1 -OutputFile "blackbox_start_prompt.txt"
+# Paste blackbox_start_prompt.txt or prompts/short_orchestrator_prompt.md
 ```
 
-**Linux / macOS:**
+### Linux / macOS
+
 ```bash
-cd /path/to/your/project
-bash agentic_loop_template/Agent-Init.sh
+bash Agent-Init.sh
 source .venv/bin/activate
+# Paste prompts/short_orchestrator_prompt.md
 ```
 
-Bootstrap creates `.venv`, installs deps, and prepares the loop environment. See [docs/getting-started.md](docs/getting-started.md).
+### Demo (any platform)
 
-### 2. Recommended Blackbox Configuration
-
-**Model**: MiniMax 2.5 (or the highest quality available model)
-
-**Custom Instructions** (add to Blackbox settings):
-
-```
-You are participating in a structured Agentic Development Loop using the template in agentic_loop_template/.
-
-Core Rules:
-- Follow the cycle: Orchestrator → Coder → Tester → Debugger → Reviewer.
-- Always ensure the local Python environment is ready before major work.
-- All git commit messages must be written in natural Russian, as a real human mid/senior developer.
-- Never mention AI, LLM, agent, MiniMax, Grok, Claude, or any model name in commit messages.
-- Work iteratively with small, well-tested changes.
-- Use the local .venv for all Python commands.
-- Read agentic_loop_template/SYSTEM_PROMPT.md and follow its structure and handoff format.
-```
-
-### 3. Starting the Loop
-
-After running `Agent-Init.ps1`, copy the generated prompt (or the example in `Agent-Init.md`) and paste it as your first message to Blackbox.
-
-The agent will:
-- Read the system prompt
-- Begin as **Orchestrator**
-- Create/update `PROJECT_CONTEXT.md` and `SPRINTPLAN.md`
-- Start the first planning cycle
-
----
-
-## How the Cycle Works
-
-```
-External Loop (Sprint)
-┌─────────────────────────────────────────────────────────────┐
-│  [Orchestrator] → [Coder] → [Tester] → [Debugger] → [Reviewer]
-│       ↑                                                    │
-│       └──────────── NOT DONE ──────────────────────────────┘
-│                     DONE → Task Complete
-└─────────────────────────────────────────────────────────────┘
-```
-
-Inside each role the agent follows:
-**PLAN → ACT (max 3 tool calls) → REFLECT → repeat**
-
----
-
-## Important Rules for Blackbox + MiniMax 2.5
-
-- **Commits must be in Russian** and sound like they were written by a real developer.
-- **Never mention** AI, agent, LLM, MiniMax, etc. in commit messages.
-- The agent should call `setup_env.ps1` (or `Agent-Init.ps1`) at the start of major cycles to maintain the local Python environment.
-- For non-interactive sessions (common with Blackbox), the system automatically disables the PSReadLine handler to avoid breaking output capture.
-
----
-
-## Recommended Model Settings (MiniMax 2.5)
-
-| Role          | Temperature | Top-P | Max Tokens |
-|---------------|-------------|-------|------------|
-| Orchestrator  | 0.0         | 0.9   | 4096       |
-| Coder         | 0.2         | 0.95  | 8192       |
-| Tester        | 0.0         | 0.9   | 4096       |
-| Debugger      | 0.2         | 0.95  | 4096       |
-| Reviewer      | 0.0         | 0.9   | 4096       |
-
----
-
-## PowerShell Command to Launch the Cycle
-
-The simplest way to start:
-
-```powershell
-cd X:\Path\To\Your\Project
-.\agentic_loop_template\Agent-Init.ps1 -OutputFile "blackbox_start_prompt.txt"
-```
-
-Then open the generated file and send its content to Blackbox as the first message.
-
-For maximum automation you can combine it with opening the file:
-
-```powershell
-.\agentic_loop_template\Agent-Init.ps1 -OutputFile "blackbox_start_prompt.txt"; code "blackbox_start_prompt.txt"
+```bash
+bash scripts/demo-loop.sh
 ```
 
 ---
 
-## Adapting for Other Projects
+## Model Settings (recommended)
 
-1. Copy the `agentic_loop_template` folder into your project.
-2. Fill all `{{ ... }}` placeholders in `SYSTEM_PROMPT.md`.
-3. Create a `TASK_SPECIFICATION.md` with clear requirements.
-4. Run `Agent-Init.ps1` and follow the Blackbox instructions in `Agent-Init.md`.
-
----
-
-## Cross-Platform & Multi-Frontend (P2 Complete)
-
-- Platform-adaptive bootstrap in all `prompts/short_*.md` and `AGENT_ROLES.md`.
-- `Agent-Init.sh` for Linux/Mac; `Agent-Init.ps1` for Windows.
-- Multi-frontend adapters: Blackbox, Cursor, Claude Code — see [docs/multi-frontend.md](docs/multi-frontend.md).
-
-## Productization (P3)
-
-- Documentation site: [docs/](docs/)
-- Consumer starter: [examples/consumer-starter/](examples/consumer-starter/)
-- Agentix Hub: `python -m memory.playbooks export --format hub` → [docs/hub/](docs/hub/)
-- Pro tier hooks: [docs/pro-tier.md](docs/pro-tier.md)
-
-## Limitations
-
-- Hosted Hub SaaS not included in v3.3.0 (static JSON + CLI only).
-- The local runner must support tools in `TOOLS_REGISTRY.md`.
-- Max recommended 3–4 full cycles before architecture review.
-
-This template is specifically tuned for reliable autonomous development when using **Blackbox AI** with the **MiniMax 2.5** model in Visual Studio Code.
+| Role | Temperature | Top-P | Max Tokens |
+|------|-------------|-------|------------|
+| Orchestrator | 0.0 | 0.9 | 4096 |
+| Coder | 0.2 | 0.95 | 8192 |
+| Tester | 0.0 | 0.9 | 4096 |
+| Debugger | 0.2 | 0.95 | 4096 |
+| Reviewer | 0.0 | 0.9 | 4096 |
 
 ---
 
-**Maintained by exception.expert**
+## Runtime Rules
+
+1. **Handoffs** — exactly one JSON object per turn ([HANDOFF_SCHEMA.md](HANDOFF_SCHEMA.md)).
+2. **Git** — self-cycle §11 before planning ([DEVELOPMENT_STANDARDS.md](DEVELOPMENT_STANDARDS.md)).
+3. **Commits** — natural Russian, human senior-dev voice; never mention AI/LLM.
+4. **Playbooks** — `python -m memory.playbooks select` before PLAN.
+5. **Reviewer** — ledger + meta harvest on high-quality DONE.
+
+---
+
+## Prompts (entry points)
+
+| File | Use |
+|------|-----|
+| [prompts/short_orchestrator_prompt.md](prompts/short_orchestrator_prompt.md) | **Default first message** |
+| [prompts/short_coder_prompt.md](prompts/short_coder_prompt.md) | Coder role block |
+| [prompts/short_tester_prompt.md](prompts/short_tester_prompt.md) | Tester role block |
+| [prompts/short_debugger_prompt.md](prompts/short_debugger_prompt.md) | Debugger role block |
+| [prompts/short_reviewer_prompt.md](prompts/short_reviewer_prompt.md) | Reviewer role block |
+| [first_orchestrator_message.md](first_orchestrator_message.md) | Initiative bootstrap variant |
+
+Full role blocks: [AGENT_ROLES.md](AGENT_ROLES.md).
+
+---
+
+## Directory Map
+
+```
+├── prompts/           # Short role prompts (start loop here)
+├── memory/            # Ledger, playbooks, meta, audit, resume
+├── .agent/            # PLAN, TODO, ledger, playbooks, hub index
+├── docs/              # Full documentation site
+├── examples/          # consumer-starter, stack templates, case study
+└── scripts/           # demo-loop.sh
+```
+
+---
+
+## Further Reading
+
+- [docs/getting-started.md](docs/getting-started.md) — step-by-step with examples
+- [docs/architecture.md](docs/architecture.md) — memory and handoff flow
+- [docs/multi-frontend.md](docs/multi-frontend.md) — Cursor, Claude, Blackbox
+- [memory/README.md](memory/README.md) — memory layer API
+
+**Maintained by exception.expert** · Agentix 3.4.0

@@ -1,5 +1,10 @@
 ## [Unreleased]
 
+### Changed
+- Documentation overhaul: README with badges, TOC, mermaid diagrams, cycle examples
+- docs/ index with learning paths; getting-started with session examples
+- AGENTIC_LOOP_README streamlined as operations guide
+
 ## [3.4.0] - 2026-07-03
 
 ### Added
