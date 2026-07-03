@@ -24,7 +24,7 @@
 - **Identify and continue from tasks of the last unfinished iteration** (do not jump to new unrelated work or future phases until previous iteration items are addressed or explicitly justified + marked).
 - Ultra-compact summary + deltas from `PROJECT_CONTEXT.md`, `SPRINTPLAN.md`, `.agent/LESSONS.md`, previous handoff.
 - Read full files on-demand only. Apply `PROMPT_COMPRESSION_GUIDE.md` techniques rigorously (effective window is limited in Blackbox setup).
-- Query workspace memory + playbooks (select_bullets for global/role/phase/tool scopes, including cross-platform "os:linux|mac|win") for recurring patterns and best practices. Use memory.playbooks. For P2: prefer portable cmds or note platform.
+- Query workspace memory + playbooks (select_bullets for global/role/phase/tool scopes, including cross-platform "os:linux|mac|win") for recurring patterns and best practices. Use memory.playbooks. For P2: prefer portable cmds or note platform. Example: bullets = pb.select_bullets("planning", k=3)  # always before SPRINTPLAN.
 - Formulate clarification_questions (non-blocking) if external input needed — they go into the handoff for batched processing.
 
 ### 3. Update Plans & Start Work
