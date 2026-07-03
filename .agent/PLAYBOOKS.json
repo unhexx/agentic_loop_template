@@ -32,9 +32,33 @@
           "usage_count": 5,
           "source": 46,
           "last_used": "2026-07-03T01:38:18.082004+00:00"
+        },
+        {
+          "id": "b-0004",
+          "content": "Consult playbooks before tool use for better outcomes",
+          "tags": [
+            "auto-from-reflection"
+          ],
+          "effectiveness": 1.0,
+          "recency_ts": "2026-07-03T01:44:50.930644+00:00",
+          "usage_count": 10,
+          "source": 53,
+          "last_used": "2026-07-03T01:44:50.992167+00:00"
+        },
+        {
+          "id": "b-0005",
+          "content": "Cross-platform paths need portable playbook bullets",
+          "tags": [
+            "auto-from-reflection"
+          ],
+          "effectiveness": 1.0,
+          "recency_ts": "2026-07-03T01:44:50.930663+00:00",
+          "usage_count": 10,
+          "source": 53,
+          "last_used": "2026-07-03T01:44:50.992182+00:00"
         }
       ],
-      "last_curated": "2026-07-03T01:38:18.082057+00:00"
+      "last_curated": "2026-07-03T01:44:50.992226+00:00"
     },
     "tool-git": {
       "scope": "tool:git",
@@ -81,6 +105,6 @@
       "last_curated": "2026-07-03T01:37:30.683098+00:00"
     }
   },
-  "updated_at": "2026-07-03T01:38:18.082060+00:00",
+  "updated_at": "2026-07-03T01:44:50.992230+00:00",
   "version": "3.3-playbooks"
 }

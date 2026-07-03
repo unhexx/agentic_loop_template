@@ -4,11 +4,11 @@ Playbooks — основной слой знаний для полноценно
 Каждый цикл использует релевантные bullets через select, после рефлексии — curate.
 Следуем ACE (effectiveness + recency + similarity) + Reflexion.
 
-**Обновлено:** 2026-07-03T01:38:18.082060+00:00
+**Обновлено:** 2026-07-03T01:44:50.992230+00:00
 
 ## Доступные Playbooks
-- **global-dev** (scope=global, bullets=3)
-  last_curated: 2026-07-03T01:38:18.082057+00:00
+- **global-dev** (scope=global, bullets=5)
+  last_curated: 2026-07-03T01:44:50.992226+00:00
 - **tool-git** (scope=tool:git, bullets=2)
   last_curated: 2026-07-03T01:37:44.180954+00:00
 - **tool-ledger** (scope=tool:performance_ledger, bullets=1)

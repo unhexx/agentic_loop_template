@@ -184,6 +184,376 @@
         "branch": "",
         "last_commit": ""
       }
+    },
+    {
+      "id": "T-053-03f8",
+      "cycle": 53,
+      "timestamp": "2026-07-03T01:44:50.953804+00:00",
+      "outcome": "DONE",
+      "task_ref": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181",
+      "spec_ref": null,
+      "quality_signals": {
+        "confidence": 0.92,
+        "tests_total": 10,
+        "tests_failed": 0,
+        "coverage": 0.0,
+        "tool_calls": 0,
+        "elapsed_minutes": 0.0,
+        "process_tags": []
+      },
+      "compressed_handoff_chain": [
+        {
+          "role": "Orchestrator",
+          "summary": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181c). Ready for full cycle execution of business recs.",
+          "context_delta": "Added TASK_SPECIFICATION.md + plans + ledger.py. P0 + start of P1/P4. See .agent/PLAN.md",
+          "lessons": [
+            "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+            "New ledger integrates cleanly with existing meta collector."
+          ]
+        }
+      ],
+      "lessons_learned": [
+        "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+        "New ledger integrates cleanly with existing meta collector."
+      ],
+      "success_patterns": [],
+      "git_evidence": {
+        "branch": "",
+        "last_commit": ""
+      }
+    },
+    {
+      "id": "T-054-03f8",
+      "cycle": 54,
+      "timestamp": "2026-07-03T01:44:50.959669+00:00",
+      "outcome": "DONE",
+      "task_ref": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181",
+      "spec_ref": null,
+      "quality_signals": {
+        "confidence": 0.92,
+        "tests_total": 10,
+        "tests_failed": 0,
+        "coverage": 0.0,
+        "tool_calls": 0,
+        "elapsed_minutes": 0.0,
+        "process_tags": []
+      },
+      "compressed_handoff_chain": [
+        {
+          "role": "Orchestrator",
+          "summary": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181c). Ready for full cycle execution of business recs.",
+          "context_delta": "Added TASK_SPECIFICATION.md + plans + ledger.py. P0 + start of P1/P4. See .agent/PLAN.md",
+          "lessons": [
+            "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+            "New ledger integrates cleanly with existing meta collector."
+          ]
+        }
+      ],
+      "lessons_learned": [
+        "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+        "New ledger integrates cleanly with existing meta collector."
+      ],
+      "success_patterns": [],
+      "git_evidence": {
+        "branch": "",
+        "last_commit": ""
+      }
+    },
+    {
+      "id": "T-055-03f8",
+      "cycle": 55,
+      "timestamp": "2026-07-03T01:44:50.961769+00:00",
+      "outcome": "DONE",
+      "task_ref": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181",
+      "spec_ref": null,
+      "quality_signals": {
+        "confidence": 0.92,
+        "tests_total": 10,
+        "tests_failed": 0,
+        "coverage": 0.0,
+        "tool_calls": 0,
+        "elapsed_minutes": 0.0,
+        "process_tags": []
+      },
+      "compressed_handoff_chain": [
+        {
+          "role": "Orchestrator",
+          "summary": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181c). Ready for full cycle execution of business recs.",
+          "context_delta": "Added TASK_SPECIFICATION.md + plans + ledger.py. P0 + start of P1/P4. See .agent/PLAN.md",
+          "lessons": [
+            "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+            "New ledger integrates cleanly with existing meta collector."
+          ]
+        }
+      ],
+      "lessons_learned": [
+        "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+        "New ledger integrates cleanly with existing meta collector."
+      ],
+      "success_patterns": [],
+      "git_evidence": {
+        "branch": "",
+        "last_commit": ""
+      }
+    },
+    {
+      "id": "T-056-03f8",
+      "cycle": 56,
+      "timestamp": "2026-07-03T01:44:50.963830+00:00",
+      "outcome": "DONE",
+      "task_ref": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181",
+      "spec_ref": null,
+      "quality_signals": {
+        "confidence": 0.92,
+        "tests_total": 10,
+        "tests_failed": 0,
+        "coverage": 0.0,
+        "tool_calls": 0,
+        "elapsed_minutes": 0.0,
+        "process_tags": []
+      },
+      "compressed_handoff_chain": [
+        {
+          "role": "Orchestrator",
+          "summary": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181c). Ready for full cycle execution of business recs.",
+          "context_delta": "Added TASK_SPECIFICATION.md + plans + ledger.py. P0 + start of P1/P4. See .agent/PLAN.md",
+          "lessons": [
+            "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+            "New ledger integrates cleanly with existing meta collector."
+          ]
+        }
+      ],
+      "lessons_learned": [
+        "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+        "New ledger integrates cleanly with existing meta collector."
+      ],
+      "success_patterns": [],
+      "git_evidence": {
+        "branch": "",
+        "last_commit": ""
+      }
+    },
+    {
+      "id": "T-057-03f8",
+      "cycle": 57,
+      "timestamp": "2026-07-03T01:44:50.969004+00:00",
+      "outcome": "DONE",
+      "task_ref": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181",
+      "spec_ref": null,
+      "quality_signals": {
+        "confidence": 0.92,
+        "tests_total": 10,
+        "tests_failed": 0,
+        "coverage": 0.0,
+        "tool_calls": 0,
+        "elapsed_minutes": 0.0,
+        "process_tags": []
+      },
+      "compressed_handoff_chain": [
+        {
+          "role": "Orchestrator",
+          "summary": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181c). Ready for full cycle execution of business recs.",
+          "context_delta": "Added TASK_SPECIFICATION.md + plans + ledger.py. P0 + start of P1/P4. See .agent/PLAN.md",
+          "lessons": [
+            "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+            "New ledger integrates cleanly with existing meta collector."
+          ]
+        }
+      ],
+      "lessons_learned": [
+        "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+        "New ledger integrates cleanly with existing meta collector."
+      ],
+      "success_patterns": [],
+      "git_evidence": {
+        "branch": "",
+        "last_commit": ""
+      }
+    },
+    {
+      "id": "T-058-03f8",
+      "cycle": 58,
+      "timestamp": "2026-07-03T01:44:50.971306+00:00",
+      "outcome": "DONE",
+      "task_ref": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181",
+      "spec_ref": null,
+      "quality_signals": {
+        "confidence": 0.92,
+        "tests_total": 10,
+        "tests_failed": 0,
+        "coverage": 0.0,
+        "tool_calls": 0,
+        "elapsed_minutes": 0.0,
+        "process_tags": []
+      },
+      "compressed_handoff_chain": [
+        {
+          "role": "Orchestrator",
+          "summary": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181c). Ready for full cycle execution of business recs.",
+          "context_delta": "Added TASK_SPECIFICATION.md + plans + ledger.py. P0 + start of P1/P4. See .agent/PLAN.md",
+          "lessons": [
+            "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+            "New ledger integrates cleanly with existing meta collector."
+          ]
+        }
+      ],
+      "lessons_learned": [
+        "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+        "New ledger integrates cleanly with existing meta collector."
+      ],
+      "success_patterns": [],
+      "git_evidence": {
+        "branch": "",
+        "last_commit": ""
+      }
+    },
+    {
+      "id": "T-059-03f8",
+      "cycle": 59,
+      "timestamp": "2026-07-03T01:44:50.974677+00:00",
+      "outcome": "DONE",
+      "task_ref": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181",
+      "spec_ref": null,
+      "quality_signals": {
+        "confidence": 0.92,
+        "tests_total": 10,
+        "tests_failed": 0,
+        "coverage": 0.0,
+        "tool_calls": 0,
+        "elapsed_minutes": 0.0,
+        "process_tags": []
+      },
+      "compressed_handoff_chain": [
+        {
+          "role": "Orchestrator",
+          "summary": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181c). Ready for full cycle execution of business recs.",
+          "context_delta": "Added TASK_SPECIFICATION.md + plans + ledger.py. P0 + start of P1/P4. See .agent/PLAN.md",
+          "lessons": [
+            "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+            "New ledger integrates cleanly with existing meta collector."
+          ]
+        }
+      ],
+      "lessons_learned": [
+        "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+        "New ledger integrates cleanly with existing meta collector."
+      ],
+      "success_patterns": [],
+      "git_evidence": {
+        "branch": "",
+        "last_commit": ""
+      }
+    },
+    {
+      "id": "T-060-03f8",
+      "cycle": 60,
+      "timestamp": "2026-07-03T01:44:50.986977+00:00",
+      "outcome": "DONE",
+      "task_ref": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181",
+      "spec_ref": null,
+      "quality_signals": {
+        "confidence": 0.92,
+        "tests_total": 10,
+        "tests_failed": 0,
+        "coverage": 0.0,
+        "tool_calls": 0,
+        "elapsed_minutes": 0.0,
+        "process_tags": []
+      },
+      "compressed_handoff_chain": [
+        {
+          "role": "Orchestrator",
+          "summary": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181c). Ready for full cycle execution of business recs.",
+          "context_delta": "Added TASK_SPECIFICATION.md + plans + ledger.py. P0 + start of P1/P4. See .agent/PLAN.md",
+          "lessons": [
+            "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+            "New ledger integrates cleanly with existing meta collector."
+          ]
+        }
+      ],
+      "lessons_learned": [
+        "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+        "New ledger integrates cleanly with existing meta collector."
+      ],
+      "success_patterns": [],
+      "git_evidence": {
+        "branch": "",
+        "last_commit": ""
+      }
+    },
+    {
+      "id": "T-061-03f8",
+      "cycle": 61,
+      "timestamp": "2026-07-03T01:44:50.991389+00:00",
+      "outcome": "DONE",
+      "task_ref": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181",
+      "spec_ref": null,
+      "quality_signals": {
+        "confidence": 0.92,
+        "tests_total": 10,
+        "tests_failed": 0,
+        "coverage": 0.0,
+        "tool_calls": 0,
+        "elapsed_minutes": 0.0,
+        "process_tags": []
+      },
+      "compressed_handoff_chain": [
+        {
+          "role": "Orchestrator",
+          "summary": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181c). Ready for full cycle execution of business recs.",
+          "context_delta": "Added TASK_SPECIFICATION.md + plans + ledger.py. P0 + start of P1/P4. See .agent/PLAN.md",
+          "lessons": [
+            "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+            "New ledger integrates cleanly with existing meta collector."
+          ]
+        }
+      ],
+      "lessons_learned": [
+        "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+        "New ledger integrates cleanly with existing meta collector."
+      ],
+      "success_patterns": [],
+      "git_evidence": {
+        "branch": "",
+        "last_commit": ""
+      }
+    },
+    {
+      "id": "T-062-03f8",
+      "cycle": 62,
+      "timestamp": "2026-07-03T01:44:50.994166+00:00",
+      "outcome": "DONE",
+      "task_ref": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181",
+      "spec_ref": null,
+      "quality_signals": {
+        "confidence": 0.92,
+        "tests_total": 10,
+        "tests_failed": 0,
+        "coverage": 0.0,
+        "tool_calls": 0,
+        "elapsed_minutes": 0.0,
+        "process_tags": []
+      },
+      "compressed_handoff_chain": [
+        {
+          "role": "Orchestrator",
+          "summary": "Bootstrap complete. Artifacts created and first performance ledger + meta integration implemented. Git committed (54e181c). Ready for full cycle execution of business recs.",
+          "context_delta": "Added TASK_SPECIFICATION.md + plans + ledger.py. P0 + start of P1/P4. See .agent/PLAN.md",
+          "lessons": [
+            "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+            "New ledger integrates cleanly with existing meta collector."
+          ]
+        }
+      ],
+      "lessons_learned": [
+        "Bootstrap of self-directed improvement program works via the same loop mechanisms.",
+        "New ledger integrates cleanly with existing meta collector."
+      ],
+      "success_patterns": [],
+      "git_evidence": {
+        "branch": "",
+        "last_commit": ""
+      }
     }
   ],
   "proposals": [
@@ -209,7 +579,91 @@
       "created_at": "2026-07-03T01:19:00.058898+00:00",
       "applied_at": "2026-07-03T01:19:00.059821+00:00",
       "notes": " (auto-appended to file)"
+    },
+    {
+      "id": "P-002",
+      "from_trajectories": [
+        "T-053-03f8",
+        "T-020-03f8",
+        "T-015-03f8"
+      ],
+      "target_file": "agentic_loop_template/PROMPT_COMPRESSION_GUIDE.md",
+      "change_type": "add_few_shot_example",
+      "title": "Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)",
+      "rationale": "В 3 циклах успех коррелировал с явным включением performance metrics (elapsed, tool_calls, confidence, meta_applied) + success_patterns в сжатые handoff'ы. Позволяет лучше отслеживать ROI и компрессию.",
+      "proposed_text": "```markdown\n**Harvested: include 'performance' delta in every handoff (from 20+ loops)**\n- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed\n- success_patterns for ledger/metrics wins\n- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.\nExample: \"performance\": {\"cycle\": 21, \"elapsed_minutes\": 3.5, \"tool_calls\": 12, \"confidence\": 0.9, \"meta_applied\": 8}\n```",
+      "insertion_anchor": "После примера с compression_metrics",
+      "safe_to_auto": true,
+      "confidence": 0.85,
+      "expected_impact": "Лучшее отслеживание эффективности, автоматическая эволюция метрик в циклах",
+      "status": "applied",
+      "created_at": "2026-07-03T01:44:50.954432+00:00",
+      "applied_at": "2026-07-03T01:44:50.955014+00:00",
+      "notes": " (auto-appended to file)"
+    },
+    {
+      "id": "P-003",
+      "from_trajectories": [
+        "T-056-03f8",
+        "T-055-03f8",
+        "T-054-03f8"
+      ],
+      "target_file": "agentic_loop_template/PROMPT_COMPRESSION_GUIDE.md",
+      "change_type": "add_few_shot_example",
+      "title": "Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)",
+      "rationale": "В 3 циклах успех коррелировал с явным включением performance metrics (elapsed, tool_calls, confidence, meta_applied) + success_patterns в сжатые handoff'ы. Позволяет лучше отслеживать ROI и компрессию.",
+      "proposed_text": "```markdown\n**Harvested: include 'performance' delta in every handoff (from 20+ loops)**\n- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed\n- success_patterns for ledger/metrics wins\n- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.\nExample: \"performance\": {\"cycle\": 21, \"elapsed_minutes\": 3.5, \"tool_calls\": 12, \"confidence\": 0.9, \"meta_applied\": 8}\n```",
+      "insertion_anchor": "После примера с compression_metrics",
+      "safe_to_auto": true,
+      "confidence": 0.85,
+      "expected_impact": "Лучшее отслеживание эффективности, автоматическая эволюция метрик в циклах",
+      "status": "applied",
+      "created_at": "2026-07-03T01:44:50.964440+00:00",
+      "applied_at": "2026-07-03T01:44:50.965006+00:00",
+      "notes": " (auto-appended to file)"
+    },
+    {
+      "id": "P-004",
+      "from_trajectories": [
+        "T-059-03f8",
+        "T-058-03f8",
+        "T-057-03f8"
+      ],
+      "target_file": "agentic_loop_template/PROMPT_COMPRESSION_GUIDE.md",
+      "change_type": "add_few_shot_example",
+      "title": "Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)",
+      "rationale": "В 3 циклах успех коррелировал с явным включением performance metrics (elapsed, tool_calls, confidence, meta_applied) + success_patterns в сжатые handoff'ы. Позволяет лучше отслеживать ROI и компрессию.",
+      "proposed_text": "```markdown\n**Harvested: include 'performance' delta in every handoff (from 20+ loops)**\n- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed\n- success_patterns for ledger/metrics wins\n- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.\nExample: \"performance\": {\"cycle\": 21, \"elapsed_minutes\": 3.5, \"tool_calls\": 12, \"confidence\": 0.9, \"meta_applied\": 8}\n```",
+      "insertion_anchor": "После примера с compression_metrics",
+      "safe_to_auto": true,
+      "confidence": 0.85,
+      "expected_impact": "Лучшее отслеживание эффективности, автоматическая эволюция метрик в циклах",
+      "status": "applied",
+      "created_at": "2026-07-03T01:44:50.978806+00:00",
+      "applied_at": "2026-07-03T01:44:50.979904+00:00",
+      "notes": " (auto-appended to file)"
+    },
+    {
+      "id": "P-005",
+      "from_trajectories": [
+        "T-062-03f8",
+        "T-061-03f8",
+        "T-060-03f8"
+      ],
+      "target_file": "agentic_loop_template/PROMPT_COMPRESSION_GUIDE.md",
+      "change_type": "add_few_shot_example",
+      "title": "Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)",
+      "rationale": "В 3 циклах успех коррелировал с явным включением performance metrics (elapsed, tool_calls, confidence, meta_applied) + success_patterns в сжатые handoff'ы. Позволяет лучше отслеживать ROI и компрессию.",
+      "proposed_text": "```markdown\n**Harvested: include 'performance' delta in every handoff (from 20+ loops)**\n- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed\n- success_patterns for ledger/metrics wins\n- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.\nExample: \"performance\": {\"cycle\": 21, \"elapsed_minutes\": 3.5, \"tool_calls\": 12, \"confidence\": 0.9, \"meta_applied\": 8}\n```",
+      "insertion_anchor": "После примера с compression_metrics",
+      "safe_to_auto": true,
+      "confidence": 0.85,
+      "expected_impact": "Лучшее отслеживание эффективности, автоматическая эволюция метрик в циклах",
+      "status": "applied",
+      "created_at": "2026-07-03T01:44:50.995021+00:00",
+      "applied_at": "2026-07-03T01:44:50.995732+00:00",
+      "notes": " (auto-appended to file)"
     }
   ],
-  "updated_at": "2026-07-03T01:19:00.061706+00:00"
+  "updated_at": "2026-07-03T01:44:50.997298+00:00"
 }
