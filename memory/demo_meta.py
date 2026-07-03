@@ -26,8 +26,22 @@ mh = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mh)
 
 def main():
-    print("=== Демонстрация Meta-Optimizer & Trajectory Harvesting ===")
+    print("=== Демонстрация Meta-Optimizer & Trajectory Harvesting (с playbooks) ===")
     print()
+
+    # Runtime playbook usage (P4-RUNTIME-01)
+    try:
+        import importlib.util
+        from pathlib import Path
+        spec = importlib.util.spec_from_file_location("pb", Path(__file__).parent / "playbooks.py")
+        pb = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pb)
+        bullets = pb.select_bullets("planning cross-platform playbook usage", scopes=["global", "phase:planning"], k=2)
+        print("Playbooks selected for planning (runtime demo):")
+        for b in bullets:
+            print(f"  - {b.get('content', '')[:80]} (eff={b.get('effectiveness')})")
+    except Exception as e:
+        print(f"Playbooks select note: {e}")
 
     # 1. Сидинг примера
     example_id = mh.seed_example_trajectory()

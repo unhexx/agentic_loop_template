@@ -23,9 +23,20 @@ Advance ONLY tasks from the *last unfinished iteration*. Do not start new phases
 
 **Goal of this iteration:** Establish the loop artifacts for the initiative, implement core scaffolding for performance ledger/metrics (P1), initialize full meta_harvester usage + first eval seeds (P4), perform hygiene cleanup, update docs. Produce measurable first data points.
 
-**Status:** REVIEWED (cycle 52, 40+ loops). P1 + P4 playbooks FULL (core module, heuristics generating proposals, live curate in cycles, docs+roles+handshakes integrated). P2 cross-platform initiated (Agent-Init.sh stub, portable notes). Hygiene advanced. Reviewer: good, process compliant, aligns with TASK_SPEC for playbooks enabling full cycle with all tools. Metrics improving. Recommend next slice for runtime injection + P2 code.
+**Status:** IN PROGRESS (Orchestrator after Reviewer cycle 52). P4 playbooks core done + some integration. Focus now: make playbooks active at runtime (select in demo/roles), accelerate P2 cross-platform code. 40+ loops executed, metrics good. Git self-cycle completed this turn.
 
 ### INVEST Tasks for Current Iteration (priority order)
+
+**New from this Orchestrator cycle (after Reviewer feedback):**
+
+8. **[P4-RUNTIME-01] Make playbooks active in runtime (select_bullets calls in demo_meta.py, role prompts, tool usage examples). Wire into PLAN/ACT steps. Demonstrate in self-cycle.**
+   - Criteria: demo_meta.py calls playbooks and prints selected bullets; short prompts reference real select; one full cycle uses it.
+   - Value: playbooks not just docs but actually guiding the loop (full cycle support).
+
+9. **[P2-CROSS-01] Complete portable cross-platform support: enhance Agent-Init.sh with full Linux/Mac venv/git notes, add playbook scope for 'cross-platform', update more prompts/roles for portable commands.**
+   - Criteria: Agent-Init.sh functional for bash, docs have P2 section, one playbook for os-portability.
+
+Continue from previous:
 
 1. **[P0-FOUND] Create and validate full set of planning artifacts for the initiative**  
    - TASK_SPECIFICATION.md (done in bootstrap), .agent/PLAN.md, .agent/TODO.md, PROJECT_CONTEXT.md, SPRINTPLAN.md, update .agent/LOOP_STATE.md.  

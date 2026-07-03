@@ -30,9 +30,14 @@ P2 started: cross-platform docs + notes.
 
 ## P2+ Tasks (started in loops, continue)
 
-- [ ] P2-CROSS-01: Add portable path handling and bash equivalents for key scripts (Agent-Init.sh stub, venv activation notes for Linux/Mac).
+- [ ] P2-CROSS-01: Add portable path handling and bash equivalents for key scripts (Agent-Init.sh stub, venv activation notes for Linux/Mac). (In progress - stub exists, enhance for full support + playbook scope)
 - [ ] P2-CROSS-02: Update all prompts/roles to prefer portable commands or note platform specifics. Add playbook scopes for "cross-platform".
 - [ ] P2-DOCS: Expand README and AGENTIC_LOOP_README with cross-platform quickstart, multi-frontend (Claude/Cursor) examples.
+
+## New tasks from Orchestrator (runtime playbooks + P2 accel)
+
+- [ ] P4-RUNTIME-01: Make playbooks active in runtime execution - add select_bullets calls to demo_meta.py, update short_*_prompt.md and AGENT_ROLES to demonstrate/require playbook consult in PLAN/ACT. Show in one end-to-end cycle.
+- [ ] P2-CROSS-03: Add 'cross-platform' playbook scope and bullets (e.g. for venv, paths, shebangs). Update Agent-Init.sh to be robust.
 
 ## Future Iterations (DO NOT START YET)
 
