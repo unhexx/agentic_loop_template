@@ -36,7 +36,7 @@ import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 DEFAULT_FREQUENCY = "after_every_done_cycle"
@@ -198,7 +198,7 @@ def _next_prop_id(existing: List[Dict[str, Any]]) -> str:
 
 
 def harvest_from_handoff(
-    handoff_path: Path,
+    handoff_path: Union[str, Path],
     cycle: int,
     outcome: str = "DONE",
     quality_signals: Optional[Dict[str, Any]] = None,
@@ -209,6 +209,7 @@ def harvest_from_handoff(
 
     Возвращает id траектории или None (если не harvested).
     """
+    handoff_path = Path(handoff_path)
     if not handoff_path.exists():
         return None
 
