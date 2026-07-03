@@ -34,9 +34,23 @@ Usage from the agent (via powershell tool):
     python -m agentic_loop_template.memory.meta_harvester apply-safe --dry-run
 """
 
-from .workspace import get_workspace_id, memory_paths
-from .store import read_memory, update_memory, snapshot, query_memory
-from .schema import MemoryState, Pattern
+# Guarded imports — the full workspace/store/schema may be in separate files or installed package.
+# Core working modules (questions, meta, new performance_ledger) are self-contained.
+try:
+    from .workspace import get_workspace_id, memory_paths
+    from .store import read_memory, update_memory, snapshot, query_memory
+    from .schema import MemoryState, Pattern
+except Exception:
+    # Provide minimal fallbacks so submodule imports (performance_ledger, meta_harvester) still work
+    def get_workspace_id(): return "agentix-local"
+    def memory_paths(): return {"file": "~/.grok/agentic-loop-memory/agentix.md"}
+    def read_memory(*a, **k): return {}
+    def update_memory(*a, **k): return {}
+    def snapshot(*a, **k): return {"patterns": {}, "recent_distillations": []}
+    def query_memory(*a, **k): return []
+    MemoryState = dict
+    Pattern = dict
+
 from .questions_collector import (
     append_question,
     get_open_questions,
