@@ -1,0 +1,74 @@
+{
+  "playbooks": {
+    "global-dev": {
+      "scope": "global",
+      "name": "Global Development & Process Best Practices",
+      "bullets": [
+        {
+          "id": "b-0001",
+          "content": "Всегда начинай цикл с git self-cycle §11 и memory/playbooks snapshot.",
+          "tags": [
+            "orchestrator",
+            "git"
+          ],
+          "effectiveness": 0.95
+        },
+        {
+          "id": "b-0002",
+          "content": "Используй PLAN → ACT (≤3 calls) → REFLECT. Никогда не пропускай рефлексию.",
+          "tags": [
+            "all-roles"
+          ],
+          "effectiveness": 0.9
+        }
+      ],
+      "last_curated": "2026-07-03T01:37:30.683092+00:00"
+    },
+    "tool-git": {
+      "scope": "tool:git",
+      "name": "Git & Sync Playbook",
+      "bullets": [
+        {
+          "id": "b-0101",
+          "content": "Для кросс-клона используй git -C /path ... + явный маркер SYNC_DONE / VerifyOnly.",
+          "tags": [
+            "sync",
+            "verification"
+          ],
+          "effectiveness": 0.92
+        },
+        {
+          "id": "b-0002",
+          "content": "playbook git + performance delta wins",
+          "tags": [
+            "auto-from-reflection"
+          ],
+          "effectiveness": 1.0,
+          "recency_ts": "2026-07-03T01:37:44.163916+00:00",
+          "usage_count": 10,
+          "source": 36,
+          "last_used": "2026-07-03T01:37:44.180918+00:00"
+        }
+      ],
+      "last_curated": "2026-07-03T01:37:44.180954+00:00"
+    },
+    "tool-ledger": {
+      "scope": "tool:performance_ledger",
+      "name": "Performance & ROI Tracking",
+      "bullets": [
+        {
+          "id": "b-0201",
+          "content": "На высококачественном DONE всегда вызывай append в performance_ledger + включай 'performance' в handoff.",
+          "tags": [
+            "P1",
+            "metrics"
+          ],
+          "effectiveness": 0.88
+        }
+      ],
+      "last_curated": "2026-07-03T01:37:30.683098+00:00"
+    }
+  },
+  "updated_at": "2026-07-03T01:37:44.180956+00:00",
+  "version": "3.3-playbooks"
+}

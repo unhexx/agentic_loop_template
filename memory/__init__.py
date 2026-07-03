@@ -73,6 +73,12 @@ from .meta_harvester import (
     load_config as load_meta_config,
 )
 
+# Playbooks & Knowledge Objects (full cycle guidance - P4 complete)
+try:
+    from . import playbooks as playbooks_mod
+except Exception:
+    playbooks_mod = None
+
 __all__ = [
     "get_workspace_id",
     "memory_paths",
@@ -100,13 +106,20 @@ __all__ = [
     "seed_example_trajectory",
     "update_performance_ledger",
     "load_meta_config",
-    # Performance Ledger (P1 metrics/ROI — new in business efficiency initiative)
+    # Performance Ledger (P1 metrics/ROI)
     "performance_ledger",
+    # Playbooks & Knowledge Objects (full continuous dev cycle support, P4)
+    "playbooks",
 ]
 
 # Lazy exposure so we don't break when full workspace/store modules are not present in all envs
 def __getattr__(name):
     if name == "performance_ledger":
-        from . import performance_ledger as pl
-        return pl
+        import importlib
+        return importlib.import_module("memory.performance_ledger")
+    if name == "playbooks":
+        if playbooks_mod is not None:
+            return playbooks_mod
+        import importlib
+        return importlib.import_module("memory.playbooks")
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
