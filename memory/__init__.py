@@ -86,4 +86,13 @@ __all__ = [
     "seed_example_trajectory",
     "update_performance_ledger",
     "load_meta_config",
+    # Performance Ledger (P1 metrics/ROI — new in business efficiency initiative)
+    "performance_ledger",
 ]
+
+# Lazy exposure so we don't break when full workspace/store modules are not present in all envs
+def __getattr__(name):
+    if name == "performance_ledger":
+        from . import performance_ledger as pl
+        return pl
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

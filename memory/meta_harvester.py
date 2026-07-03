@@ -565,19 +565,36 @@ def seed_example_trajectory() -> str:
     return tid
 
 
-def update_performance_ledger(proposal_id: str, impact: str = "") -> None:
+def update_performance_ledger(proposal_id: str, impact: str = "", cycle_stats: dict | None = None) -> None:
     """
-    Простая заглушка для сбора метрик производительности петли.
-    В будущем здесь можно агрегировать cycle stats, violation rate, token efficiency.
-    Пока пишет в .agent/LOOP_PERFORMANCE.md (человекочитаемо).
+    Обновление performance ledger.
+    Вызывается из apply_safe и Reviewer на DONE циклах.
+    Поддерживает как старый формат, так и полный stats от performance_ledger (P1).
     """
     _ensure_agent_dir()
+    # Legacy md append (kept for compatibility)
     ledger = Path(".agent/LOOP_PERFORMANCE.md")
     lines = []
     if ledger.exists():
         lines = ledger.read_text(encoding="utf-8").splitlines()
     lines.append(f"- { _now_iso() } | proposal {proposal_id} | {impact or 'applied'}")
-    ledger.write_text("\n".join(lines[-50:]) + "\n", encoding="utf-8")  # keep last 50 entries
+    ledger.write_text("\n".join(lines[-50:]) + "\n", encoding="utf-8")
+
+    # New structured ledger (business efficiency P1)
+    try:
+        from . import performance_ledger as pl
+        if cycle_stats:
+            pl.append_cycle(**cycle_stats)
+        else:
+            pl.append_cycle(
+                cycle=0,
+                outcome="META_APPLIED",
+                notes=f"proposal:{proposal_id} impact:{impact}",
+                meta_applied=1,
+            )
+    except Exception as e:
+        # non-fatal
+        print(f"[performance_ledger] non-fatal: {e}", file=sys.stderr)
 
 
 def _cli() -> None:
