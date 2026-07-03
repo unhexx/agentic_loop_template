@@ -1,23 +1,14 @@
 #!/bin/bash
-# Agent-Init.sh — Linux/Mac equivalent of Agent-Init.ps1 (P2 cross-platform start)
-# Follows same logic: create .venv, install deps, set env for agentic loop.
-# Usage: ./Agent-Init.sh
-
+# Agent-Init.sh - Cross-platform (Linux/Mac) equivalent for Agentix loop setup (P2-CROSS-01)
+# Supports venv, deps, env for Blackbox-like agents. Follows Windows ps1 logic.
 set -e
-
-echo "Initializing Agentix loop env (Linux/Mac)..."
-
-# Create venv if not exists
+echo "Initializing Agentix env (cross-platform)..."
 if [ ! -d ".venv" ]; then
-    python3 -m venv .venv
-    echo "Created .venv"
+  python3 -m venv .venv
+  echo "Created .venv"
 fi
-
 source .venv/bin/activate
-
-# Install core deps (expand as needed)
-pip install -q pyyaml  # example, add real from setup
-
-echo "Env ready. Activate with: source .venv/bin/activate"
-echo "Run python -m agentic_loop_template.memory.playbooks seed etc."
-echo "Follow DEVELOPMENT_STANDARDS §11 for git self-cycle."
+pip install -q pyyaml  # minimal; expand per project
+echo "Env ready. source .venv/bin/activate"
+echo "Use: python -m agentic_loop_template.memory.playbooks select ..."
+echo "Git self-cycle §11 mandatory before planning."
