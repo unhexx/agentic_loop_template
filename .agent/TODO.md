@@ -4,7 +4,8 @@
 
 ## Current Iteration 1 Tasks (Foundation + P1 Metrics Seed + P4 Meta Seed + Hygiene)
 
-- [ ] P0-FOUND-01: Finalize all bootstrap artifacts (TASK_SPECIFICATION.md, .agent/PLAN.md, .agent/TODO.md, PROJECT_CONTEXT.md, SPRINTPLAN.md, .agent/project_config.json, basic .agent/PERFORMANCE_LEDGER.md). Verify consistency. (Owner: Orchestrator bootstrap)
+- [x] P0-FOUND-01: Finalize all bootstrap artifacts (TASK_SPECIFICATION.md, .agent/PLAN.md, .agent/TODO.md, PROJECT_CONTEXT.md, SPRINTPLAN.md, .agent/project_config.json, basic .agent/PERFORMANCE_LEDGER.md + .json). Verify consistency. (Owner: Orchestrator bootstrap) — DONE in init cycle 0/1. Ledger producing data.
+- [ ] P0-FOUND-02: Create initial workspace memory entries for "Agentix Improvements" category (patterns from analysis: need for metrics, cross-platform gaps).
 - [ ] P0-FOUND-02: Create initial workspace memory entries for "Agentix Improvements" category (patterns from analysis: need for metrics, cross-platform gaps).
 - [ ] P1-METRICS-01: Implement ledger schema + basic collector (new file memory/performance_ledger.py or extend meta). Support append_cycle_stats(...) and render_report(). CLI parity with other memory tools. Unit test stub.
 - [ ] P1-METRICS-02: Add first data point collection (simulate or capture from current bootstrap "cycle 0"). Wire call in meta_harvester.update_performance_ledger.
