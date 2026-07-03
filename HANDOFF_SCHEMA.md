@@ -71,12 +71,12 @@
     "feature_pushed": true,
     "main_merged_commit": "a3bd062..",
     "clones_synced": [
-      "C:/_PROJECT/eegent:main@7679335",
+      "/path/to/consumer-project:main@abc1234",
       "current_worktree:feature@c159692"
     ],
     "verified": true,
     "timestamp": "2026-06-04T..",
-    "commands_run": ["git push origin feature-...", "git -C 'C:\\_PROJECT\\eegent' merge ... --no-ff", "powershell ...sync-worktree.ps1", "git log checks in both"]
+    "commands_run": ["git push origin feature-...", "git -C '/path/to/consumer-project' merge ... --no-ff", "powershell ...sync-worktree.ps1", "git log checks in both"]
   },
   // Обязательно заполняется Orchestrator в начале каждого цикла (перед планированием следующего).
   // Доказательство, что коммиты сделаны, self-cycle выполнен, изменения видны во всех активных репозиториях (основной клон + worktree).

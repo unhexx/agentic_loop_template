@@ -1,6 +1,6 @@
 # TOOLS REGISTRY — Verified Tool Descriptions and Best Practices (Template 3.1 self-learning, M2.5)
 
-This document is the single source of truth for tool schemas, parameter names, and best-practice usage patterns. All agents (Orchestrator, Coder, etc.) must consult it before calling tools. The examples are adapted for eeagent (MCP gateway, remote executors, policies, skills).
+This document is the single source of truth for tool schemas, parameter names, and best-practice usage patterns. All agents (Orchestrator, Coder, etc.) must consult it before calling tools. The examples are adapted for consumer-project (MCP gateway, remote executors, policies, skills).
 
 **Important for Blackbox / non-interactive usage:**
 - Always use the exact parameter names from the schema returned by search (do not guess).
