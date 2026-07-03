@@ -83,7 +83,44 @@ def test_cli_report():
     finally:
         sys.argv = old_argv
 
+def test_edge_cases():
+    print("--- Edge case tests ---")
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        orig_agent = pl.AGENT_DIR
+        orig_json = pl.LEDGER_JSON
+        orig_md = pl.LEDGER_MD
+        try:
+            pl.AGENT_DIR = tmp_path / ".agent"
+            pl.LEDGER_JSON = pl.AGENT_DIR / "PERFORMANCE_LEDGER.json"
+            pl.LEDGER_MD = pl.AGENT_DIR / "PERFORMANCE_LEDGER.md"
+
+            # Empty ledger
+            rep = pl.generate_report(5)
+            print("Empty report:", rep)
+            assert "No cycles" in str(rep) or isinstance(rep, dict)
+            print("✓ empty ledger handled")
+
+            # Bad data in json (sim corruption)
+            pl.LEDGER_JSON.parent.mkdir(parents=True, exist_ok=True)
+            pl.LEDGER_JSON.write_text("not valid json {", encoding="utf-8")
+            ledger = pl._load_ledger()
+            assert ledger["cycles"] == []  # falls back
+            print("✓ corrupt json fallback OK")
+
+            # Append after corrupt
+            rec = pl.append_cycle(cycle=1, elapsed_minutes=1.0)
+            assert rec["cycle"] == 1
+            print("✓ append after corrupt OK")
+
+            print("✓ edge cases passed")
+        finally:
+            pl.AGENT_DIR = orig_agent
+            pl.LEDGER_JSON = orig_json
+            pl.LEDGER_MD = orig_md
+
 if __name__ == "__main__":
     test_append_and_report()
     test_cli_report()
+    test_edge_cases()
     print("=== performance_ledger tests completed successfully ===")

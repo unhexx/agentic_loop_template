@@ -6,7 +6,6 @@
 
 - [x] P0-FOUND-01: Finalize all bootstrap artifacts (TASK_SPECIFICATION.md, .agent/PLAN.md, .agent/TODO.md, PROJECT_CONTEXT.md, SPRINTPLAN.md, .agent/project_config.json, basic .agent/PERFORMANCE_LEDGER.md + .json). Verify consistency. (Owner: Orchestrator bootstrap) — DONE in init cycle 0/1. Ledger producing data.
 - [ ] P0-FOUND-02: Create initial workspace memory entries for "Agentix Improvements" category (patterns from analysis: need for metrics, cross-platform gaps).
-- [ ] P0-FOUND-02: Create initial workspace memory entries for "Agentix Improvements" category (patterns from analysis: need for metrics, cross-platform gaps).
 - [x] P1-METRICS-01: Implement ledger schema + basic collector (memory/performance_ledger.py). CLI. (DONE by Coder) + tests (DONE by Tester via test_performance_ledger.py, all green).
 - [ ] P1-METRICS-02: Add first data point collection (simulate or capture from current bootstrap "cycle 0"). Wire call in meta_harvester.update_performance_ledger.
 - [ ] P1-METRICS-03: Update HANDOFF_SCHEMA.md with optional "performance" object example. Update PROJECT_CONTEXT_TEMPLATE.md "Current Performance" section.
