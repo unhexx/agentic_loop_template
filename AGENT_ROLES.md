@@ -23,6 +23,7 @@ IMMEDIATE TASKS (in order):
      This is obligatory for continuity and to follow the project plan rigorously.
    - Bootstrap environment (mandatory, Agent-Init.ps1 + explicit .venv python for any py work).
    - **Git self-cycle + cross-repo sync FIRST (MANDATORY per DEVELOPMENT_STANDARDS.md §11, before any memory/compression/planning):**
+   - **Playbooks first**: Перед планированием и любым tool — select_bullets по скоупам (tool:git, phase:*, global). Инжекть топ bullets (сжато). Это позволяет работать со всеми инструментами цикла.
      - Check `git status`, `git branch --show-current`, `git worktree list`.
      - If dirty: `git add` (selective) + commit with natural Russian human developer message (no AI words).
      - `git push origin <current-feature>`.
