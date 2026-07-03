@@ -19,7 +19,7 @@
 - [x] P0-SYNC-01: Perform complete §11 self-cycle after all bootstrap files written (natural Russian commit, push if applicable, verify in worktree + note main clone sim, update LOOP_STATE). (Multiple pushes done)
 
 **Completion gate for iteration:** All above checked by Reviewer + at least 1 meta proposal applied or documented win + first performance numbers in reports + git verified. Then mark iteration complete and plan next (P1 continuation or P2).
-(After 40+ loops + Reviewer review cycle 52: P1 + P4 playbooks COMPLETE (core, heuristics, integration, curation in loops). Hygiene advanced. P2 cross-platform STARTED (Agent-Init.sh + docs). Metrics strong (2.6min / 0.93 conf). Reviewer: good alignment with spec, process clean. Recommend next: runtime playbook injection + more P2 code. Near gate for iteration close.)
+(After 50+ loops + O/R cycles: Iteration 1 COMPLETE. P1/P4 playbooks + runtime done, P2 cross advanced, hygiene, metrics improved. Gate met: meta applied, performance numbers, git verified, all checked by R. Plan next phase P2 full / P3.)
 
 ## Current Iteration Progress (after 30+ loops + 10 more with playbooks)
 
@@ -30,14 +30,14 @@ P2 started: cross-platform docs + notes.
 
 ## P2+ Tasks (started in loops, continue)
 
-- [ ] P2-CROSS-01: Add portable path handling and bash equivalents for key scripts (Agent-Init.sh stub, venv activation notes for Linux/Mac). (In progress - stub exists, enhance for full support + playbook scope)
+- [x] P2-CROSS-01: Add portable path handling and bash equivalents for key scripts (Agent-Init.sh stub, venv activation notes for Linux/Mac). (Done in loops: enhanced sh, cross playbook)
 - [ ] P2-CROSS-02: Update all prompts/roles to prefer portable commands or note platform specifics. Add playbook scopes for "cross-platform".
 - [ ] P2-DOCS: Expand README and AGENTIC_LOOP_README with cross-platform quickstart, multi-frontend (Claude/Cursor) examples.
 
 ## New tasks from Orchestrator (runtime playbooks + P2 accel)
 
-- [ ] P4-RUNTIME-01: Make playbooks active in runtime execution - add select_bullets calls to demo_meta.py, update short_*_prompt.md and AGENT_ROLES to demonstrate/require playbook consult in PLAN/ACT. Show in one end-to-end cycle.
-- [ ] P2-CROSS-03: Add 'cross-platform' playbook scope and bullets (e.g. for venv, paths, shebangs). Update Agent-Init.sh to be robust.
+- [x] P4-RUNTIME-01: Make playbooks active in runtime execution - add select_bullets calls to demo_meta.py, update short_*_prompt.md and AGENT_ROLES to demonstrate/require playbook consult in PLAN/ACT. Show in one end-to-end cycle. (Done: demo has it, prompt updated)
+- [x] P2-CROSS-03: Add 'cross-platform' playbook scope and bullets (e.g. for venv, paths, shebangs). Update Agent-Init.sh to be robust. (Done)
 
 ## Future Iterations (DO NOT START YET)
 
