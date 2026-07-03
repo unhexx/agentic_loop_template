@@ -85,6 +85,18 @@
 
 Это прямое усиление механизма self-improvement (§3 и §12 DEVELOPMENT_STANDARDS).
 
+## Performance & ROI Tracking (P1)
+
+Добавлено в рамках инициативы бизнес-эффективности.
+
+- Используйте `memory/performance_ledger.py` (CLI: append, report).
+- Данные пишутся в `.agent/PERFORMANCE_LEDGER.json` + `.md`.
+- Reviewer/ meta_harvester обновляют после цикла.
+- Ключевые метрики: elapsed_minutes, tool_calls, confidence, tests_failed, meta_applied и т.д.
+- Тренды помогают доказывать ROI и ускорять самоулучшение.
+
+См. .agent/PERFORMANCE_LEDGER.md и HANDOFF_SCHEMA (performance поле).
+
 ## Daily Decomposition Ritual Settings (every 10 cycles, v1.5+)
 
 Пользователь/Reviewer задаёт частоту (по умолчанию every_10_cycles). Ритуал превращает одну приоритетную задачу в 3–5 узких подзадач с binary criteria, риском, mitigation.

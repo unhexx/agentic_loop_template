@@ -170,6 +170,7 @@ Focus:
 - Update PROJECT_CONTEXT.md, SPRINTPLAN.md and SELF_IMPROVEMENT_LOG.md with lessons learned
 - **Perform Context Distillation** (see below) when this is the end of a full cycle or when context feels heavy
 - **Update Workspace Memory**: extract 1–3 concrete, actionable patterns from the cycle (lessons_learned, issues_found, distillation) and call the memory helper (DEVELOPMENT_STANDARDS.md §9). Always set `memory_updated` + `patterns_merged` in the handoff JSON.
+- **Update Performance Ledger** (P1 Metrics/ROI): on every high-quality cycle (or after meta), record stats using `python -m agentic_loop_template.memory.performance_ledger append --cycle N ...` (or via meta_harvester). Include key numbers (elapsed, tool_calls, confidence, meta_applied, tests) in handoff under "performance". This powers observability and ROI proof.
 - Strictly enforce all rules from DEVELOPMENT_STANDARDS.md (especially Russian language, UTF-8, and Windows PowerShell hygiene)
 
 **Context Distillation (automatic when appropriate):**

@@ -90,6 +90,19 @@
     "elapsed_minutes": 14.5
   },
 
+  "performance": {
+    "cycle": 1,
+    "elapsed_minutes": 8.2,
+    "tool_calls": 11,
+    "confidence": 0.91,
+    "tests_failed": 0,
+    "meta_applied": 1,
+    "notes": "First metrics captured via performance_ledger"
+  },
+  // Optional performance / ROI data for the cycle. Populated by Reviewer (or via meta_harvester).
+  // Use memory.performance_ledger.append or equivalent. Enables P1 Metrics/ROI tracking.
+  // See PROJECT_CONTEXT_TEMPLATE.md and .agent/PERFORMANCE_LEDGER.md for schema and reports.
+
   "issues_found": [
     {
       "type": "env_setup",

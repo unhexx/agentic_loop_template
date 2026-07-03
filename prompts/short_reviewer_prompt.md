@@ -23,6 +23,7 @@
 - Verify natural Russian human-style commits from all previous roles.
 - Perform **Context Distillation** (structured summary appended to SELF_IMPROVEMENT_LOG.md or PROJECT_CONTEXT.md) when cycle ends or context is heavy.
 - Update Workspace Memory with 1–3 actionable patterns (`memory_updated`, `patterns_merged`).
+- Update Performance Ledger (use performance_ledger append or meta integration) with cycle stats for P1 Metrics/ROI tracking. Include "performance" object in handoff.
 - Handle clarification_questions pool and meta_harvest / decomposition_ritual / prompt_refinement when cadence triggers (every ~10 cycles or per config).
 
 ### 4. Decision
