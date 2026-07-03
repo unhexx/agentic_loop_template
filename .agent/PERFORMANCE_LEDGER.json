@@ -1,0 +1,24 @@
+{
+  "cycles": [
+    {
+      "cycle": 0,
+      "timestamp": "2026-07-03T00:43:18.696514+00:00",
+      "outcome": "BOOTSTRAP",
+      "elapsed_minutes": 0.5,
+      "tool_calls": 4,
+      "tokens_est": 0,
+      "confidence": 0.75,
+      "tests_total": 0,
+      "tests_failed": 0,
+      "violations": 0,
+      "meta_generated": 0,
+      "meta_applied": 1,
+      "success_patterns": [],
+      "notes": "Cycle 0 bootstrap + ledger integration for business recs"
+    }
+  ],
+  "summary": {
+    "total_cycles": 1,
+    "last_updated": "2026-07-03T00:43:18.696529+00:00"
+  }
+}
