@@ -78,6 +78,21 @@ This is the main mechanism for keeping very long-running loops (10+ cycles) prac
 
 **This document itself should stay relatively short.** Its purpose is to guide future compression work, not to become another source of bloat.
 
+## Selective Memory (P7)
+
+Do not load full history. Use targeted retrieval:
+
+| Need | Source | Load |
+|------|--------|------|
+| Current tasks | `.agent/TODO.md` | Delta only (open items) |
+| Iteration scope | `.agent/PLAN.md` | Active iteration section |
+| Patterns | `memory.playbooks select` | Top k bullets by query |
+| Metrics | `.agent/PERFORMANCE_LEDGER.md` | Last 5 cycles |
+| Resume after crash | `python -m memory.resume --json` | Full output |
+| Trajectory quality | `python -m memory.eval_harness --recent 5` | Scores only |
+
+**Rule:** If resume context + last handoff `context_delta` covers the question, skip full file reads.
+
 ---
 
 ## Long-context model specifics (M2.5+)

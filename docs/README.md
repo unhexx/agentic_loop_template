@@ -13,6 +13,10 @@ Welcome to the Agentix documentation site. This directory is the canonical home 
 | [Metrics & ROI](metrics-roi.md) | Measured cycle performance proof |
 | [Agentix Hub](hub/README.md) | Playbook marketplace foundation |
 | [Pro Tier](pro-tier.md) | Free vs Pro feature matrix |
+| [Enterprise Governance](enterprise-governance.md) | Policy, audit trail, approvals |
+| [Integrations](integrations.md) | GitHub Actions, Linear/Jira, Slack |
+| [Onboarding Wizard](onboarding-wizard.md) | Interactive setup + demo |
+| [Case Study](case-study.md) | Dogfood results (50+ cycles) |
 
 ## Quick Links
 
@@ -22,4 +26,4 @@ Welcome to the Agentix documentation site. This directory is the canonical home 
 
 ## Version
 
-Documentation aligned with **Agentix 3.3.0** (2026-07-03).
+Documentation aligned with **Agentix 3.4.0** (2026-07-03). Business Efficiency Initiative complete.

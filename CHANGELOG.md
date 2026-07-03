@@ -1,27 +1,24 @@
 ## [Unreleased]
 
+## [3.4.0] - 2026-07-03
+
+### Added
+- **P5 Enterprise:** `memory/audit_log.py`, `examples/policy/sample-policy.toml`, `docs/enterprise-governance.md`, `docs/integrations.md`, `.github/workflows/agentix-loop.yml`
+- **P6 DX:** `Agent-Init.sh --wizard`, `scripts/demo-loop.sh`, `docs/onboarding-wizard.md`, stack templates, `.vscode/extensions.json`
+- **P7 Sustain:** `memory/resume.py`, `memory/eval_harness.py`, selective memory in compression guide, `docs/case-study.md`, `examples/case-study/`
+- Tests: `memory/test_p5_p7.py`
+
+### Changed
+- Generalized legacy project paths in `AGENT_ROLES.md` and `DEVELOPMENT_STANDARDS.md`
+- Business Efficiency Initiative marked **COMPLETE** (P0–P7)
+
 ## [3.3.0] - 2026-07-03
 
 ### Added
-- Professional `docs/` site (getting-started, cross-platform, multi-frontend, architecture, metrics-roi, hub, pro-tier)
-- `examples/consumer-starter/` adoption template
-- Agentix Hub foundation: `playbooks list/export/discover` CLI, `HUB_INDEX.json`, `docs/hub/api-schema.json`
-- Pro tier hooks in `project_config.json` (`tier.level`, `feature_flags`)
-- Platform-adaptive bootstrap in all `prompts/short_*.md` and `AGENT_ROLES.md`
-- Cross-platform + multi-frontend quickstart in README and AGENTIC_LOOP_README
-- Proof-driven README section (50+ cycles, ~1.6 min avg, 0.94 confidence)
+- `docs/` site, `examples/consumer-starter/`, Agentix Hub CLI, Pro tier hooks
+- Platform-adaptive prompts, cross-platform quickstart, proof-driven README
 
-### Changed
-- Template version bumped to 3.3.0
-- ROADMAP: P1/P2/P3 marked complete; P5/P6 upcoming
+## 2026-07-03 — Business Efficiency Initiative
 
-### From 3.2.x (Business Efficiency Initiative)
-- P1 Performance ledger integrated and tested (50+ cycle data)
-- P4 Meta harvester + playbooks runtime active
-- P2 `Agent-Init.sh`, cross-platform playbook
-- Hygiene: legacy refs cleaned, public ROADMAP
-
-## 2026-07-03 — Business Efficiency Initiative Launched
-- Initiated full Agentic Loop cycle on the template itself.
-- Created TASK_SPECIFICATION.md, planning artifacts, PERFORMANCE_LEDGER.
-- Completed 50+ loops: measurable efficiency gains demonstrated.
+- 50+ dogfood cycles; measurable gains (ledger ~1.6 min avg, 0.94 confidence)
+- P1–P7 delivered across iterations 1–6

@@ -30,7 +30,7 @@ IMMEDIATE TASKS (in order):
      - Check `git status`, `git branch --show-current`, `git worktree list`.
      - If dirty: `git add` (selective) + commit with natural Russian human developer message (no AI words).
      - `git push origin <current-feature>`.
-     - Perform self-cycle merge --no-ff into main (use `git -C 'C:\_PROJECT\eegent'` or equivalent main clone path to avoid worktree checkout conflicts on main).
+     - Perform self-cycle merge --no-ff into main (use `git -C '<main-clone-path>'` for your project's primary clone to avoid worktree checkout conflicts on main).
      - Sync to all active physical checkouts: run equivalent of scripts/sync-worktree.ps1 in main clone (via -C powershell ...), fetch/pull in other active worktrees (exclude historical .agent/worktrees/P0-* snapshots).
      - Verify: run `git -C <main-path> log --oneline -3` + `git log --oneline -3` + confirm files visible on disk in both. Record exact commits/paths/timestamps.
      - Update .agent/LOOP_STATE.md (last_git_sync) and include full `git_sync_status` in handoff (see HANDOFF_SCHEMA).

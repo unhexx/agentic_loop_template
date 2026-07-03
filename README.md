@@ -10,9 +10,9 @@ Powered by frontier LLMs (MiniMax 2.5 / M2.7 via Blackbox, Cursor, Claude Code, 
 
 ---
 
-## Current Focus: Business Efficiency & Productization (v3.3.0)
+## Current Focus: Business Efficiency Initiative — Complete (v3.4.0)
 
-Agentix is dogfooding its own loop to deliver measurable ROI and adoption readiness.
+All phases P0–P7 delivered. Agentix dogfooded 50+ cycles with measurable ROI.
 
 - **Spec:** [TASK_SPECIFICATION.md](TASK_SPECIFICATION.md)
 - **Plan:** [.agent/PLAN.md](.agent/PLAN.md)
@@ -138,6 +138,9 @@ Reviewer can loop back or approve. All state transferred via strict JSON (`HANDO
 | `docs/` | Documentation site (getting-started, architecture, Hub, Pro tier) |
 | `examples/consumer-starter/` | Adoption template for new consumer projects |
 | `.agent/HUB_INDEX.json` | Agentix Hub discovery index (export via `playbooks export`) |
+| `memory/audit_log.py` | Enterprise audit trail (P5) |
+| `scripts/demo-loop.sh` | One-command demo (P6) |
+| `docs/case-study.md` | Dogfood case study (P7) |
 
 See also `AGENTIC_LOOP_README.md` and [docs/README.md](docs/README.md).
 
@@ -175,7 +178,7 @@ For heavy data or enterprise projects: add dedicated validation roles or data sa
 
 Current unified version incorporates refinements from production usage (expanded tools registry & instructions for rich MCP skillset, improved memory module with structured store/workspace, updated prompts and setup scripts, multi-repo sync discipline, environment separation best practices).
 
-**Template Version: 3.3.0 (metrics, playbooks, cross-platform, Hub foundation, 2026-07) — by exception.expert**
+**Template Version: 3.4.0 (P0–P7 complete: metrics, Hub, enterprise, DX, sustain, 2026-07) — by exception.expert**
 
 ## Contributing & Governance
 

@@ -27,12 +27,21 @@
     "level": "free",
     "feature_flags": {
       "hub_premium": false,
-      "eval_harness": false,
-      "enterprise_governance": false
+      "eval_harness": true,
+      "enterprise_governance": true
     }
+  },
+  "integrations": {
+    "github_actions": { "enabled": true, "workflow": ".github/workflows/agentix-loop.yml" },
+    "issue_tracker": { "provider": "linear", "enabled": false },
+    "slack": { "enabled": false }
   },
   "playbooks": {
     "enabled": true,
     "auto_curate": true
+  },
+  "audit": {
+    "enabled": true,
+    "path": ".agent/AUDIT_LOG.json"
   }
 }
