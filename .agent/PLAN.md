@@ -23,7 +23,7 @@ Advance ONLY tasks from the *last unfinished iteration*. Do not start new phases
 
 **Goal of this iteration:** Establish the loop artifacts for the initiative, implement core scaffolding for performance ledger/metrics (P1), initialize full meta_harvester usage + first eval seeds (P4), perform hygiene cleanup, update docs. Produce measurable first data points.
 
-**Status:** ADVANCED after 20 loops (P1 full, P4 partial harvests + proposals, hygiene started, memory, 20+ performance data points. Efficiency improved: avg elapsed ~3-4min, high confidence. P0-SYNC multiple. See ledger and handoffs. Next: close remaining, plan P2 cross-platform.)
+**Status:** ADVANCED after 30+ loops (P1 full + data showing gains, P4 FULL heuristics + applied proposals for ledger/metrics, more hygiene generalized, P2 started in docs, memory updated). Avg elapsed down to ~2.9, conf 0.91+. See 20_LOOPS_SUMMARY + ledger. Iteration near complete; prepare P2+ next phase.
 
 ### INVEST Tasks for Current Iteration (priority order)
 

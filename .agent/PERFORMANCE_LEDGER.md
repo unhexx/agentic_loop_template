@@ -3,19 +3,19 @@
 Auto-updated by performance_ledger module.
 
 ## Recent Cycles
-- Cycle 0: outcome=META_APPLIED elapsed=0.0m tools=0 conf=0.0 meta_applied=1
-- Cycle 24: outcome=DONE elapsed=4.9m tools=34 conf=0.9 meta_applied=1
-- Cycle 23: outcome=DONE elapsed=4.800000000000001m tools=33 conf=0.9 meta_applied=1
-- Cycle 22: outcome=DONE elapsed=4.7m tools=32 conf=0.9 meta_applied=1
-- Cycle 21: outcome=DONE elapsed=4.6m tools=31 conf=0.9 meta_applied=1
-- Cycle 21: outcome=DONE elapsed=4.3m tools=24 conf=0.87 meta_applied=1
-- Cycle 20: outcome=DONE elapsed=5.2m tools=14 conf=0.84 meta_applied=2
-- Cycle 19: outcome=DONE elapsed=3.5m tools=15 conf=0.94 meta_applied=0
-- Cycle 18: outcome=DONE elapsed=3.6m tools=7 conf=0.86 meta_applied=0
-- Cycle 17: outcome=DONE elapsed=3.1m tools=14 conf=0.82 meta_applied=1
+- Cycle 34: outcome=DONE elapsed=2.8m tools=12 conf=0.93 meta_applied=1
+- Cycle 33: outcome=DONE elapsed=2.9m tools=11 conf=0.92 meta_applied=1
+- Cycle 32: outcome=DONE elapsed=2.9m tools=10 conf=0.91 meta_applied=1
+- Cycle 31: outcome=DONE elapsed=3.0m tools=9 conf=0.9 meta_applied=1
+- Cycle 30: outcome=DONE elapsed=3.0m tools=8 conf=0.89 meta_applied=1
+- Cycle 29: outcome=DONE elapsed=3.0m tools=12 conf=0.98 meta_applied=1
+- Cycle 28: outcome=DONE elapsed=3.1m tools=11 conf=0.97 meta_applied=1
+- Cycle 27: outcome=DONE elapsed=3.1m tools=10 conf=0.96 meta_applied=1
+- Cycle 26: outcome=DONE elapsed=3.2m tools=9 conf=0.95 meta_applied=1
+- Cycle 25: outcome=DONE elapsed=3.2m tools=8 conf=0.9400000000000001 meta_applied=1
 
 ## Summary
-- Total tracked: 29
-- Last updated: 2026-07-03T01:19:00.061031+00:00
+- Total tracked: 39
+- Last updated: 2026-07-03T01:19:37.987585+00:00
 
 See memory/performance_ledger.py and integration in meta_harvester / AGENT_ROLES.
