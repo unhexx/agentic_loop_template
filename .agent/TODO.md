@@ -21,9 +21,22 @@
 **Completion gate for iteration:** All above checked by Reviewer + at least 1 meta proposal applied or documented win + first performance numbers in reports + git verified. Then mark iteration complete and plan next (P1 continuation or P2).
 (After 30+ loops: P1 complete with gains, P4 FULL (heuristics + proposals applied), hygiene more, P2 start, memory. Avg elapsed improved. Iteration near gate. Ready for Reviewer close or P2 phase.)
 
+## Current Iteration Progress (after 30+ loops + 10 more with playbooks)
+
+P4 COMPLETE (heuristics, playbooks core + integration, harvests).
+Hygiene advanced (legacy generalized).
+Playbooks now first-class for full tool/cycle support (select, curate, injection points).
+P2 started: cross-platform docs + notes.
+
+## P2+ Tasks (started in loops, continue)
+
+- [ ] P2-CROSS-01: Add portable path handling and bash equivalents for key scripts (Agent-Init.sh stub, venv activation notes for Linux/Mac).
+- [ ] P2-CROSS-02: Update all prompts/roles to prefer portable commands or note platform specifics. Add playbook scopes for "cross-platform".
+- [ ] P2-DOCS: Expand README and AGENTIC_LOOP_README with cross-platform quickstart, multi-frontend (Claude/Cursor) examples.
+
 ## Future Iterations (DO NOT START YET)
 
-P2 items, full cross platform scripts, adapters etc. will be added by Reviewer after current iteration closes, using meta harvest + ritual decomposition.
+P3 productization, P5 enterprise, etc. after P2. Use meta harvest + ritual decomposition.
 
 ## Notes from Analysis (2026-07-03)
 See full recommendations in previous research output / TASK_SPECIFICATION.md. Prioritize P1 and P4 because they accelerate delivery of all others.
