@@ -121,6 +121,32 @@ At the beginning of every cycle, after running `Agent-Init.ps1`, ensure the curr
 
 **This is one of the most important tools for the long-term self-improvement of the loop.**
 
+## 14. Playbooks and Knowledge Objects (v3.3+)
+
+Шаблон теперь полноценно поддерживает **playbooks** и связанные объекты для работы со **всеми** инструментами и фазами непрерывного цикла разработки (без исключений).
+
+Playbook = структурированная коллекция bullets (стратегии, эвристики, примеры, анти-паттерны) со скорингом эффективности.
+
+**Обязательно:**
+- Перед каждым PLAN или tool ACT — `select_bullets` по релевантным скоупам (tool:*, role:*, phase:*).
+- После REFLECT / цикла — запись usage + `curate_from_reflection`.
+- Все мутации через meta_harvester или Reviewer → естественный русский коммит.
+
+**Другие объекты:**
+- WorkflowBlueprint — полные шаблоны цикла (feature, hotfix, hygiene).
+- ToolProfile — профили инструментов (успех/провал, playbook скоупы).
+- EvalSuite — для self-testing harness'а.
+
+**Интеграция:**
+- Handoff содержит `playbook_refs` и `playbook_deltas`.
+- memory/playbooks.py — основной модуль (следует паттерну questions_collector + meta_harvester).
+- Селектор использует ACE scoring.
+- Самоулучшение: meta + Reviewer + Orchestrator выполняют цикл use → reflect → curate.
+
+См. memory/playbooks.py, HANDOFF_SCHEMA, AGENT_ROLES (playbook duties), PROMPT_COMPRESSION_GUIDE (injection discipline), TASK_SPECIFICATION P4.
+
+Playbooks экспортируемы и являются частью P3 marketplace.
+
 The system stores structured patterns by categories with counters, automatically deduplicates and compacts records. Memory is bound to the workspace ID based on the git remote — it is automatically shared between all clones and worktrees of a single repository and lives in `~/.grok/agentic-loop-memory/`.
 
 **Goal**: the agent starts every cycle with real "institutional memory" of the project and stops repeating the same mistakes over and over.

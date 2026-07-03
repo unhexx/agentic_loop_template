@@ -103,6 +103,16 @@
   // Use memory.performance_ledger.append or equivalent. Enables P1 Metrics/ROI tracking.
   // See PROJECT_CONTEXT_TEMPLATE.md and .agent/PERFORMANCE_LEDGER.md for schema and reports.
 
+  "playbook_refs": [
+    {"scope": "tool:git", "bullet_ids": ["b-0101"], "scores": [0.92]}
+  ],
+  "playbook_deltas": ["updated tool-git with performance marker lesson"],
+  // Playbooks & Knowledge Objects (full cycle support).
+  // Before every ACT/PLAN: select relevant bullets and inject (compressed).
+  // After REFLECT: record usage → curate (Reviewer/meta).
+  // See memory/playbooks.py, DEVELOPMENT_STANDARDS §14, AGENT_ROLES (playbook duties).
+  // Other objects: WorkflowBlueprint, ToolProfile, EvalSuite supported via same module.
+
   "issues_found": [
     {
       "type": "env_setup",
