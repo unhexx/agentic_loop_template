@@ -1,6 +1,6 @@
 # Agentix
 
-[![Version](https://img.shields.io/badge/version-3.4.1-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.5.0-blue.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white)](docs/getting-started.md)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](docs/cross-platform.md)
@@ -229,6 +229,8 @@ python -m memory.playbooks export --format hub
 | Command | Purpose |
 |---------|---------|
 | `bash scripts/demo-loop.sh` | One-command smoke demo |
+| `python -m memory.supervisor run --adapter mock --max-cycles 1 --no-pr` | Unattended role loop (mock CI path); adapters: mock/grok/cursor/blackbox |
+| `scripts/agentix-supervisor run ...` | Bash shim for the same supervisor CLI |
 | `python -m memory.playbooks select --query "..."` | Inject relevant knowledge bullets |
 | `python -m memory.playbooks export --format hub` | Export Hub discovery index |
 | `python -m memory.performance_ledger` | View cycle metrics |
@@ -236,6 +238,8 @@ python -m memory.playbooks export --format hub
 | `python -m memory.audit_log list` | Enterprise audit trail |
 | `python -m memory.resume --json` | Resume after session crash |
 | `python -m memory.eval_harness --recent 5` | Score recent trajectories |
+
+Supervisor drives O→C→T→R turns, validates handoffs, and on `PR_READY` opens a PR via `gh pr create` (never merges to `main`). Use `--no-pr` for local/CI dry runs. Config lives under `supervisor` in `.agent/project_config.json` (see `project_config.example.json`).
 
 Full memory layer docs: [`memory/README.md`](memory/README.md).
 
