@@ -4,6 +4,8 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
+import subprocess
 import sys
 from enum import Enum
 from pathlib import Path
@@ -188,8 +190,45 @@ def build_role_prompt(
 
 
 def maybe_create_pr(workdir: Path, sup: dict) -> Terminal:
-    """Stub: real ``gh pr create`` lands in Task 5."""
-    return Terminal.PR_READY
+    """
+    Open a PR with ``gh pr create`` (never merge to main).
+
+    Returns PR_READY on success, PR_READY_LOCAL if gh is missing or create fails.
+    """
+    pr = (sup or {}).get("pr") or {}
+    if not isinstance(pr, dict):
+        pr = {}
+    base = pr.get("base") or "main"
+    title = f"{pr.get('title_prefix') or 'agentix:'} unattended cycle"
+    body = (
+        "Opened by Agentix supervisor 3.5. "
+        "Human: merge to main only after review."
+    )
+    if not shutil.which("gh"):
+        return Terminal.PR_READY_LOCAL
+    draft = ["--draft"] if pr.get("draft") else []
+    cmd = [
+        "gh",
+        "pr",
+        "create",
+        "--base",
+        str(base),
+        "--title",
+        title,
+        "--body",
+        body,
+        *draft,
+    ]
+    # Never: gh pr merge
+    r = subprocess.run(
+        cmd,
+        cwd=str(workdir),
+        capture_output=True,
+        text=True,
+    )
+    if r.returncode == 0:
+        return Terminal.PR_READY
+    return Terminal.PR_READY_LOCAL
 
 
 def _exit_code_for(term: Terminal) -> int:
