@@ -63,5 +63,31 @@
       },
       "parallel": true
     }
+  },
+  "supervisor": {
+    "adapter": "mock",
+    "max_cycles": 5,
+    "max_role_retries": 2,
+    "role_timeout_s": 900,
+    "pr": {
+      "base": "main",
+      "draft": false,
+      "title_prefix": "agentix:"
+    },
+    "adapters": {
+      "grok": {
+        "command": "grok"
+      },
+      "cursor": {
+        "command": null
+      },
+      "blackbox": {
+        "command": null
+      }
+    },
+    "block_process_tags": [
+      "secrets_exposure",
+      "destructive_prod"
+    ]
   }
 }

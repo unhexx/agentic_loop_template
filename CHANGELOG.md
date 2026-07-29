@@ -2,10 +2,20 @@
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-07-29
+
+### Added (Agentix Supervisor — multi-frontend autonomy)
+- Supervisor CLI: `python -m memory.supervisor` / `python -m memory supervisor` / `scripts/agentix-supervisor`
+  - subcommands: `run`, `resume`, `status`, `stop`
+- FSM role transitions: Orchestrator → Coder → Tester → (Debugger) → Reviewer → `PR_READY`
+- Mock adapter full cycle path for CI (`--adapter mock`, ≥3 cycles without network)
+- Multi-frontend adapters: `mock`, `grok`, `cursor`, `blackbox` under `memory/adapters/`
+- PR gate: `gh pr create` only (never merge to main); fallback `PR_READY_LOCAL`
+- Config: `supervisor` section in `.agent/project_config.example.json`
+
 ### Changed
-- Documentation overhaul: README with badges, TOC, mermaid diagrams, cycle examples
-- docs/ index with learning paths; getting-started with session examples
-- AGENTIC_LOOP_README streamlined as operations guide
+- `VERSION` → 3.5.0
+- README CLI table: supervisor entry
 
 ## [3.4.1] - 2026-07-29
 
