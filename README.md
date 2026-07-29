@@ -1,55 +1,69 @@
 # Agentix
 
-![exception.expert Logo](exception-expert-logo.jpg)
+[![Version](https://img.shields.io/badge/version-3.4.1-blue.svg)](CHANGELOG.md)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white)](docs/getting-started.md)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](docs/cross-platform.md)
+[![Docs](https://img.shields.io/badge/docs-available-brightgreen)](docs/README.md)
+[![Maintained](https://img.shields.io/badge/maintained-yes-success)](https://github.com/unhexx/agentic_loop_template)
 
-**Agentic Loop Template by exception.expert**
+**Production-grade, self-improving multi-role agentic development loop.**
 
-**A production-grade, self-contained template for closed-loop, self-improving multi-role agentic development cycles.**
+Plan → implement → test → debug → review in a closed loop until the Reviewer confirms **DONE**. Every cycle compounds knowledge via memory, playbooks, and meta-optimization.
 
-Powered by frontier LLMs (MiniMax 2.5 / M2.7 via Blackbox, or compatible agents). Optimized for complex, long-running software projects requiring autonomy, consistency, safety, and continuous self-improvement.
+Maintained by [exception.expert](https://exception.expert).
 
 ---
 
-## 🚀 Value for End Users (Developers & Teams)
+## Table of Contents
 
-This template transforms how you build and maintain sophisticated software systems:
-
-- **10x Productivity Boost for Complex Tasks**: The structured **Orchestrator → Coder → Tester → Debugger → Reviewer** loop allows the LLM to iteratively plan, implement, test, debug, and validate changes until the Reviewer confirms completion. No more one-shot prompts or lost context.
-
-- **Self-Improving & Knowledge Retention**: Every cycle crystallizes lessons, decisions, and questions into persistent memory (`PROJECT_CONTEXT.md`, `SPRINTPLAN.md`, questions pool, meta-harvester). The system gets smarter over time without manual intervention.
-
-- **Reliable & Deterministic Execution**: Strict JSON handoff schemas (`HANDOFF_SCHEMA.md`), typed Python memory layer, robust error handling, and logging. Works reliably in non-interactive environments (Blackbox spawning fresh PowerShell sessions).
-
-- **Real-World Tool Access via MCP**: Extensible tool registry integrates with Model Context Protocol skills for:
-  - Shell & file operations
-  - Windows GUI automation & vision grounding (e.g., Florence-2 / LocateAnything-style)
-  - Remote SSH / fleet management
-  - Policy-aware safe execution & sandboxing (Firecracker, Windows JobObject)
-  - Analytics, RAG feedback, skill marketplace
-  - And custom skills you develop
-
-- **Safety & Isolation First**: Built-in support for strong isolation, policy engines (TOML), audit logging via CommandLog, and human-in-the-loop approvals where needed. Perfect for enterprise or sensitive environments.
-
-- **Multi-Project & Team Ready**: Designed for reuse across multiple repositories. Universal template lives here; project-specific configs, envs, and artifacts stay in consumer repos (via `.gitignore` discipline). Multi-repo git sync rules ensure changes to standards/prompts propagate instantly.
-
-- **Best-in-Class Developer Experience**: One-command setup (`Agent-Init.ps1`), detailed guides, Russian natural-language commit messages (human senior dev voice, no AI mentions), prompt compression for long-context models, and alignment with modern agentic architectures.
-
-**Ideal for**: Solo developers or small teams working on large codebases, infrastructure, desktop apps (WinGUI), backend services, or AI/agent platforms who want to leverage frontier models for autonomous, high-quality development velocity while maintaining full control and auditability.
+- [Quick Start](#quick-start)
+- [How It Works](#how-it-works)
+- [Example: One Full Cycle](#example-one-full-cycle)
+- [CLI Tools](#cli-tools)
+- [Features](#features)
+- [Documentation](#documentation)
+- [Project Structure](#project-structure)
+- [Measured Results](#measured-results)
+- [Adaptation](#adaptation-for-your-project)
+- [Contributing](#contributing)
 
 ---
 
 ## Quick Start
 
-### Linux / macOS (recommended host path, Grok CLI friendly)
+### Prerequisites
 
-```bash
-cd /path/to/project   # or this template repo
-./Agent-Init.sh       # or ./agentic_loop_template/Agent-Init.sh in consumers
-# opens .agent/starter_prompt_grok.txt — paste into Grok/Cursor or:
-#   grok -p "$(cat .agent/starter_prompt_grok.txt)" --cwd .
+| Requirement | Version |
+|-------------|---------|
+| Python | 3.10+ |
+| Git | any recent |
+| Agent frontend | [Cursor](docs/multi-frontend.md), Claude Code, Blackbox, or compatible |
+
+### 1. Bootstrap (choose your platform)
+
+<details>
+<summary><strong>Windows (PowerShell)</strong></summary>
+
+```powershell
+git clone https://github.com/unhexx/agentic_loop_template.git
+cd agentic_loop_template
+.\Agent-Init.ps1
 ```
 
-Cold-start for every cycle (do not load full `.agent` dumps):
+</details>
+
+<details>
+<summary><strong>Linux / macOS (bash)</strong></summary>
+
+```bash
+git clone https://github.com/unhexx/agentic_loop_template.git
+cd agentic_loop_template
+bash Agent-Init.sh --wizard    # interactive setup
+source .venv/bin/activate
+```
+
+Cold-start every cycle (do **not** load multi-MB `.agent` dumps):
 
 ```bash
 python -m memory state snapshot --window 3
@@ -57,126 +71,267 @@ python -m memory query --top 5 --category "Common Failure Patterns"
 python tools/select.py --intent bootstrap
 ```
 
-See `docs/TOP10_IMPROVEMENTS.md` and `VERSION` (3.3.0+ harness hardening).
+See [`docs/TOP10_IMPROVEMENTS.md`](docs/TOP10_IMPROVEMENTS.md) (harness efficiency) and [`VERSION`](VERSION).
 
-### Windows + Blackbox (legacy path)
 
-1. **Prepare Environment** (one-time per project):
-   ```powershell
-   cd C:\Path\To\Your\Project
-   .\agentic_loop_template\Agent-Init.ps1
-   ```
-   This creates `.venv`, installs deps, sets up PowerShell enhancements, and generates a ready-to-use starter prompt.
+</details>
 
-2. **Configure Your AI Agent (Blackbox / VS Code)**:
-   - Model: MiniMax 2.5 (or highest quality available)
-   - Add Custom Instructions from `Agent-Init.md` (includes core rules, commit style, loop discipline).
+### 2. Verify with one-command demo
 
-3. **Launch the Loop**:
-   Paste the generated prompt (or content of `first_message.md` / short orchestrator prompt) as your first message to the LLM.
-   The agent starts as Orchestrator, creates/updates context files, and begins the cycle.
+```bash
+bash scripts/demo-loop.sh
+```
 
-See `Agent-Init.md` for full Blackbox launch guide, recommended settings, and troubleshooting.
+Expected output (abbreviated):
 
-**Important for Consumer Projects**:
-- Add `agentic_loop_template/` (and any generated cycle artifacts like `PROJECT_CONTEXT.md`, handoff JSONs, logs) to your project's `.gitignore`.
-- Keep your project-specific parameters in separate files: `.env.agentic`, `.env.blackbox`, `config/agentic.env`, etc.
-- This template repo is the single source of truth for the universal parts.
+```
+=== Agentix Demo Loop ===
+Initializing Agentix env (cross-platform)...
+--- Seeding playbooks ---
+Seeded 5 playbooks
+--- Plan check ---
+PLAN + SPEC: OK
+--- Hub export ---
+{"exported": ".agent/HUB_INDEX.json", "item_count": 5}
+=== Demo complete. Start agent with prompts/short_orchestrator_prompt.md ===
+```
+
+### 3. Launch the agent loop
+
+1. Open your project in **Cursor**, **Claude Code**, or **Blackbox**.
+2. Paste the contents of [`prompts/short_orchestrator_prompt.md`](prompts/short_orchestrator_prompt.md) as the **first message**.
+3. The agent starts as **Orchestrator**, reads `.agent/PLAN.md`, and begins the cycle.
+
+> **New consumer project?** Copy [`examples/consumer-starter/`](examples/consumer-starter/) into your repo first.
 
 ---
 
-## How the Agentic Loop Works
+## How It Works
 
+### Sprint loop (roles)
+
+```mermaid
+flowchart LR
+    O[Orchestrator] --> C[Coder]
+    C --> T[Tester]
+    T --> D[Debugger]
+    D --> R[Reviewer]
+    R -->|NOT DONE| O
+    R -->|DONE| Done[Task complete + lessons saved]
 ```
-External Sprint Loop
-┌─────────────────────────────────────────────────────────────┐
-│  Orchestrator → Coder → Tester → Debugger → Reviewer          │
-│       ↑ (if NOT DONE)                                         │
-│       └─────────────────────────────── back to Orchestrator   │
-│  DONE → Task Complete + Lessons Crystallized                  │
-└─────────────────────────────────────────────────────────────┘
+
+Each role runs an inner loop: **PLAN → ACT (≤3 tool calls) → REFLECT → handoff JSON**.
+
+### State transfer
+
+All context moves through strict JSON handoffs ([`HANDOFF_SCHEMA.md`](HANDOFF_SCHEMA.md)). No prose after the closing `}`.
+
+### Self-improvement stack
+
+```mermaid
+flowchart TB
+    subgraph cycle [Each Cycle]
+        H[Handoff JSON]
+        R[Reviewer]
+    end
+    H --> R
+    R --> L[Performance Ledger]
+    R --> M[Meta Harvester]
+    R --> P[Playbooks Curate]
+    R --> Q[Questions Pool]
+    P --> Hub[Agentix Hub Export]
 ```
-
-Inside each role: **PLAN → ACT (max 3 tool calls) → REFLECT → repeat** until handoff.
-
-Reviewer can loop back or approve. All state transferred via strict JSON (`HANDOFF_SCHEMA.md`).
-
-## Key Files & Their Purpose
-
-| File | Purpose |
-|------|---------|
-| `README.md` | This overview (best practices, value, quick start) |
-| `SYSTEM_PROMPT.md` | Master system prompt with {{placeholders}} for project customization. Tuned for MiniMax 2.5 roles and settings. |
-| `AGENT_ROLES.md` | Detailed per-role instructions, including prompt compression, git sync discipline (§11), reviewer closure rules. |
-| `HANDOFF_SCHEMA.md` | JSON contract for reliable role-to-role and session-to-session state transfer (includes git_sync_status, clarification_questions, etc.). |
-| `DEVELOPMENT_STANDARDS.md` | Coding standards, commit rules (Russian human voice), multi-repo discipline, evidence markers, INVEST task principles. |
-| `TOOLS_REGISTRY.md` | Catalog of available tools for the local runner / MCP integration. Core + extensible via skills. |
-| `TOOLS_INSTRUCTIONS.md` | Usage instructions and examples for tools. |
-| `PROJECT_CONTEXT_TEMPLATE.md` | Template for the living project memory/context file. |
-| `PROMPT_COMPRESSION_GUIDE.md` | Techniques for handling long context in M2.5/M2.7 (critical for complex projects). |
-| `Agent-Init.sh` / `Agent-Init.ps1` / `Agent-Init.md` | Cross-platform bootstrap (Linux first + Windows). |
-| `tools/` | Progressive tool blocks + `select.py` (OS/intent matrix). |
-| `scripts/` | `preflight_git.sh`, `sync-worktree.sh`, `agentic_loop.sh`, consumer sync. |
-| `schemas/handoff.schema.json` | Machine-validated handoff contract. |
-| `PARALLEL_PROTOCOL.md` | Multi-stream / worktree ownership rules. |
-| `setup_env_template.ps1` | Environment bootstrap (venv, deps, PowerShell modules). |
-| `memory/` | Structured memory: store, state, questions, meta harvester, experience, context budget. |
-| `prompts/` | Short role prompts (orchestrator updated for v3.3). |
-| `docs/` | Multi-project analysis + top-10 improvements + metrics. |
-
-See also `AGENTIC_LOOP_README.md` for additional context details.
-
-## Configuration & Multi-Repo Best Practices
-
-- **Environment Separation**: Never commit secrets or project-specific settings to this template repo or consumer repos' shared history. Use ignored `.env.*` files.
-- **Git Discipline (Critical)**: When making changes to the template (prompts, standards, scripts), the Reviewer must output full closure commands covering **all** local clones + remotes of **both** the template repo and all consumer projects. Use sync scripts where available. This ensures instant propagation of improvements.
-- **GitHub Operations**: After rollout, prefer `gh` CLI verified commands from TOOLS_REGISTRY for any github remote interactions (auth, PRs, etc.). Raw `git` for non-GitHub remotes only.
-- **.gitignore in Consumers**: Explicitly ignore the template folder and cycle outputs in product repos to keep histories clean.
-
-## Adaptation to Your Project
-
-1. Copy `agentic_loop_template/` into your repo root (or reference via worktree/sync from dedicated clone).
-2. Fill all `{{...}}` placeholders in `SYSTEM_PROMPT.md` (project name, paths, primary goals, tech stack).
-3. Create `TASK_SPECIFICATION.md` or equivalent with clear, testable requirements.
-4. Run `./Agent-Init.sh` (Linux) or `Agent-Init.ps1` (Windows).
-5. Prefer `python tools/select.py --intent …` over pasting full tool monologues; sync consumers via `scripts/sync_template_from_ssot.sh`.
-
-For heavy data or enterprise projects: add dedicated validation roles or data sanity checks as needed.
-
-## Technical Highlights
-
-- **Memory Layer**: Python package with schema validation, persistent store, questions pool, meta-optimization. Supports simulation testing and real cross-session continuity.
-- **Prompt Engineering**: Role-specific temperatures/top-p, compression guide, short vs full orchestrator prompts.
-- **Extensibility**: MCP skills system (examples for agent execution, vision grounding, Windows GUI, integrations ready patterns).
-- **Verification**: Smoke tests, GUI integration tests, remote E2E, policy tests included in ecosystem.
-
-## Limitations & Recommendations
-
-- Primary path: Linux + bash + Grok/Cursor. Windows + PowerShell + Blackbox still supported via `Agent-Init.ps1`.
-- Max recommended 3-4 full cycles before architecture review to avoid context bloat (use compression & memory).
-- For very large monorepos: combine with dedicated sub-agents or LangGraph-style orchestration seeds.
-
-## Version & Evolution
-
-Current unified version incorporates refinements from production usage (expanded tools registry & instructions for rich MCP skillset, improved memory module with structured store/workspace, updated prompts and setup scripts, multi-repo sync discipline, environment separation best practices).
-
-**Template Version: 3.2+ (unified, production-hardened, MCP/vision/isolation ready, 2026-06) — by exception.expert**
-
-## Contributing & Governance
-
-- All changes must be backward-compatible or clearly documented.
-- Commit messages in natural Russian (human mid/senior developer voice). Never mention AI/LLM/model names.
-- Follow `DEVELOPMENT_STANDARDS.md` §11 self-cycle rules and multi-repo discipline.
-- Issues/PRs welcome in this repo for template improvements.
-
-## Related Projects
-
-This template is the foundation for agentic development workflows in projects maintained by **exception.expert**.
 
 ---
 
-**License**: MIT (or project default)
+## Example: One Full Cycle
 
-**Maintained with ❤️ for reliable autonomous development by exception.expert.**
+Below is a realistic mini-cycle: Orchestrator plans, Coder implements, Reviewer closes.
 
-For questions or customization support, open an issue or refer to the detailed docs in the repo.
+### Step 1 — Orchestrator plans
+
+The agent reads the plan and picks the next INVEST task:
+
+```bash
+# Orchestrator consults playbooks before planning
+python -m memory.playbooks select --query "git sync planning" --scopes "global,tool:git" --k 3
+```
+
+**Handoff excerpt** (Orchestrator → Coder):
+
+```json
+{
+  "handoff_to": "Coder",
+  "role": "Orchestrator",
+  "current_phase": "planning",
+  "summary": "Выбрал задачу P3-HUB-01: добавить export в playbooks. Git sync verified.",
+  "next_input_files": ["TASK_SPECIFICATION.md", ".agent/TODO.md"],
+  "git_sync_status": { "verified": true, "feature_pushed": true },
+  "confidence": 0.92,
+  "status": "IN_PROGRESS"
+}
+```
+
+### Step 2 — Coder implements
+
+```bash
+# Coder runs tests after changes
+source .venv/bin/activate
+python -m memory.playbooks export --format hub
+```
+
+**Commit message** (natural Russian, human voice):
+
+```
+Добавил export hub index в playbooks и тест на валидность JSON
+```
+
+### Step 3 — Tester → Debugger → Reviewer
+
+| Role | Action |
+|------|--------|
+| **Tester** | Runs `python -m memory.test_playbooks_hub`, reports coverage |
+| **Debugger** | Fixes failures if any |
+| **Reviewer** | Compares result to spec, updates ledger, harvests meta |
+
+**Reviewer closes the cycle:**
+
+```json
+{
+  "handoff_to": "None",
+  "role": "Reviewer",
+  "status": "DONE",
+  "performance": {
+    "cycle": 42,
+    "elapsed_minutes": 1.6,
+    "confidence": 0.94,
+    "tests_failed": 0,
+    "meta_applied": 1
+  },
+  "memory_updated": true,
+  "patterns_merged": 2
+}
+```
+
+### What gets updated automatically
+
+| Artifact | Updated by |
+|----------|------------|
+| `.agent/PERFORMANCE_LEDGER.md` | Reviewer / meta_harvester |
+| `.agent/PLAYBOOKS.json` | playbooks curate |
+| `.agent/META_PROPOSALS.md` | meta_harvester |
+| `PROJECT_CONTEXT.md` | Orchestrator + Reviewer |
+
+---
+
+## CLI Tools
+
+| Command | Purpose |
+|---------|---------|
+| `bash scripts/demo-loop.sh` | One-command smoke demo |
+| `python -m memory.playbooks select --query "..."` | Inject relevant knowledge bullets |
+| `python -m memory.playbooks export --format hub` | Export Hub discovery index |
+| `python -m memory.performance_ledger` | View cycle metrics |
+| `python -m memory.meta_harvester harvest --handoff ...` | Capture golden trajectories |
+| `python -m memory.audit_log list` | Enterprise audit trail |
+| `python -m memory.resume --json` | Resume after session crash |
+| `python -m memory.eval_harness --recent 5` | Score recent trajectories |
+
+Full memory layer docs: [`memory/README.md`](memory/README.md).
+
+---
+
+## Features
+
+| Category | Capability |
+|----------|------------|
+| **Loop discipline** | 5 roles, JSON handoffs, INVEST tasks, git §11 sync |
+| **Self-improvement** | Playbooks (ACE scoring), meta-harvester, performance ledger |
+| **Cross-platform** | `Agent-Init.ps1` + `Agent-Init.sh`, platform-adaptive prompts |
+| **Multi-frontend** | Cursor, Claude Code, Blackbox adapters |
+| **Productization** | `docs/` site, consumer-starter, Agentix Hub |
+| **Enterprise** | Audit log, policy samples, GitHub Actions trigger |
+| **DX** | Onboarding wizard, stack templates, VS Code extension recommendations |
+| **MCP** | Extensible tool registry for shell, GUI, vision, fleet, integrations |
+
+---
+
+## Documentation
+
+| Guide | Description |
+|-------|-------------|
+| [docs/getting-started.md](docs/getting-started.md) | 5-minute bootstrap |
+| [docs/architecture.md](docs/architecture.md) | Roles, handoffs, memory |
+| [docs/multi-frontend.md](docs/multi-frontend.md) | Cursor / Claude / Blackbox |
+| [docs/metrics-roi.md](docs/metrics-roi.md) | Proof from 50+ dogfood cycles |
+| [docs/hub/README.md](docs/hub/README.md) | Playbook marketplace |
+| [docs/enterprise-governance.md](docs/enterprise-governance.md) | Policy + audit |
+| [docs/case-study.md](docs/case-study.md) | Dogfood case study |
+| [AGENT_ROLES.md](AGENT_ROLES.md) | Per-role instructions |
+| [HANDOFF_SCHEMA.md](HANDOFF_SCHEMA.md) | JSON contract |
+| [DEVELOPMENT_STANDARDS.md](DEVELOPMENT_STANDARDS.md) | Process constitution |
+
+Full index: [**docs/README.md**](docs/README.md)
+
+---
+
+## Project Structure
+
+```
+agentic_loop_template/
+├── README.md                 # You are here
+├── docs/                     # Documentation site
+├── examples/
+│   ├── consumer-starter/     # Adoption template
+│   ├── stack-templates/      # Python API, static docs
+│   └── case-study/           # Sanitized trajectory
+├── memory/                   # Ledger, playbooks, meta, audit, resume
+├── prompts/                  # Short role prompts (start here)
+├── scripts/demo-loop.sh      # One-command demo
+├── .agent/                   # PLAN, TODO, ledger, playbooks, hub index
+├── Agent-Init.ps1 / .sh      # Bootstrap scripts
+├── SYSTEM_PROMPT.md          # Master prompt (fill {{placeholders}})
+├── AGENT_ROLES.md            # Role blocks
+└── HANDOFF_SCHEMA.md         # Handoff contract
+```
+
+---
+
+## Measured Results
+
+Dogfooded on this repo over **50+ cycles** (Business Efficiency Initiative, v3.4.0):
+
+| Metric | Value |
+|--------|-------|
+| Avg cycle elapsed (recent) | ~1.6 min |
+| Avg confidence | 0.94 |
+| Tests failed (recent band) | 0 |
+| Meta/playbook improvements | Applied each qualifying cycle |
+
+Source: [`.agent/PERFORMANCE_LEDGER.md`](.agent/PERFORMANCE_LEDGER.md) · [docs/metrics-roi.md](docs/metrics-roi.md)
+
+---
+
+## Adaptation for Your Project
+
+1. Copy this template into your repo (or use [`examples/consumer-starter/`](examples/consumer-starter/)).
+2. Fill `{{placeholders}}` in [`SYSTEM_PROMPT.md`](SYSTEM_PROMPT.md).
+3. Create [`TASK_SPECIFICATION.md`](TASK_SPECIFICATION.md) with testable requirements.
+4. Run bootstrap (`Agent-Init.ps1` or `Agent-Init.sh --wizard`).
+5. Add `agentic_loop_template/` and cycle artifacts to `.gitignore` in consumer repos.
+6. Customize [`TOOLS_REGISTRY.md`](TOOLS_REGISTRY.md) for your MCP skills.
+
+---
+
+## Contributing
+
+- Follow [`DEVELOPMENT_STANDARDS.md`](DEVELOPMENT_STANDARDS.md) (INVEST tasks, git §11, UTF-8).
+- Commit messages: natural Russian, human senior-dev voice.
+- Changes must be backward-compatible or documented in [`CHANGELOG.md`](CHANGELOG.md).
+- [Open an issue](https://github.com/unhexx/agentic_loop_template/issues) or PR on GitHub.
+
+---
+
+## License
+
+[MIT](LICENSE) · **Agentix 3.4.0** · Maintained by **exception.expert**

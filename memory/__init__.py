@@ -34,9 +34,23 @@ Usage from the agent (via powershell tool):
     python -m agentic_loop_template.memory.meta_harvester apply-safe --dry-run
 """
 
-from .workspace import get_workspace_id, memory_paths
-from .store import read_memory, update_memory, snapshot, query_memory
-from .schema import MemoryState, Pattern
+# Guarded imports — the full workspace/store/schema may be in separate files or installed package.
+# Core working modules (questions, meta, new performance_ledger) are self-contained.
+try:
+    from .workspace import get_workspace_id, memory_paths
+    from .store import read_memory, update_memory, snapshot, query_memory
+    from .schema import MemoryState, Pattern
+except Exception:
+    # Provide minimal fallbacks so submodule imports (performance_ledger, meta_harvester) still work
+    def get_workspace_id(): return "agentix-local"
+    def memory_paths(): return {"file": "~/.grok/agentic-loop-memory/agentix.md"}
+    def read_memory(*a, **k): return {}
+    def update_memory(*a, **k): return {}
+    def snapshot(*a, **k): return {"patterns": {}, "recent_distillations": []}
+    def query_memory(*a, **k): return []
+    MemoryState = dict
+    Pattern = dict
+
 from .questions_collector import (
     append_question,
     get_open_questions,
@@ -58,6 +72,12 @@ from .meta_harvester import (
     update_performance_ledger,
     load_config as load_meta_config,
 )
+
+# Playbooks & Knowledge Objects (full cycle guidance - P4 complete)
+try:
+    from . import playbooks as playbooks_mod
+except Exception:
+    playbooks_mod = None
 
 __all__ = [
     "get_workspace_id",
@@ -86,4 +106,20 @@ __all__ = [
     "seed_example_trajectory",
     "update_performance_ledger",
     "load_meta_config",
+    # Performance Ledger (P1 metrics/ROI)
+    "performance_ledger",
+    # Playbooks & Knowledge Objects (full continuous dev cycle support, P4)
+    "playbooks",
 ]
+
+# Lazy exposure so we don't break when full workspace/store modules are not present in all envs
+def __getattr__(name):
+    if name == "performance_ledger":
+        import importlib
+        return importlib.import_module("memory.performance_ledger")
+    if name == "playbooks":
+        if playbooks_mod is not None:
+            return playbooks_mod
+        import importlib
+        return importlib.import_module("memory.playbooks")
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

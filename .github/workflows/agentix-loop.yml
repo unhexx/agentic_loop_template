@@ -1,0 +1,55 @@
+name: Agentix Loop Trigger
+
+on:
+  workflow_dispatch:
+    inputs:
+      cycle_goal:
+        description: "INVEST task or phase to advance"
+        required: true
+        default: "advance-plan"
+  schedule:
+    - cron: "0 8 * * 1"
+
+jobs:
+  loop-prep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Bootstrap environment
+        run: |
+          bash Agent-Init.sh
+          source .venv/bin/activate
+          python -m memory.playbooks seed --from-standards
+
+      - name: Verify loop artifacts
+        run: |
+          source .venv/bin/activate
+          test -f .agent/PLAN.md
+          test -f TASK_SPECIFICATION.md
+          python -m memory.test_performance_ledger
+          python -m memory.test_playbooks_hub
+
+      - name: Export Hub index
+        run: |
+          source .venv/bin/activate
+          python -m memory.playbooks export --format hub
+
+      - name: Record audit entry
+        run: |
+          source .venv/bin/activate
+          python -m memory.audit_log append \
+            --action "github_actions_loop_trigger" \
+            --role "ci" \
+            --cycle 0 \
+            --details "{\"goal\":\"${{ github.event.inputs.cycle_goal || 'scheduled' }}\"}"
+
+      - name: Summary
+        run: |
+          echo "Agentix loop prep complete. Trigger your agent frontend with first_orchestrator_message.md"
+          echo "Goal: ${{ github.event.inputs.cycle_goal || 'scheduled-weekly' }}"

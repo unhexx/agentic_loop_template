@@ -1,6 +1,6 @@
-﻿# Short Starting Prompt — Blackbox + MiniMax M2.5 (eeagent)
+﻿# Short Starting Prompt — Blackbox + MiniMax M2.5 (your-consumer-project)
 
-**Project:** eeagent  
+**Project:** your-consumer-project  
 **Model:** MiniMax M2.5 (Blackbox)  
 **Orchestrator Temperature:** 0.0
 
@@ -8,7 +8,7 @@
 
 ## Current Project State
 
-We are building **eeagent** — a vendor-independent self-hosted MCP gateway for controlling Windows and Linux machines.
+We are building **your-consumer-project** — a vendor-independent self-hosted MCP gateway for controlling Windows and Linux machines.
 
 **What has already been done (May 2026):**
 

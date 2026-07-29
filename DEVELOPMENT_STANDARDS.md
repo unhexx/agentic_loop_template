@@ -130,6 +130,32 @@ At the beginning of every cycle, after running `Agent-Init.ps1`, ensure the curr
 
 **This is one of the most important tools for the long-term self-improvement of the loop.**
 
+## 14. Playbooks and Knowledge Objects (v3.3+)
+
+Шаблон теперь полноценно поддерживает **playbooks** и связанные объекты для работы со **всеми** инструментами и фазами непрерывного цикла разработки (без исключений).
+
+Playbook = структурированная коллекция bullets (стратегии, эвристики, примеры, анти-паттерны) со скорингом эффективности.
+
+**Обязательно:**
+- Перед каждым PLAN или tool ACT — `select_bullets` по релевантным скоупам (tool:*, role:*, phase:*).
+- После REFLECT / цикла — запись usage + `curate_from_reflection`.
+- Все мутации через meta_harvester или Reviewer → естественный русский коммит.
+
+**Другие объекты:**
+- WorkflowBlueprint — полные шаблоны цикла (feature, hotfix, hygiene).
+- ToolProfile — профили инструментов (успех/провал, playbook скоупы).
+- EvalSuite — для self-testing harness'а.
+
+**Интеграция:**
+- Handoff содержит `playbook_refs` и `playbook_deltas`.
+- memory/playbooks.py — основной модуль (следует паттерну questions_collector + meta_harvester).
+- Селектор использует ACE scoring.
+- Самоулучшение: meta + Reviewer + Orchestrator выполняют цикл use → reflect → curate.
+
+См. memory/playbooks.py, HANDOFF_SCHEMA, AGENT_ROLES (playbook duties), PROMPT_COMPRESSION_GUIDE (injection discipline), TASK_SPECIFICATION P4.
+
+Playbooks экспортируемы и являются частью P3 marketplace. Premium scopes (`hub:premium:*`) gated via `tier.feature_flags.hub_premium` in `.agent/project_config.json`.
+
 The system stores structured patterns by categories with counters, automatically deduplicates and compacts records. Memory is bound to the workspace ID based on the git remote — it is automatically shared between all clones and worktrees of a single repository and lives in `~/.grok/agentic-loop-memory/`.
 
 **Goal**: the agent starts every cycle with real "institutional memory" of the project and stops repeating the same mistakes over and over.
@@ -254,7 +280,7 @@ Full examples and question templates are in PROJECT_CONTEXT_TEMPLATE.md (Clarifi
 **Critical for working with multiple checkouts and parallel flows.**
 
 The project simultaneously has:
-- The user's main clone (usually `C:\_PROJECT\eegent` or `X:\LocalRepo\eeagent`) — the "primary" repository where normal work, file viewing, and manual test runs happen.
+- The user's main clone (usually `C:\_PROJECT\your-consumer-project` or `X:\LocalRepo\consumer-project`) — the "primary" repository where normal work, file viewing, and manual test runs happen.
 - The agent's current worktree (where the loop executes, e.g. `C:\Users\ROOT\.grok\worktrees\...`).
 - Additional worktrees (in `.agent/worktrees/` — mainly historical P0-simulation snapshots, do not touch them).
 
@@ -276,14 +302,14 @@ Only after successful synchronization and recording — can you proceed to memor
    - `git commit -m "Natural Russian message from a developer..."` (no words about AI/loop).
    - `git push origin <current-feature-branch>`.
 2. Self-cycle merge into main:
-   - Use `git -C 'C:\_PROJECT\eegent'` (or the actual path of the main clone) for commands in the other checkout to bypass the git worktree limitation (one branch — one active checkout).
+   - Use `git -C '<main-clone-path>'` (your project's primary clone) for commands in the other checkout to bypass the git worktree limitation (one branch — one active checkout).
    - In the main clone: fetch, if necessary commit/stash local dirty files, `git merge origin/<feature> --no-ff -m "Merge ... (Russian description)"`.
    - `git push origin main`.
 3. Synchronization to the main clone:
-   - Execute the equivalent of `.\scripts\sync-worktree.ps1` in the main clone (via `git -C 'C:\_PROJECT\eegent' powershell -ExecutionPolicy Bypass -File .\scripts\sync-worktree.ps1` or direct git fetch/checkout main/pull).
+   - Execute the equivalent of `.\scripts\sync-worktree.ps1` in the main clone (via `git -C '<main-clone-path>' powershell -ExecutionPolicy Bypass -File .\scripts\sync-worktree.ps1` or direct git fetch/checkout main/pull).
    - For active worktrees (from `git worktree list`, excluding historical .agent/worktrees/P0-*) — if necessary `git -C <path> fetch && git -C <path> pull --ff-only` or switch.
 4. Verification (minimum 2 clones):
-   - `git -C 'C:\_PROJECT\eegent' log --oneline -3`
+   - `git -C '<main-clone-path>' log --oneline -3`
    - `git log --oneline -3`
    - Make sure the last commit is visible in both, files on disk are updated (cat or ls).
 5. Record the result:
@@ -407,4 +433,4 @@ When in doubt, re-read this file. The Reviewer will hold all roles accountable t
 
 **Reviewer несёт личную ответственность** за выполнение ритуалов на cadence и качество их выходов (narrowness, clarity, risk awareness, lessons alignment, loop usefulness — по self-scoring ритуалов).
 
-**Current eeagent architecture context (2026-06, for all loops)**: MCP Layer (MCPBaseSkill + registry + AgentExecutionSkill with real TaskService/Executor + isolation_hint), Strong Isolation (Persistent Firecracker guest + Windows JobObject + stubs + MCP-aware sandbox routing via sandbox_requirements), Live HTMX Control Plane, Vision Grounding (LocateAnything). See .agent/PLAN.md (single source) and docs/ARCHITECTURE.md. All new skills and tools must integrate with PolicyEngine + routing.
+**Current Agentix architecture context (2026-07, for all loops)**: MCP Layer (skills registry + execution + isolation_hint), Strong Isolation (Firecracker guest + Windows JobObject + MCP-aware sandbox routing), Vision Grounding patterns. See `.agent/PLAN.md` and [docs/architecture.md](docs/architecture.md). All new skills integrate with PolicyEngine + routing. Enterprise audit: `memory/audit_log.py`.

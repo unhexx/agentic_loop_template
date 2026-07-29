@@ -1,0 +1,190 @@
+{
+  "playbooks": {
+    "global-dev": {
+      "scope": "global",
+      "name": "Global Development & Process Best Practices",
+      "bullets": [
+        {
+          "id": "b-0001",
+          "content": "Всегда начинай цикл с git self-cycle §11 и memory/playbooks snapshot.",
+          "tags": [
+            "orchestrator",
+            "git"
+          ],
+          "effectiveness": 0.95
+        },
+        {
+          "id": "b-0002",
+          "content": "Используй PLAN → ACT (≤3 calls) → REFLECT. Никогда не пропускай рефлексию.",
+          "tags": [
+            "all-roles"
+          ],
+          "effectiveness": 0.9
+        },
+        {
+          "id": "b-0003",
+          "content": "playbook + performance delta is mandatory",
+          "tags": [
+            "auto-from-reflection"
+          ],
+          "effectiveness": 1.0,
+          "recency_ts": "2026-07-03T01:38:18.069335+00:00",
+          "usage_count": 5,
+          "source": 46,
+          "last_used": "2026-07-03T01:38:18.082004+00:00"
+        },
+        {
+          "id": "b-0004",
+          "content": "Consult playbooks before tool use for better outcomes",
+          "tags": [
+            "auto-from-reflection"
+          ],
+          "effectiveness": 1.0,
+          "recency_ts": "2026-07-03T01:44:50.930644+00:00",
+          "usage_count": 10,
+          "source": 53,
+          "last_used": "2026-07-03T01:44:50.992167+00:00"
+        },
+        {
+          "id": "b-0005",
+          "content": "Cross-platform paths need portable playbook bullets",
+          "tags": [
+            "auto-from-reflection"
+          ],
+          "effectiveness": 1.0,
+          "recency_ts": "2026-07-03T01:44:50.930663+00:00",
+          "usage_count": 10,
+          "source": 53,
+          "last_used": "2026-07-03T01:44:50.992182+00:00"
+        },
+        {
+          "id": "b-0006",
+          "content": "Playbooks must be consulted before every tool use for full cycle compliance",
+          "tags": [
+            "auto-from-reflection"
+          ],
+          "effectiveness": 0.65,
+          "recency_ts": "2026-07-03T01:51:42.021968+00:00",
+          "usage_count": 1,
+          "source": 52
+        },
+        {
+          "id": "b-0007",
+          "content": "Add WorkflowBlueprint for continuous dev loop",
+          "tags": [
+            "auto-from-reflection"
+          ],
+          "effectiveness": 0.65,
+          "recency_ts": "2026-07-03T01:51:42.021996+00:00",
+          "usage_count": 1,
+          "source": 52
+        }
+      ],
+      "last_curated": "2026-07-03T01:51:42.022091+00:00"
+    },
+    "tool-git": {
+      "scope": "tool:git",
+      "name": "Git & Sync Playbook",
+      "bullets": [
+        {
+          "id": "b-0101",
+          "content": "Для кросс-клона используй git -C /path ... + явный маркер SYNC_DONE / VerifyOnly.",
+          "tags": [
+            "sync",
+            "verification"
+          ],
+          "effectiveness": 0.92
+        },
+        {
+          "id": "b-0002",
+          "content": "playbook git + performance delta wins",
+          "tags": [
+            "auto-from-reflection"
+          ],
+          "effectiveness": 1.0,
+          "recency_ts": "2026-07-03T01:37:44.163916+00:00",
+          "usage_count": 10,
+          "source": 36,
+          "last_used": "2026-07-03T01:37:44.180918+00:00"
+        }
+      ],
+      "last_curated": "2026-07-03T01:37:44.180954+00:00"
+    },
+    "tool-ledger": {
+      "scope": "tool:performance_ledger",
+      "name": "Performance & ROI Tracking",
+      "bullets": [
+        {
+          "id": "b-0201",
+          "content": "На высококачественном DONE всегда вызывай append в performance_ledger + включай 'performance' в handoff.",
+          "tags": [
+            "P1",
+            "metrics"
+          ],
+          "effectiveness": 0.88
+        }
+      ],
+      "last_curated": "2026-07-03T01:37:30.683098+00:00"
+    },
+    "continuous-dev-cycle": {
+      "scope": "workflow:full-cycle",
+      "name": "Continuous Development Cycle Blueprint",
+      "bullets": [
+        {
+          "id": "b-wf01",
+          "content": "Orchestrator: always select playbooks for planning + tools before SPRINTPLAN.",
+          "tags": [
+            "orchestrator",
+            "playbook"
+          ],
+          "effectiveness": 0.9
+        },
+        {
+          "id": "b-wf02",
+          "content": "Every role: use playbooks for tool decisions. Record usage for curate.",
+          "tags": [
+            "all-roles"
+          ],
+          "effectiveness": 0.88
+        },
+        {
+          "id": "b-wf03",
+          "content": "Reviewer: mandatory playbook curation + meta harvest on high quality DONE.",
+          "tags": [
+            "reviewer",
+            "self-improvement"
+          ],
+          "effectiveness": 0.92
+        }
+      ],
+      "last_curated": "2026-07-03T01:51:47.169567+00:00"
+    },
+    "cross-platform": {
+      "scope": "phase:cross-platform",
+      "name": "Cross-Platform Support Playbook (P2)",
+      "bullets": [
+        {
+          "id": "b-cp1",
+          "content": "Use .venv/bin/python on *nix, .venv/Scripts on Win. Prefer python3 -m for portability.",
+          "tags": [
+            "venv",
+            "paths"
+          ],
+          "effectiveness": 0.9
+        },
+        {
+          "id": "b-cp2",
+          "content": "Agent-Init.sh for bash: source .venv/bin/activate; handle shebangs.",
+          "tags": [
+            "linux",
+            "mac"
+          ],
+          "effectiveness": 0.85
+        }
+      ],
+      "last_curated": "2026-07-03"
+    }
+  },
+  "updated_at": "2026-07-03T02:26:48.181073+00:00",
+  "version": "3.3-playbooks"
+}

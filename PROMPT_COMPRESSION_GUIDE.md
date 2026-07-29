@@ -56,6 +56,8 @@ When targeting Blackbox + Minimax M2.5:
 - The model has excellent nominal long context, but in the loop (Blackbox CLI, no local GPU for extra inference/processing, resource limits on the executor side) the effective window is small in practice.
 - Always: ultra-aggressive first compression pass before any planning.
 - Use summary + delta + few-shot from real successful compressed handoffs (examples in this guide and SELF_IMPROVEMENT_LOG from previous M2.5 cycles).
+- For metrics/ROI tasks (P1): always include "performance" object (elapsed, tool_calls, confidence, meta_applied) + success_patterns in deltas for handoff compression. Example from cycle 1: "performance": {"cycle":1, "elapsed_minutes":2.1, "tool_calls":9, "confidence":0.92}. Reduces verbose repeats.
+- Playbooks (full cycle): Перед ACT — select_bullets + инжект bullets. Handoff содержит playbook_refs. См. memory/playbooks.py.
 - External memory (.agent/LOOP_STATE, PLAN, TODO, DECISIONS, LESSONS) is primary — prompt should contain only pointers + compact deltas.
 - Structured JSON output preferred (easier parsing, less tokens wasted on prose).
 - Token awareness: before sending, estimate and cut to budget. Non-interactive Blackbox mode benefits from clear, dense instructions without fluff.
@@ -75,6 +77,21 @@ As of this version, the template includes an explicit **automatic Context Distil
 This is the main mechanism for keeping very long-running loops (10+ cycles) practical. See `DEVELOPMENT_STANDARDS.md` and `AGENT_ROLES.md` (Reviewer section) for exact instructions.
 
 **This document itself should stay relatively short.** Its purpose is to guide future compression work, not to become another source of bloat.
+
+## Selective Memory (P7)
+
+Do not load full history. Use targeted retrieval:
+
+| Need | Source | Load |
+|------|--------|------|
+| Current tasks | `.agent/TODO.md` | Delta only (open items) |
+| Iteration scope | `.agent/PLAN.md` | Active iteration section |
+| Patterns | `memory.playbooks select` | Top k bullets by query |
+| Metrics | `.agent/PERFORMANCE_LEDGER.md` | Last 5 cycles |
+| Resume after crash | `python -m memory.resume --json` | Full output |
+| Trajectory quality | `python -m memory.eval_harness --recent 5` | Scores only |
+
+**Rule:** If resume context + last handoff `context_delta` covers the question, skip full file reads.
 
 ---
 
@@ -131,6 +148,97 @@ Why good: short summary + delta (what was done, commits, evidence), links instea
 Добавь такие примеры в свои handoff'ы. Reviewer должен хвалить/критиковать сжатие.
 
 ## Meta-harvested few-shot examples (v3.x+)
+
+### Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)
+
+```markdown
+**Harvested: include 'performance' delta in every handoff (from 20+ loops)**
+- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed
+- success_patterns for ledger/metrics wins
+- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.
+Example: "performance": {"cycle": 21, "elapsed_minutes": 3.5, "tool_calls": 12, "confidence": 0.9, "meta_applied": 8}
+```
+
+*Добавлено meta_harvester cycle T-062-03f8*
+
+
+### Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)
+
+```markdown
+**Harvested: include 'performance' delta in every handoff (from 20+ loops)**
+- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed
+- success_patterns for ledger/metrics wins
+- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.
+Example: "performance": {"cycle": 21, "elapsed_minutes": 3.5, "tool_calls": 12, "confidence": 0.9, "meta_applied": 8}
+```
+
+*Добавлено meta_harvester cycle T-062-03f8*
+
+
+### Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)
+
+```markdown
+**Harvested: include 'performance' delta in every handoff (from 20+ loops)**
+- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed
+- success_patterns for ledger/metrics wins
+- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.
+Example: "performance": {"cycle": 21, "elapsed_minutes": 3.5, "tool_calls": 12, "confidence": 0.9, "meta_applied": 8}
+```
+
+*Добавлено meta_harvester cycle T-062-03f8*
+
+
+### Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)
+
+```markdown
+**Harvested: include 'performance' delta in every handoff (from 20+ loops)**
+- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed
+- success_patterns for ledger/metrics wins
+- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.
+Example: "performance": {"cycle": 21, "elapsed_minutes": 3.5, "tool_calls": 12, "confidence": 0.9, "meta_applied": 8}
+```
+
+*Добавлено meta_harvester cycle T-059-03f8*
+
+
+### Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)
+
+```markdown
+**Harvested: include 'performance' delta in every handoff (from 20+ loops)**
+- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed
+- success_patterns for ledger/metrics wins
+- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.
+Example: "performance": {"cycle": 21, "elapsed_minutes": 3.5, "tool_calls": 12, "confidence": 0.9, "meta_applied": 8}
+```
+
+*Добавлено meta_harvester cycle T-056-03f8*
+
+
+### Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)
+
+```markdown
+**Harvested: include 'performance' delta in every handoff (from 20+ loops)**
+- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed
+- success_patterns for ledger/metrics wins
+- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.
+Example: "performance": {"cycle": 21, "elapsed_minutes": 3.5, "tool_calls": 12, "confidence": 0.9, "meta_applied": 8}
+```
+
+*Добавлено meta_harvester cycle T-053-03f8*
+
+
+### Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)
+
+```markdown
+**Harvested: include 'performance' delta in every handoff (from 20+ loops)**
+- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed
+- success_patterns for ledger/metrics wins
+- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.
+Example: "performance": {"cycle": 21, "elapsed_minutes": 3.5, "tool_calls": 12, "confidence": 0.9, "meta_applied": 8}
+```
+
+*Добавлено meta_harvester cycle T-020-03f8*
+
 
 ### Demo: harvested marker example from cycle 43
 

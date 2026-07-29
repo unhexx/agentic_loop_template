@@ -36,7 +36,7 @@ import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 DEFAULT_FREQUENCY = "after_every_done_cycle"
@@ -198,7 +198,7 @@ def _next_prop_id(existing: List[Dict[str, Any]]) -> str:
 
 
 def harvest_from_handoff(
-    handoff_path: Path,
+    handoff_path: Union[str, Path],
     cycle: int,
     outcome: str = "DONE",
     quality_signals: Optional[Dict[str, Any]] = None,
@@ -209,6 +209,7 @@ def harvest_from_handoff(
 
     Возвращает id траектории или None (если не harvested).
     """
+    handoff_path = Path(handoff_path)
     if not handoff_path.exists():
         return None
 
@@ -321,6 +322,9 @@ def analyze_for_proposals(recent: int = 5, min_confidence: float = 0.8) -> List[
     compression_wins = 0
     # Эвристика 4: уроки -> кандидаты в permanent rules
     rule_candidates = []
+    # Эвристика 5: P1 metrics/ledger в паттернах -> few-shot для handoff с метриками (full P4)
+    metrics_ledger_wins = 0
+    ledger_patterns = 0
 
     for t in trajs:
         text = json.dumps(t, ensure_ascii=False).lower()
@@ -334,6 +338,12 @@ def analyze_for_proposals(recent: int = 5, min_confidence: float = 0.8) -> List[
         for lesson in t.get("lessons_learned", []):
             if "всегда" in lesson.lower() or "обязательно" in lesson.lower():
                 rule_candidates.append(lesson)
+        # New P4 full heuristics for metrics/ledger
+        if "performance" in text or "ledger" in text or "metrics" in text or "roi" in text:
+            metrics_ledger_wins += 1
+        sp = " ".join(t.get("success_patterns", [])).lower()
+        if "performance" in sp or "ledger" in sp or "metrics" in sp:
+            ledger_patterns += 1
 
     index = _load_index()
     existing_props = index.setdefault("proposals", [])
@@ -392,6 +402,27 @@ def analyze_for_proposals(recent: int = 5, min_confidence: float = 0.8) -> List[
             "safe_to_auto": True,
             "confidence": 0.72,
             "expected_impact": "Лучшая дисциплина сжатия у будущих ролей",
+            "status": "pending",
+            "created_at": _now_iso(),
+        }
+        proposals.append(prop)
+        existing_props.append(prop)
+
+    # Full P4 heuristics for metrics/ledger (P1 integration)
+    if metrics_ledger_wins >= 1 or ledger_patterns >= 1:
+        pid = _next_prop_id(existing_props)
+        prop = {
+            "id": pid,
+            "from_trajectories": [t["id"] for t in trajs[-max(1, metrics_ledger_wins):]],
+            "target_file": "agentic_loop_template/PROMPT_COMPRESSION_GUIDE.md",
+            "change_type": "add_few_shot_example",
+            "title": "Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)",
+            "rationale": f"В {max(metrics_ledger_wins, ledger_patterns)} циклах успех коррелировал с явным включением performance metrics (elapsed, tool_calls, confidence, meta_applied) + success_patterns в сжатые handoff'ы. Позволяет лучше отслеживать ROI и компрессию.",
+            "proposed_text": "```markdown\n**Harvested: include 'performance' delta in every handoff (from 20+ loops)**\n- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed\n- success_patterns for ledger/metrics wins\n- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.\nExample: \"performance\": {\"cycle\": 21, \"elapsed_minutes\": 3.5, \"tool_calls\": 12, \"confidence\": 0.9, \"meta_applied\": 8}\n```",
+            "insertion_anchor": "После примера с compression_metrics",
+            "safe_to_auto": True,
+            "confidence": 0.85,
+            "expected_impact": "Лучшее отслеживание эффективности, автоматическая эволюция метрик в циклах",
             "status": "pending",
             "created_at": _now_iso(),
         }
@@ -565,19 +596,42 @@ def seed_example_trajectory() -> str:
     return tid
 
 
-def update_performance_ledger(proposal_id: str, impact: str = "") -> None:
+def update_performance_ledger(proposal_id: str, impact: str = "", cycle_stats: dict | None = None) -> None:
     """
-    Простая заглушка для сбора метрик производительности петли.
-    В будущем здесь можно агрегировать cycle stats, violation rate, token efficiency.
-    Пока пишет в .agent/LOOP_PERFORMANCE.md (человекочитаемо).
+    Обновление performance ledger.
+    Вызывается из apply_safe и Reviewer на DONE циклах.
+    Поддерживает как старый формат, так и полный stats от performance_ledger (P1).
     """
     _ensure_agent_dir()
+    # Legacy md append (kept for compatibility)
     ledger = Path(".agent/LOOP_PERFORMANCE.md")
     lines = []
     if ledger.exists():
         lines = ledger.read_text(encoding="utf-8").splitlines()
     lines.append(f"- { _now_iso() } | proposal {proposal_id} | {impact or 'applied'}")
-    ledger.write_text("\n".join(lines[-50:]) + "\n", encoding="utf-8")  # keep last 50 entries
+    ledger.write_text("\n".join(lines[-50:]) + "\n", encoding="utf-8")
+
+    # New structured ledger (business efficiency P1)
+    # Use direct file load to avoid package __init__ recursion/circular import issues
+    # (consistent with test_performance_ledger.py and guarded __init__.py)
+    try:
+        import importlib.util
+        pl_path = Path(__file__).parent / "performance_ledger.py"
+        spec = importlib.util.spec_from_file_location("pl", str(pl_path))
+        pl = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(pl)
+        if cycle_stats:
+            pl.append_cycle(**cycle_stats)
+        else:
+            pl.append_cycle(
+                cycle=0,
+                outcome="META_APPLIED",
+                notes=f"proposal:{proposal_id} impact:{impact}",
+                meta_applied=1,
+            )
+    except Exception as e:
+        # non-fatal
+        print(f"[performance_ledger] non-fatal: {e}", file=sys.stderr)
 
 
 def _cli() -> None:

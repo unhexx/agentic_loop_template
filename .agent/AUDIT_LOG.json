@@ -1,0 +1,18 @@
+{
+  "entries": [
+    {
+      "id": "A-0001",
+      "ts": "2026-07-03T02:26:48.429221+00:00",
+      "action": "demo_loop_complete",
+      "role": "demo",
+      "cycle": 0,
+      "details": {
+        "script": "demo-loop.sh"
+      },
+      "approval_required": false,
+      "approved": null,
+      "signature": "336ccfb47ade6c7152211b7eccf5bd82b504f4075748165fda2c780044a198b0"
+    }
+  ],
+  "updated_at": "2026-07-03T02:26:48.429300+00:00"
+}

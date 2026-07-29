@@ -9,7 +9,10 @@
 ## Mandatory Process (execute in order, never skip)
 
 ### 1. Bootstrap & Git Self-Cycle (CRITICAL — first action every turn)
-- Bootstrap environment if needed.
+- **Bootstrap (platform-adaptive) if needed:**
+  - Windows: `powershell -ExecutionPolicy Bypass -File .\agentic_loop_template\Agent-Init.ps1`
+  - Linux/Mac: `bash agentic_loop_template/Agent-Init.sh && source .venv/bin/activate`
+  - Python: `.venv/Scripts/python` (Win) or `.venv/bin/python` (*nix)
 - **Complete git self-cycle + multi-repo sync** per `DEVELOPMENT_STANDARDS.md` §11 (Russian human commit, push, main merge, full cross-clone/worktree sync + verification logs in all repos). Populate `git_sync_status` with evidence. BLOCKED if not verified everywhere.
 
 ### 2. Full Review & Context Loading
@@ -23,6 +26,7 @@
 - Verify natural Russian human-style commits from all previous roles.
 - Perform **Context Distillation** (structured summary appended to SELF_IMPROVEMENT_LOG.md or PROJECT_CONTEXT.md) when cycle ends or context is heavy.
 - Update Workspace Memory with 1–3 actionable patterns (`memory_updated`, `patterns_merged`).
+- Update Performance Ledger (use performance_ledger append or meta integration) with cycle stats for P1 Metrics/ROI tracking. Include "performance" object in handoff.
 - Handle clarification_questions pool and meta_harvest / decomposition_ritual / prompt_refinement when cadence triggers (every ~10 cycles or per config).
 
 ### 4. Decision

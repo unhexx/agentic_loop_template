@@ -71,12 +71,12 @@
     "feature_pushed": true,
     "main_merged_commit": "a3bd062..",
     "clones_synced": [
-      "C:/_PROJECT/eegent:main@7679335",
+      "/path/to/consumer-project:main@abc1234",
       "current_worktree:feature@c159692"
     ],
     "verified": true,
     "timestamp": "2026-06-04T..",
-    "commands_run": ["git push origin feature-...", "git -C 'C:\\_PROJECT\\eegent' merge ... --no-ff", "powershell ...sync-worktree.ps1", "git log checks in both"]
+    "commands_run": ["git push origin feature-...", "git -C '/path/to/consumer-project' merge ... --no-ff", "powershell ...sync-worktree.ps1", "git log checks in both"]
   },
   // Обязательно заполняется Orchestrator в начале каждого цикла (перед планированием следующего).
   // Доказательство, что коммиты сделаны, self-cycle выполнен, изменения видны во всех активных репозиториях (основной клон + worktree).
@@ -89,6 +89,29 @@
     "tool_calls": 5,
     "elapsed_minutes": 14.5
   },
+
+  "performance": {
+    "cycle": 1,
+    "elapsed_minutes": 8.2,
+    "tool_calls": 11,
+    "confidence": 0.91,
+    "tests_failed": 0,
+    "meta_applied": 1,
+    "notes": "First metrics captured via performance_ledger"
+  },
+  // Optional performance / ROI data for the cycle. Populated by Reviewer (or via meta_harvester).
+  // Use memory.performance_ledger.append or equivalent. Enables P1 Metrics/ROI tracking.
+  // See PROJECT_CONTEXT_TEMPLATE.md and .agent/PERFORMANCE_LEDGER.md for schema and reports.
+
+  "playbook_refs": [
+    {"scope": "tool:git", "bullet_ids": ["b-0101"], "scores": [0.92]}
+  ],
+  "playbook_deltas": ["updated tool-git with performance marker lesson"],
+  // Playbooks & Knowledge Objects (full cycle support).
+  // Before every ACT/PLAN: select relevant bullets and inject (compressed).
+  // After REFLECT: record usage → curate (Reviewer/meta).
+  // See memory/playbooks.py, DEVELOPMENT_STANDARDS §14, AGENT_ROLES (playbook duties).
+  // Other objects: WorkflowBlueprint, ToolProfile, EvalSuite supported via same module.
 
   "issues_found": [
     {

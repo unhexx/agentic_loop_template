@@ -1,5 +1,9 @@
 # Agentic Loop Memory System
 
+[![Version](https://img.shields.io/badge/version-3.4.0-blue.svg)](../CHANGELOG.md)
+[![Main README](https://img.shields.io/badge/Main-README-blue)](../README.md)
+[![Architecture](https://img.shields.io/badge/docs-architecture-green)](../docs/architecture.md)
+
 **Workspace-scoped structured memory with counters, automatic deduplication and compaction.**
 
 Inspired by:

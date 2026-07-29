@@ -1,0 +1,35 @@
+# Sample PolicyEngine configuration (P5 enterprise example)
+# Integrate with MCP skills and sandbox routing in consumer projects.
+
+[meta]
+name = "agentix-default-policy"
+version = "1.0"
+description = "Baseline governance for agentic loop tool execution"
+
+[approval]
+# Non-blocking: escalate via questions_collector pool
+human_approval_for = ["deploy", "delete_production", "force_push"]
+batch_cadence = "every_3_cycles"
+
+[tools.shell]
+allowed = true
+require_sandbox = false
+max_timeout_sec = 300
+
+[tools.git]
+allowed = true
+block_force_push = true
+require_signed_commits = false
+
+[tools.network]
+allowed = false
+exceptions = ["github.com", "api.github.com"]
+
+[audit]
+enabled = true
+log_path = ".agent/AUDIT_LOG.json"
+sign_entries = true
+
+[isolation]
+default_hint = "job_object"
+elevated_hint = "firecracker"

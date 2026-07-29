@@ -12,7 +12,7 @@ Blackbox (and most VSCode AI agents) have specific behaviors that break normal a
 - The agent frequently loses the activated Python virtual environment.
 - Profile loading is unreliable.
 
-This document + `Agent-Init.ps1` solve these problems for the `eeagent` project (and any similar Python project using the Agentic Loop Template).
+This document + `Agent-Init.ps1` solve these problems for the `your-consumer-project` (and any similar Python project using the Agentic Loop Template).
 
 ---
 
@@ -21,7 +21,7 @@ This document + `Agent-Init.ps1` solve these problems for the `eeagent` project 
 Open PowerShell in the project root and run:
 
 ```powershell
-cd X:\LocalRepo\eegent
+cd X:\LocalRepo\your-consumer-project
 .\agentic_loop_template\Agent-Init.ps1
 ```
 
@@ -42,7 +42,7 @@ Before the agent starts, make sure it has the latest `SYSTEM_PROMPT.md` (version
 Go to Blackbox settings → Custom Instructions (or System Prompt) and add the following block:
 
 ```text
-You are working on the eeagent project using the Agentic Loop Template.
+You are working on the your-consumer-project using the Agentic Loop Template.
 
 CRITICAL RULES:
 

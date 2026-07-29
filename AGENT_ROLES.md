@@ -21,12 +21,16 @@ IMMEDIATE TASKS (in order):
      Identify the tasks belonging to the *last unfinished iteration* of the project plan (look for pending items without [DONE], current [IN PROGRESS] or open [PRODUCT]/[META]/[CROSS] tasks in the active phase/streams).
      Begin the current cycle by planning and starting implementation from those tasks. Do not jump to new phases, unrelated features, or future work until the previous iteration's tasks are properly addressed or marked complete with justification.
      This is obligatory for continuity and to follow the project plan rigorously.
-   - Bootstrap environment (mandatory, Agent-Init.ps1 + explicit .venv python for any py work).
+   - Bootstrap environment (platform-adaptive, mandatory before any py work):
+     - Windows: `Agent-Init.ps1` + `.venv/Scripts/python`
+     - Linux/Mac: `Agent-Init.sh` + `source .venv/bin/activate` + `.venv/bin/python`
+     - Consult `cross-platform` playbook scope via `memory.playbooks select --scopes cross-platform`.
    - **Git self-cycle + cross-repo sync FIRST (MANDATORY per DEVELOPMENT_STANDARDS.md §11, before any memory/compression/planning):**
+   - **Playbooks first**: Перед планированием и любым tool — select_bullets по скоупам (tool:git, phase:*, global). Инжекть топ bullets (сжато). Это позволяет работать со всеми инструментами цикла.
      - Check `git status`, `git branch --show-current`, `git worktree list`.
      - If dirty: `git add` (selective) + commit with natural Russian human developer message (no AI words).
      - `git push origin <current-feature>`.
-     - Perform self-cycle merge --no-ff into main (use `git -C 'C:\_PROJECT\eegent'` or equivalent main clone path to avoid worktree checkout conflicts on main).
+     - Perform self-cycle merge --no-ff into main (use `git -C '<main-clone-path>'` for your project's primary clone to avoid worktree checkout conflicts on main).
      - Sync to all active physical checkouts: run equivalent of scripts/sync-worktree.ps1 in main clone (via -C powershell ...), fetch/pull in other active worktrees (exclude historical .agent/worktrees/P0-* snapshots).
      - Verify: run `git -C <main-path> log --oneline -3` + `git log --oneline -3` + confirm files visible on disk in both. Record exact commits/paths/timestamps.
      - Update .agent/LOOP_STATE.md (last_git_sync) and include full `git_sync_status` in handoff (see HANDOFF_SCHEMA).
@@ -170,6 +174,8 @@ Focus:
 - Update PROJECT_CONTEXT.md, SPRINTPLAN.md and SELF_IMPROVEMENT_LOG.md with lessons learned
 - **Perform Context Distillation** (see below) when this is the end of a full cycle or when context feels heavy
 - **Update Workspace Memory**: extract 1–3 concrete, actionable patterns from the cycle (lessons_learned, issues_found, distillation) and call the memory helper (DEVELOPMENT_STANDARDS.md §9). Always set `memory_updated` + `patterns_merged` in the handoff JSON.
+- **Update Performance Ledger** (P1 Metrics/ROI): on every high-quality cycle (or after meta), record stats using `python -m agentic_loop_template.memory.performance_ledger append --cycle N ...` (or via meta_harvester). Include key numbers (elapsed, tool_calls, confidence, meta_applied, tests) in handoff under "performance". This powers observability and ROI proof.
+- **Playbooks & Knowledge Objects** (full cycle, P4): Перед PLAN/ACT вызывай select_bullets для релевантных скоупов (tool:run_terminal_command, phase:git-sync и т.д.) и используй bullets. После REFLECT — фиксируй usage и запускай curate_from_reflection. В handoff — playbook_refs + deltas. Поддерживай WorkflowBlueprint / ToolProfile. Это позволяет работать со всеми инструментами цикла без исключений. См. memory/playbooks.py и DEVELOPMENT_STANDARDS §14.
 - Strictly enforce all rules from DEVELOPMENT_STANDARDS.md (especially Russian language, UTF-8, and Windows PowerShell hygiene)
 
 **Context Distillation (automatic when appropriate):**
@@ -227,7 +233,7 @@ Update Workspace Memory with 1–3 patterns (see §9) + any new compression oppo
 
 **Periodic Rituals duty (every 10 cycles — Daily Decomposition + Lessons→Prompt Refinement, per DEVELOPMENT_STANDARDS §13)**:
 - После обычных meta / questions / distillation / memory, проверить cadence: `if (cycle_number % 10 == 0 || (cycle_number - last_ritual) >= 10)` (использовать current_cycle из handoff + .agent/project_config.json "daily_decomposition_ritual").
-- Сначала выполнить **Daily Decomposition Ritual** (Meta-Orchestrator eeagent style, v1.5 M2.7-optimized — см. полный блок ниже или в prompts/daily_decomposition_ritual.md):
+- Сначала выполнить **Daily Decomposition Ritual** (Meta-Orchestrator consumer-project style, v1.5 M2.7-optimized — см. полный блок ниже или в prompts/daily_decomposition_ritual.md):
   - Project Context Discovery (.agent/LOOP_STATE/LESSONS/DECISIONS/TODO/PLAN/DEVELOPMENT_STANDARDS + последние 10 циклов lessons + meta trajectories).
   - Step 0–4 (State Review → Choose Task → Decompose в 3–5 narrow subtasks → Checklist → Output table + self-critique + self-scoring + machine JSON).
   - Записать report в .agent/daily_rituals/prompt1_decomposition_report.json (или аналог), заполнить handoff `decomposition_ritual`.
@@ -244,7 +250,7 @@ Update Workspace Memory with 1–3 patterns (see §9) + any new compression oppo
 **Daily Decomposition Ritual (v1.5 M2.7 Optimized)**
 
 ```
-You are Meta-Orchestrator eeagent (Daily Decomposition Ritual).
+You are Meta-Orchestrator (Daily Decomposition Ritual for consumer-project).
 
 **Ritual Version:** 1.5 (Universal + M2.7)
 **Last updated:** 2026-06-10
