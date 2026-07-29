@@ -63,8 +63,17 @@ When writing or modifying any source code:
 ## 5. Handoff and Process Discipline
 
 - Always follow the exact JSON handoff schema defined in `HANDOFF_SCHEMA.md`.
+- Validate before DONE: `python -m memory.validate_handoff .agent/last_handoff.json` (schema in `schemas/handoff.schema.json`).
 - Never skip the PLAN → ACT → REFLECT pattern inside a role.
 - The Reviewer has final authority on both code quality and process adherence.
+
+### 5.1 Bounded `.agent` state (mandatory from template 3.3)
+
+- Working set is `.agent/LOOP_STATE.json` (+ slim MD projection). **Never** append free-form multi-KB Sprint Eval dumps to LOOP_STATE.
+- Orchestrator cold-start: `python -m memory state snapshot --window 3` only.
+- History lives under `.agent/history/` and must not be loaded into the model context.
+- Reviewer runs `python -m memory state compact` when LESSONS/DONE/logs exceed soft thresholds (~64KB).
+- Cycle metrics: `python -m memory state metrics-log --json '{...}'` → `.agent/metrics.jsonl`.
 
 ---
 

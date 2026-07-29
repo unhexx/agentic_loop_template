@@ -1,6 +1,6 @@
 # Agentix
 
-[![Version](https://img.shields.io/badge/version-3.4.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.4.1-blue.svg)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white)](docs/getting-started.md)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](docs/cross-platform.md)
@@ -62,6 +62,17 @@ cd agentic_loop_template
 bash Agent-Init.sh --wizard    # interactive setup
 source .venv/bin/activate
 ```
+
+Cold-start every cycle (do **not** load multi-MB `.agent` dumps):
+
+```bash
+python -m memory state snapshot --window 3
+python -m memory query --top 5 --category "Common Failure Patterns"
+python tools/select.py --intent bootstrap
+```
+
+See [`docs/TOP10_IMPROVEMENTS.md`](docs/TOP10_IMPROVEMENTS.md) (harness efficiency) and [`VERSION`](VERSION).
+
 
 </details>
 

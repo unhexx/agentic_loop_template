@@ -216,3 +216,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Bounded state archives (local)
+.agent/history/
+.agent/starter_prompt_grok.txt
+.agent/metrics.jsonl
+.agent/LOOP_STATE.json
+.venv/

@@ -1,13 +1,37 @@
-# Experience Extraction & Error Prevention Toolkit
+# Experience Extraction Toolkit (v3.3)
 
-## Skills Implemented
-1. **local_knowledge_ingestion_skill**
-... (полный детальный контент с JSON схемами, примерами вызовов, интеграцией в loop)
+## Purpose
 
-## Integration Steps
-- Add to TOOLS_REGISTRY
-- Update Reviewer role: always run `harvest_and_crystallize` at end
+Pull recurring failures and strategies from real project runs into workspace memory so Orchestrator snapshots prevent repeats.
 
-**This tool suite directly addresses the user's request for bulk experience processing from eegent and derived projects.**
+## Commands
 
-Ready for use in any agentic loop.
+```bash
+# Seed high-value defaults (from multi-project analysis)
+python -m memory.experience_harvester seed-defaults --apply
+
+# Scan parent folder of many projects (read-only sources)
+python -m memory.experience_harvester scan --parent /path/to/_PROJECT --apply
+
+# Dry-run
+python -m memory.experience_harvester scan --parent /path/to/_PROJECT
+```
+
+## Categories written
+
+- `Common Failure Patterns`
+- `Effective Loop Strategies`
+- `High-Value Compression Patterns`
+- `Meta Improvement Patterns`
+
+## Integration
+
+- **Orchestrator:** `python -m memory query --top 5 --category "Common Failure Patterns"` at cycle start.  
+- **Reviewer:** after DONE, optional meta harvest + experience seed if new lessons appear.  
+- Skill-compatible with eegent `agentic-loop-error-collector` (same memory update path).
+
+## Sources scanned
+
+- `.agent/LESSONS.md`
+- `SELF_IMPROVEMENT_LOG.md`
+- `.agent/SELF_IMPROVEMENT_LOG.md`
