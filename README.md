@@ -38,7 +38,28 @@ This template transforms how you build and maintain sophisticated software syste
 
 ---
 
-## Quick Start (Blackbox + MiniMax 2.5 Recommended)
+## Quick Start
+
+### Linux / macOS (recommended host path, Grok CLI friendly)
+
+```bash
+cd /path/to/project   # or this template repo
+./Agent-Init.sh       # or ./agentic_loop_template/Agent-Init.sh in consumers
+# opens .agent/starter_prompt_grok.txt — paste into Grok/Cursor or:
+#   grok -p "$(cat .agent/starter_prompt_grok.txt)" --cwd .
+```
+
+Cold-start for every cycle (do not load full `.agent` dumps):
+
+```bash
+python -m memory state snapshot --window 3
+python -m memory query --top 5 --category "Common Failure Patterns"
+python tools/select.py --intent bootstrap
+```
+
+See `docs/TOP10_IMPROVEMENTS.md` and `VERSION` (3.3.0+ harness hardening).
+
+### Windows + Blackbox (legacy path)
 
 1. **Prepare Environment** (one-time per project):
    ```powershell
@@ -93,10 +114,15 @@ Reviewer can loop back or approve. All state transferred via strict JSON (`HANDO
 | `TOOLS_INSTRUCTIONS.md` | Usage instructions and examples for tools. |
 | `PROJECT_CONTEXT_TEMPLATE.md` | Template for the living project memory/context file. |
 | `PROMPT_COMPRESSION_GUIDE.md` | Techniques for handling long context in M2.5/M2.7 (critical for complex projects). |
-| `Agent-Init.ps1` / `Agent-Init.md` | One-command robust setup script + detailed usage guide for Blackbox/VSCode. |
+| `Agent-Init.sh` / `Agent-Init.ps1` / `Agent-Init.md` | Cross-platform bootstrap (Linux first + Windows). |
+| `tools/` | Progressive tool blocks + `select.py` (OS/intent matrix). |
+| `scripts/` | `preflight_git.sh`, `sync-worktree.sh`, `agentic_loop.sh`, consumer sync. |
+| `schemas/handoff.schema.json` | Machine-validated handoff contract. |
+| `PARALLEL_PROTOCOL.md` | Multi-stream / worktree ownership rules. |
 | `setup_env_template.ps1` | Environment bootstrap (venv, deps, PowerShell modules). |
-| `memory/` | Persistent structured memory: questions collector, meta harvester, schema, store, workspace for cross-cycle learning and sync enforcement. |
-| `prompts/` | Optimized starter and short orchestrator prompts for M2.5. |
+| `memory/` | Structured memory: store, state, questions, meta harvester, experience, context budget. |
+| `prompts/` | Short role prompts (orchestrator updated for v3.3). |
+| `docs/` | Multi-project analysis + top-10 improvements + metrics. |
 
 See also `AGENTIC_LOOP_README.md` for additional context details.
 
@@ -112,8 +138,8 @@ See also `AGENTIC_LOOP_README.md` for additional context details.
 1. Copy `agentic_loop_template/` into your repo root (or reference via worktree/sync from dedicated clone).
 2. Fill all `{{...}}` placeholders in `SYSTEM_PROMPT.md` (project name, paths, primary goals, tech stack).
 3. Create `TASK_SPECIFICATION.md` or equivalent with clear, testable requirements.
-4. Run `Agent-Init.ps1` and follow the Blackbox instructions.
-5. Customize `TOOLS_REGISTRY.md` / add MCP skills relevant to your domain (GUI, vision, domain-specific APIs, Atlassian integrations, etc.).
+4. Run `./Agent-Init.sh` (Linux) or `Agent-Init.ps1` (Windows).
+5. Prefer `python tools/select.py --intent …` over pasting full tool monologues; sync consumers via `scripts/sync_template_from_ssot.sh`.
 
 For heavy data or enterprise projects: add dedicated validation roles or data sanity checks as needed.
 
@@ -126,7 +152,7 @@ For heavy data or enterprise projects: add dedicated validation roles or data sa
 
 ## Limitations & Recommendations
 
-- Optimized for Windows + PowerShell + Blackbox + MiniMax-class models. Adaptable to Linux/Mac with minor script changes.
+- Primary path: Linux + bash + Grok/Cursor. Windows + PowerShell + Blackbox still supported via `Agent-Init.ps1`.
 - Max recommended 3-4 full cycles before architecture review to avoid context bloat (use compression & memory).
 - For very large monorepos: combine with dedicated sub-agents or LangGraph-style orchestration seeds.
 

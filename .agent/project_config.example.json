@@ -2,7 +2,10 @@
   "question_pool": {
     "frequency": "every_3_cycles",
     "N": 3,
-    "processors": ["product_owner", "project_manager"],
+    "processors": [
+      "product_owner",
+      "project_manager"
+    ],
     "last_processed_cycle": 0
   },
   "meta_optimizer": {
@@ -22,5 +25,35 @@
     "frequency": "every_10_cycles",
     "N": 10,
     "last_ritual_cycle": 0
+  },
+  "git": {
+    "strict_multi_repo": false,
+    "prefer_preflight_script": true
+  },
+  "context_budget": {
+    "cold_start_tokens": 16000,
+    "next_input_files_tokens": 12000
+  },
+  "state": {
+    "max_working_json_bytes": 8192,
+    "auto_compact_on_init": true
+  },
+  "profiles": {
+    "single_repo_linux": {
+      "git": {
+        "strict_multi_repo": false
+      }
+    },
+    "multi_repo_windows": {
+      "git": {
+        "strict_multi_repo": true
+      }
+    },
+    "grok_parallel": {
+      "git": {
+        "strict_multi_repo": false
+      },
+      "parallel": true
+    }
   }
 }

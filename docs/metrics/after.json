@@ -1,0 +1,30 @@
+{
+  "captured_at": "2026-07-29",
+  "template_version": "3.3.0",
+  "loop_state_json_bytes": 507,
+  "loop_state_md_bytes": 547,
+  "tools_instructions_bytes": 439,
+  "tools_registry_bytes": 1305,
+  "tools_block_files": 12,
+  "tools_blocks_total_bytes": 3875,
+  "memory_modules": [
+    "__init__.py",
+    "__main__.py",
+    "context_budget.py",
+    "demo_meta.py",
+    "experience_harvester.py",
+    "meta_harvester.py",
+    "questions_collector.py",
+    "schema.py",
+    "state.py",
+    "store.py",
+    "test_meta_harvester.py",
+    "test_state_and_handoff.py",
+    "validate_handoff.py",
+    "workspace.py"
+  ],
+  "has_linux_init": true,
+  "has_state_cli": true,
+  "has_handoff_validator": true,
+  "tests": "pytest memory/test_state_and_handoff.py"
+}

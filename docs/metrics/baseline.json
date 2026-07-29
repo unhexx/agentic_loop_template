@@ -1,0 +1,13 @@
+{
+  "captured_at": "2026-07-29",
+  "note": "Before harness 3.3.0 hardening",
+  "eegent_agent_loop_state_bytes": 12507352,
+  "eegent_done_md_bytes": 1646629,
+  "eegent_tools_instructions_bytes": 115118,
+  "template_tools_instructions_bytes": 1132,
+  "template_memory_modules": ["meta_harvester", "questions_collector", "broken_init_imports"],
+  "template_has_linux_init": false,
+  "template_has_state_cli": false,
+  "template_has_handoff_validator": false,
+  "classifier_loop_state_stale_copy": true
+}
