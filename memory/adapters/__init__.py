@@ -6,26 +6,36 @@ from typing import Any, Dict
 from .mock import MockAdapter
 
 
+def _adapter_section(config: Dict[str, Any] | None, name: str) -> dict:
+    """Resolve adapters.<name> from full project config or supervisor slice."""
+    config = config or {}
+    sup = config.get("supervisor")
+    if isinstance(sup, dict):
+        adapters = sup.get("adapters")
+        if isinstance(adapters, dict) and name in adapters:
+            entry = adapters.get(name)
+            return entry if isinstance(entry, dict) else {}
+    adapters = config.get("adapters")
+    if isinstance(adapters, dict):
+        entry = adapters.get(name)
+        return entry if isinstance(entry, dict) else {}
+    return {}
+
+
 def get_adapter(name: str, config: Dict[str, Any] | None = None):
     name = (name or "mock").lower()
     if name == "mock":
         return MockAdapter()
     if name == "grok":
-        try:
-            from .grok import GrokAdapter
-        except ImportError as e:
-            raise ValueError(f"adapter 'grok' is not available: {e}") from e
-        return GrokAdapter((config or {}).get("adapters", {}).get("grok", {}))
+        from .grok import GrokAdapter
+
+        return GrokAdapter(_adapter_section(config, "grok"))
     if name == "cursor":
-        try:
-            from .cursor import CursorAdapter
-        except ImportError as e:
-            raise ValueError(f"adapter 'cursor' is not available: {e}") from e
-        return CursorAdapter((config or {}).get("adapters", {}).get("cursor", {}))
+        from .cursor import CursorAdapter
+
+        return CursorAdapter(_adapter_section(config, "cursor"))
     if name == "blackbox":
-        try:
-            from .blackbox import BlackboxAdapter
-        except ImportError as e:
-            raise ValueError(f"adapter 'blackbox' is not available: {e}") from e
-        return BlackboxAdapter((config or {}).get("adapters", {}).get("blackbox", {}))
+        from .blackbox import BlackboxAdapter
+
+        return BlackboxAdapter(_adapter_section(config, "blackbox"))
     raise ValueError(f"unknown adapter: {name}")
