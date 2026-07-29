@@ -13,6 +13,10 @@ def _cli() -> None:
         from .state import cli as state_cli
 
         raise SystemExit(state_cli(sys.argv[2:]))
+    if len(sys.argv) > 1 and sys.argv[1] == "supervisor":
+        from .supervisor import main
+
+        raise SystemExit(main(sys.argv[2:]))
     if len(sys.argv) > 1 and sys.argv[1] in {
         "experience",
         "harvest-experience",
