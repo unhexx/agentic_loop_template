@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Agent-Init.sh — cross-platform Agentix bootstrap (3.4.x + top-10 harness hardening)
+# Agent-Init.sh — cross-platform Agentix bootstrap (3.6.x)
 # Usage: bash Agent-Init.sh [--wizard] [--quiet] [--output-file PATH]
 set -euo pipefail
 
@@ -59,8 +59,8 @@ if [[ "$WIZARD" == true ]]; then
   PROJECT_NAME=${PROJECT_NAME:-my-project}
   echo "Platform: 1) Linux 2) macOS 3) Windows (via WSL)"
   read -rp "Choice [1]: " PLATFORM_CHOICE || true
-  echo "Frontend: 1) Blackbox 2) Cursor 3) Claude Code / Grok"
-  read -rp "Choice [2]: " FRONTEND_CHOICE || true
+  echo "Frontend: 1) Grok  2) Cursor  3) Claude Code  4) Blackbox"
+  read -rp "Choice [1]: " FRONTEND_CHOICE || true
   read -rp "Spec file [TASK_SPECIFICATION.md]: " SPEC_FILE || true
   SPEC_FILE=${SPEC_FILE:-TASK_SPECIFICATION.md}
 
@@ -76,7 +76,7 @@ if [[ "$WIZARD" == true ]]; then
   echo ""
   echo "Setup complete for: $PROJECT_NAME"
   echo "  Platform choice: ${PLATFORM_CHOICE:-1}"
-  echo "  Frontend choice: ${FRONTEND_CHOICE:-2}"
+  echo "  Frontend choice: ${FRONTEND_CHOICE:-1}"
   echo "  Spec: $SPEC_FILE"
   echo ""
   echo "Next steps:"

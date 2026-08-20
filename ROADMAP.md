@@ -4,7 +4,7 @@
 [![Main README](https://img.shields.io/badge/Main-README-blue)](README.md)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen)](docs/README.md)
 
-**Status Date:** 2026-07-03 · **Initiative:** Business Efficiency — **COMPLETE**
+**Status Date:** 2026-08-20 · **Initiative:** Business Efficiency — **COMPLETE** · **v3.6 harvest cycle**
 
 ---
 
@@ -34,7 +34,7 @@
 
 | Version | Highlight |
 |---------|-----------|
-| **v3.6.0** | Skills (reflective-improvement, local-knowledge-ingestion) + rule compressor + SQLite knowledge store |
+| **v3.6.0** | Skills + rule compressor + knowledge store + cross-project experience harvest (`audit`/`cycle`) |
 | **v3.5.0** | Supervisor CLI, multi-frontend adapters, mock CI cycle |
 | **v3.4.0** | P5–P7 complete, initiative closed |
 | **v3.3.0** | docs/, Hub, Pro tier |

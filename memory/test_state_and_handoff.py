@@ -84,7 +84,7 @@ def test_handoff_done_rules():
 def test_experience_seeds_dedupe():
     rows = dedupe(DEFAULT_SEEDS + DEFAULT_SEEDS)
     assert len(rows) == len(DEFAULT_SEEDS)
-    assert len(rows) >= 20
+    assert len(rows) >= 30
 
 
 def test_estimate_tokens():

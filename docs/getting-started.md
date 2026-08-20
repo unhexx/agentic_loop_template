@@ -12,7 +12,7 @@ Get a full agentic development loop running in under five minutes.
 |------|-------------|
 | Python | 3.10+ |
 | Git | recent version |
-| Agent UI | Cursor, Claude Code, Blackbox, or compatible |
+| Agent UI | Grok CLI (default), Cursor, Claude Code, Blackbox |
 
 ---
 
@@ -35,7 +35,9 @@ bash Agent-Init.sh --wizard
 source .venv/bin/activate
 ```
 
-The wizard creates `TASK_SPECIFICATION.md` and `PROJECT_CONTEXT.md` from templates if missing.
+The wizard creates `TASK_SPECIFICATION.md` and `PROJECT_CONTEXT.md` from templates if missing. Default frontend on Linux is **Grok**.
+
+Product repos: prefer [consumer-starter](../examples/consumer-starter/README.md) **lite** `AGENTS.md` or `Agent-Init.consumer.sh` (symlink SSOT). Do not copy the whole template tree.
 
 ---
 

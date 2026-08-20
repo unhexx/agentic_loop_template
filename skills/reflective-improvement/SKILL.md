@@ -23,8 +23,9 @@ version: 1.1.0
 ## Standard Workflow (imperative)
 
 1. **Trigger & gather**
-   - Scope: single task, cycle, error cluster, or full review.
+   - Scope: single task, cycle, error cluster, full review, or **parent-folder harvest**.
    - Fetch: last handoff JSON, PERFORMANCE_LEDGER recent, LOOP_STATE snapshot, relevant playbooks, test output.
+   - Parent-folder session: `python -m memory.experience_harvester cycle --parent <_PROJECT>` (dry-run first). Reads AGENTS.md / playbooks, not only LESSONS.md.
 
 2. **Structured Reflection Ritual**
    - **Review**: Goal, actions, outcome vs expected, confidence.
@@ -50,6 +51,7 @@ version: 1.1.0
 
 5. **Close the loop**
    - On DONE: Reviewer MUST run this skill (or equivalent meta_harvester harvest + reflect).
+   - If the session spanned `../_PROJECT/*`, apply `experience_harvester cycle --parent ..` and record `memory_updated`.
    - Suggest decomposition into `.agent/TODO.md` / PLAN.
 
 ## Trigger Phrases
