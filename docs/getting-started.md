@@ -37,7 +37,7 @@ source .venv/bin/activate
 
 The wizard creates `TASK_SPECIFICATION.md` and `PROJECT_CONTEXT.md` from templates if missing. Default frontend on Linux is **Grok**.
 
-Live Grok CLI calls go through **host pxpipe** (`http://127.0.0.1:8100/v1`) by default. `Agent-Init.sh` writes `GROK_CLI_CHAT_PROXY_BASE_URL` into `.venv/bin/activate`. Mock/CI do not require pxpipe. Opt out with `export AGENTIX_PROXY=0`. Unit template: [`scripts/systemd/pxpipe.service.example`](../scripts/systemd/pxpipe.service.example). Health: `python -m memory.proxy health`.
+Live Grok CLI calls go through the **Agentix gateway** (`http://127.0.0.1:8110/v1`), which fronts host pxpipe (`:8100`). `Agent-Init.sh` writes `GROK_CLI_CHAT_PROXY_BASE_URL` into `.venv/bin/activate`. Mock/CI do not require pxpipe. Opt out with `export AGENTIX_PROXY=0`. Units: [`scripts/systemd/pxpipe.service.example`](../scripts/systemd/pxpipe.service.example), [`scripts/systemd/agentix-gateway.service.example`](../scripts/systemd/agentix-gateway.service.example). Health: `python -m memory.proxy health`. Start gateway: `bash scripts/agentix-proxy.sh start`.
 
 Product repos: prefer [consumer-starter](../examples/consumer-starter/README.md) **lite** `AGENTS.md` or `Agent-Init.consumer.sh` (symlink SSOT). Do not copy the whole template tree.
 

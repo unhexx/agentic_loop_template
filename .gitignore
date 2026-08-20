@@ -224,4 +224,7 @@ __marimo__/
 .agent/starter_prompt_grok.txt
 .agent/metrics.jsonl
 .agent/LOOP_STATE.json
+.agent/proxy_events.jsonl
+.agent/proxy_cache.sqlite
+.agent/proxy_cache.sqlite-*
 .venv/

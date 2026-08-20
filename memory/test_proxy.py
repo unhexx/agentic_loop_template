@@ -14,7 +14,11 @@ import json
 import os
 import socket
 import tempfile
+import threading
+import urllib.error
+import urllib.request
 from contextlib import contextmanager, redirect_stdout
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Dict, Iterator, Optional
 
@@ -57,7 +61,7 @@ def _env(**kwargs: Optional[str]) -> Iterator[None]:
 
 def _write_cfg(root: Path, payload: dict) -> Path:
     agent = root / ".agent"
-    agent.mkdir(parents=True)
+    agent.mkdir(parents=True, exist_ok=True)
     path = agent / "project_config.json"
     path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
     return path
@@ -277,6 +281,169 @@ def test_cli_health_json_and_init_mock() -> None:
             assert payload["pxpipe_ok"] is False
 
 
+class _FakeUpstream(BaseHTTPRequestHandler):
+    last_headers: Dict[str, str] = {}
+    last_body = b""
+    posts = 0
+
+    def log_message(self, *_a: object) -> None:
+        return
+
+    def do_POST(self) -> None:  # noqa: N802
+        n = int(self.headers.get("Content-Length") or 0)
+        type(self).last_body = self.rfile.read(n)
+        type(self).last_headers = {k: v for k, v in self.headers.items()}
+        type(self).posts += 1
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.end_headers()
+        self.wfile.write(b'data: {"id":"sse-1"}\n\n')
+        self.wfile.flush()
+        self.wfile.write(b"data: [DONE]\n\n")
+        self.wfile.flush()
+
+    def do_GET(self) -> None:  # noqa: N802
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(b'{"upstream":true}')
+
+
+def _start_httpd(httpd) -> threading.Thread:
+    t = threading.Thread(target=httpd.serve_forever, daemon=True)
+    t.start()
+    return t
+
+
+def test_bind_rejects_non_loopback() -> None:
+    from memory.proxy.gateway import BindError, make_server
+
+    try:
+        make_server("0.0.0.0", 0)
+        raise AssertionError("expected BindError")
+    except BindError:
+        pass
+
+
+def test_gateway_healthz_sse_roundtrip_and_redaction() -> None:
+    from memory.proxy.gateway import make_server
+
+    _FakeUpstream.posts = 0
+    up = ThreadingHTTPServer(("127.0.0.1", 0), _FakeUpstream)
+    _start_httpd(up)
+    up_port = up.server_address[1]
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".agent").mkdir()
+            _write_cfg(
+                root,
+                {
+                    "proxy": {
+                        "mode": "required",
+                        "pxpipe_base": f"http://127.0.0.1:{up_port}",
+                        "exact_cache": True,
+                        "compress_body": True,
+                    },
+                    "supervisor": {"adapter": "mock"},
+                },
+            )
+            with _env(AGENTIX_PROJECT_ROOT=str(root), AGENTIX_PROXY=None):
+                gw = make_server(
+                    "127.0.0.1",
+                    0,
+                    upstream=f"http://127.0.0.1:{up_port}",
+                    workdir=root,
+                    quiet=True,
+                )
+                _start_httpd(gw)
+                port = gw.server_address[1]
+                try:
+                    with urllib.request.urlopen(
+                        f"http://127.0.0.1:{port}/healthz", timeout=2
+                    ) as resp:
+                        health = json.loads(resp.read().decode("utf-8"))
+                    assert health["ok"] is True
+
+                    payload = json.dumps(
+                        {
+                            "model": "grok",
+                            "input": [{"role": "user", "content": "hello gateway"}],
+                        }
+                    ).encode("utf-8")
+                    req = urllib.request.Request(
+                        f"http://127.0.0.1:{port}/v1/responses",
+                        data=payload,
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": "Bearer SUPERSECRET_TOKEN",
+                            "X-Agentix-Root": str(root),
+                        },
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req, timeout=3) as resp:
+                        body = resp.read()
+                    assert b"data:" in body
+                    assert b"sse-1" in body
+                    events = (root / ".agent" / "proxy_events.jsonl").read_text(
+                        encoding="utf-8"
+                    )
+                    assert "SUPERSECRET_TOKEN" not in events
+                    assert "Bearer " not in events
+                    assert "/v1/responses" in events
+                    assert _FakeUpstream.last_headers.get("Authorization") == (
+                        "Bearer SUPERSECRET_TOKEN"
+                    )
+                finally:
+                    gw.shutdown()
+    finally:
+        up.shutdown()
+
+
+def test_gateway_required_no_public_fallback() -> None:
+    from memory.proxy.gateway import make_server
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / ".agent").mkdir()
+        _write_cfg(
+            root,
+            {
+                "proxy": {
+                    "mode": "required",
+                    "pxpipe_base": "http://127.0.0.1:1",
+                    "upstream_fallback": "https://cli-chat-proxy.grok.com",
+                }
+            },
+        )
+        with _env(AGENTIX_PROJECT_ROOT=str(root), AGENTIX_PROXY=None):
+            gw = make_server(
+                "127.0.0.1",
+                0,
+                upstream="http://127.0.0.1:1",
+                workdir=root,
+                quiet=True,
+            )
+            _start_httpd(gw)
+            port = gw.server_address[1]
+            try:
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{port}/v1/responses",
+                    data=b'{"model":"x","input":[]}',
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                try:
+                    urllib.request.urlopen(req, timeout=3)
+                    raise AssertionError("expected 502")
+                except urllib.error.HTTPError as exc:
+                    assert exc.code == 502
+                    err = exc.read().decode("utf-8")
+                    assert "pxpipe" in err.lower() or "unavailable" in err.lower()
+            finally:
+                gw.shutdown()
+
+
 def test_grok_adapter_calls_assert_ready(monkeypatch=None) -> None:
     """GrokAdapter.run_role_turn должен упасть на политике до subprocess."""
     import memory.adapters.grok as grok_mod
@@ -321,6 +488,9 @@ def _run_all() -> None:
         test_preferred_does_not_raise_when_down,
         test_install_venv_writes_marker_idempotent,
         test_cli_health_json_and_init_mock,
+        test_bind_rejects_non_loopback,
+        test_gateway_healthz_sse_roundtrip_and_redaction,
+        test_gateway_required_no_public_fallback,
         test_grok_adapter_calls_assert_ready,
     ]
     for fn in tests:

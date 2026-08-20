@@ -27,11 +27,10 @@ DEFAULT_PXPIPE_BASE = f"http://{PXPIPE_HOST}:{PXPIPE_PORT}"
 DEFAULT_GATEWAY_BASE = f"http://{GATEWAY_HOST}:{GATEWAY_PORT}"
 DEFAULT_UPSTREAM_FALLBACK = "https://cli-chat-proxy.grok.com"
 
-# PR1: Init пишет прямо на pxpipe. После шлюза (PR3) константа
-# DEFAULT_INSTALL_CHAT_PROXY переключается на :8110/v1.
+# Init и Grok CLI ходят на шлюз :8110; шлюз сам фронтит pxpipe :8100.
 CHAT_PROXY_VIA_PXPIPE = f"{DEFAULT_PXPIPE_BASE}/v1"
 CHAT_PROXY_VIA_GATEWAY = f"{DEFAULT_GATEWAY_BASE}/v1"
-DEFAULT_INSTALL_CHAT_PROXY = CHAT_PROXY_VIA_PXPIPE
+DEFAULT_INSTALL_CHAT_PROXY = CHAT_PROXY_VIA_GATEWAY
 
 DEFAULT_MODE = "required"
 DEFAULT_TIMEOUT_S = 900
@@ -129,7 +128,7 @@ def load_proxy_config(workdir: Optional[Path] = None) -> Dict[str, Any]:
             gateway_base = f"http://{listen}"
 
     chat_env = os.environ.get("GROK_CLI_CHAT_PROXY_BASE_URL", "").strip()
-    chat_proxy = chat_env.rstrip("/") if chat_env else f"{pxpipe_base}/v1"
+    chat_proxy = chat_env.rstrip("/") if chat_env else f"{gateway_base}/v1"
 
     cfg = {
         "mode": effective_mode(section),

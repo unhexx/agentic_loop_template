@@ -19,6 +19,13 @@
 - Init: `knowledge ingest-if-empty` + `context_budget cold-start --compress`. Reviewer DONE harvest when parent looks like `_PROJECT` is the documented default path.
 - Tests: knowledge block when DB seeded; `ingest_if_empty` helper.
 
+### Added (Agentix gateway fronts pxpipe)
+- stdlib reverse proxy `python -m memory.proxy serve` on `127.0.0.1:8110` → pxpipe `:8100`. Streaming copy, JSONL audit, exact-hash cache when `AGENTIX_PROJECT_ROOT` / `X-Agentix-Root` is set.
+- Fail-closed if pxpipe is down and `mode=required` — no silent public upstream.
+- Init venv export now `GROK_CLI_CHAT_PROXY_BASE_URL=http://127.0.0.1:8110/v1`.
+- `scripts/agentix-proxy.sh`, `scripts/systemd/agentix-gateway.service.example`.
+- Tests: chunked SSE fake upstream, `/v1/responses` round-trip, `/healthz`, header redaction.
+
 ## [3.6.0] - 2026-08-20
 
 ### Added (cross-project experience harvest — 2026-08-20 self-improve)

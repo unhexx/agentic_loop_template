@@ -8,3 +8,6 @@ SPRINTPLAN.md
 .env.agentic
 .env.blackbox
 blackbox_start_prompt.txt
+.agent/proxy_events.jsonl
+.agent/proxy_cache.sqlite
+.agent/proxy_cache.sqlite-*

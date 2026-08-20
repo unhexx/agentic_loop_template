@@ -38,7 +38,11 @@ def cli(argv: Optional[Sequence[str]] = None) -> int:
     pih.add_argument("--url", default=None)
     pih.add_argument("--dry-run", action="store_true")
 
-    sub.add_parser("serve", help="Шлюз :8110 (появится позже)")
+    ps = sub.add_parser("serve", help="Шлюз :8110 → pxpipe :8100")
+    ps.add_argument("--host", default="127.0.0.1")
+    ps.add_argument("--port", type=int, default=8110)
+    ps.add_argument("--upstream", default=None, help="База pxpipe, по умолчанию из конфига")
+    ps.add_argument("--workdir", type=Path, default=None)
     sub.add_parser("stats", help="Сводка токенов (появится позже)")
 
     args = parser.parse_args(list(argv) if argv is not None else None)
@@ -71,12 +75,21 @@ def cli(argv: Optional[Sequence[str]] = None) -> int:
         return 0 if report.get("ok") else 1
 
     if args.cmd == "serve":
-        print(
-            "python -m memory.proxy serve ещё не собран в этом срезе; "
-            "пока GROK_CLI_CHAT_PROXY_BASE_URL указывает на pxpipe :8100/v1",
-            file=sys.stderr,
-        )
-        return 2
+        from memory.proxy.gateway import BindError, serve
+
+        try:
+            serve(
+                host=args.host,
+                port=int(args.port),
+                upstream=args.upstream,
+                workdir=args.workdir,
+            )
+        except BindError as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
+        except KeyboardInterrupt:
+            return 0
+        return 0
 
     if args.cmd == "stats":
         print("python -m memory.proxy stats появится вместе со сводкой токенов", file=sys.stderr)
