@@ -10,7 +10,7 @@
 - Seeds from live tree: docs_gap (signet/nesttunnel), classifier Windows-only Init + stale LOOP_STATE, telegrok incomplete Init, two-tier adoption
 - Lite consumer: `examples/consumer-starter/AGENTS.md.example`, `Agent-Init.consumer.sh` (sibling SSOT symlink + PYTHONPATH)
 - `tools/select.py --intent harvest`; `tools/blocks/common/experience.md`
-- Tests: `memory/test_experience_harvester.py`
+- Tests: `memory/test_experience_harvester.py` (`python -m` + CI verify step)
 - Docs: `docs/ANALYSIS_FROM_PROJECTS.md` 2026-08-20 section; Linux/Grok-first `SYSTEM_PROMPT.md`
 
 ### Added (skills + rule-based context compressor)

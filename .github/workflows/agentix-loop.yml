@@ -36,6 +36,7 @@ jobs:
           python -m memory.test_playbooks_hub
           python -m memory.test_compressor
           python -m memory.test_knowledge
+          python -m memory.test_experience_harvester
 
       - name: Export Hub index
         run: |
