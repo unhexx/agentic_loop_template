@@ -95,6 +95,10 @@ python -m memory.compressor files --budget 4000 .agent/history/x.md TRAJECTORIES
 
 Reviewer on DONE must run the reflective-improvement skill and, if over budget, `--compress`. Sources are never rewritten; the report is the contract.
 
+## Rituals vs request proxy (v3.7)
+
+File-side compression (`memory.compressor`, `context_budget --compress`) and knowledge ingest run in Init / supervisor / Reviewer **without** an HTTP hop. The request proxy (host pxpipe, later the in-template gateway) compresses **interactive request bodies** only. Do not stack aggressive distill on both paths: gateway keeps `keep_recent_turns=2`; supervisor injects a bounded knowledge block (≤800 tokens). Sources stay the source of truth — the compressor never rewrites them. Harmless if both are imported in the same process.
+
 ## Selective Memory (P7)
 
 Do not load full history. Use targeted retrieval:

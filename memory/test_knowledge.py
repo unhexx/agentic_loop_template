@@ -18,6 +18,7 @@ from pathlib import Path
 from memory.knowledge import (
     compact,
     ingest_docs,
+    ingest_if_empty,
     query,
     stats,
     upsert,
@@ -146,6 +147,25 @@ def test_cli_query_and_stats_json():
         assert s["by_category"][0]["category"] == "playbook"
 
 
+def test_ingest_if_empty_skips_when_seeded_and_fills_when_empty():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        db = root / "k.sqlite"
+        docs = root / "docs"
+        docs.mkdir()
+        (docs / "a.md").write_text("# Alpha\n\nbounded state pattern\n", encoding="utf-8")
+        first = ingest_if_empty(docs, db=db, cwd=root, budget_tokens=400)
+        assert first["reason"] == "empty"
+        assert first["ingested"] == 1
+        second = ingest_if_empty(docs, db=db, cwd=root, budget_tokens=400)
+        assert second["reason"] == "not_empty"
+        assert second["ingested"] == 0
+        assert stats(db=db)["entries"] == 1
+        missing = ingest_if_empty(root / "nope", db=db, cwd=root)
+        assert missing["reason"] == "root_missing"
+        assert missing["ingested"] == 0
+
+
 def test_cli_ingest_missing_root_is_error():
     with tempfile.TemporaryDirectory() as tmp:
         db = Path(tmp) / "k.sqlite"
@@ -165,6 +185,7 @@ def _run_all() -> None:
         test_ingest_docs_from_markdown_tree,
         test_compact_drops_old_over_cap,
         test_cli_query_and_stats_json,
+        test_ingest_if_empty_skips_when_seeded_and_fills_when_empty,
         test_cli_ingest_missing_root_is_error,
     ]
     for fn in tests:

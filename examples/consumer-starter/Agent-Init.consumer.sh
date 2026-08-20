@@ -76,6 +76,8 @@ fi
 
 python -m memory state init 2>/dev/null || true
 python -m memory.experience_harvester seed-defaults --apply >/dev/null 2>&1 || true
+python -m memory.knowledge ingest-if-empty --root docs --budget 800 >/dev/null 2>&1 || true
+python -m memory.context_budget cold-start --budget 16000 --compress >/dev/null 2>&1 || true
 python -m memory.proxy health --init >/dev/null 2>&1 || true
 
 VERSION="$(cat "$TEMPLATE/VERSION" 2>/dev/null || echo unknown)"

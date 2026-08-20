@@ -33,6 +33,8 @@ ROLE_PROMPT_FILES = {
 
 _PROMPT_BODY_CAP = 8000
 _SNAP_JSON_CAP = 4000
+_KNOWLEDGE_BUDGET = 800
+_PROMPT_TOKEN_CAP = 8000
 _TERMINAL_STATE_STATUSES = frozenset(
     {
         Terminal.PR_READY.value,
@@ -145,6 +147,59 @@ def _state_snapshot_for_workdir(workdir: Path) -> str:
         return "{}"
 
 
+def _knowledge_block(
+    role: str,
+    handoff_in: Optional[Dict[str, Any]],
+    workdir: Path,
+) -> str:
+    """Короткий блок из локальной SQLite. Нет базы — пустая строка, без догадок cwd шлюза."""
+    try:
+        from memory.compressor import compress_text
+        from memory.knowledge import db_path, query
+
+        db = db_path(cwd=workdir)
+        if not db.is_file():
+            return ""
+        q = ""
+        if handoff_in:
+            q = str(handoff_in.get("summary") or "").strip()[:200]
+        if not q:
+            q = role
+        rows = query(q=q, top=3, db=db)
+        if not rows:
+            rows = query(top=3, db=db)
+        if not rows:
+            return ""
+        lines: List[str] = []
+        for row in rows:
+            title = str(row.get("title") or "").strip()
+            source = str(row.get("source") or "").strip()
+            content = str(row.get("content") or "").replace("\n", " ").strip()
+            lines.append(f"- {title} ({source}): {content}")
+        blob = "\n".join(lines)
+        text = compress_text(blob, _KNOWLEDGE_BUDGET)["text"]
+        return f"\n## Local knowledge (top 3)\n{text}\n"
+    except Exception:
+        return ""
+
+
+def _maybe_compress_prompt(text: str, workdir: Path) -> str:
+    """Если compress_when_over и промпт жирный — правиловый компрессор, источники не трогаем."""
+    cfg = load_config(workdir)
+    budget_cfg = cfg.get("context_budget") if isinstance(cfg.get("context_budget"), dict) else {}
+    if budget_cfg.get("compress_when_over") is False:
+        return text
+    try:
+        from memory.compressor import compress_text
+        from memory.context_budget import estimate_tokens
+
+        if estimate_tokens(text) <= _PROMPT_TOKEN_CAP:
+            return text
+        return compress_text(text, _PROMPT_TOKEN_CAP)["text"]
+    except Exception:
+        return text
+
+
 def build_role_prompt(
     role: str,
     handoff_in: Optional[Dict[str, Any]],
@@ -177,16 +232,18 @@ def build_role_prompt(
         )
 
     snap = _state_snapshot_for_workdir(workdir)
+    knowledge = _knowledge_block(role, handoff_in, workdir)
 
-    return (
+    prompt = (
         f"You are the **{role}** in the Agentix loop. "
         "Driven by supervisor — do not wait for human «продолжай».\n"
         "End with exactly one JSON handoff object "
         "(HANDOFF_SCHEMA / schemas/handoff.schema.json / last_handoff).\n"
         "Do NOT read .agent/history/* archives. "
         "Use tools/select.py for tools (do not inline full tool docs).\n\n"
-        f"{body}\n{prev}\n## State snapshot\n{snap}\n"
+        f"{body}\n{prev}\n## State snapshot\n{snap}\n{knowledge}"
     )
+    return _maybe_compress_prompt(prompt, workdir)
 
 
 def maybe_create_pr(workdir: Path, sup: dict) -> Terminal:

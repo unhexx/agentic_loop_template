@@ -13,8 +13,10 @@
   - Windows: `powershell -ExecutionPolicy Bypass -File .\Agent-Init.ps1`
   - Python: `.venv/bin/python` (*nix) or `.venv\Scripts\python.exe` (Win)
 - **Bounded state only (never load multi-MB `.agent` archives):**
+  - `python -m memory.proxy health`
   - `python -m memory state snapshot --window 3`
   - `python -m memory query --top 5 --category "Common Failure Patterns"`
+  - `python -m memory.knowledge query --q "<cycle goal>" --top 3`
   - Parent-folder session only: `python -m memory.experience_harvester cycle --parent ..` (dry-run; `--apply` after Reviewer)
 - **Git:**
   - Default: `./scripts/preflight_git.sh` + `./scripts/sync-worktree.sh --verify-only` (expect `SYNC_DONE`)
@@ -27,7 +29,7 @@
 - Ultra-compact summary + deltas; full files on-demand (`PROMPT_COMPRESSION_GUIDE.md`)
 - Tools: `python tools/select.py --intent <git|test|memory|state|…>` — no TOOLS monologues
 - Memory + playbooks: `python -m memory.playbooks select …` (global/role/phase/tool scopes) when available
-- Context budget: `python -m memory.context_budget cold-start --budget 16000`
+- Context budget: `python -m memory.context_budget cold-start --budget 16000 --compress`
 - Clarification questions non-blocking → handoff / questions_collector
 
 ### 3. Assign work

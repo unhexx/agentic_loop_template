@@ -761,6 +761,8 @@ try {
     $ErrorActionPreference = 'Continue'
     & $venvPython -m memory.proxy install-venv 2>$null | Out-Null
     & $venvPython -m memory.proxy health --init --frontend blackbox 2>$null | Out-Null
+    & $venvPython -m memory.knowledge ingest-if-empty --root docs --budget 800 2>$null | Out-Null
+    & $venvPython -m memory.context_budget cold-start --budget 16000 --compress 2>$null | Out-Null
     $ErrorActionPreference = $oldPref
     Write-Host "  Proxy env exports installed (pxpipe optional for Blackbox)." -ForegroundColor DarkGray
 } catch {

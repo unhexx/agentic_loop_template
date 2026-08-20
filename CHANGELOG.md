@@ -14,6 +14,11 @@
 ### Changed
 - Existing clones without a `proxy` key are treated as `mode=required` once this code ships; mock adapter still skips the probe. Set `AGENTIX_PROXY=0` if a Grok clone has no pxpipe yet.
 
+### Added (default distillation / knowledge rituals)
+- Supervisor `build_role_prompt` injects a bounded knowledge block (top 3, ≤800 tokens) when the SQLite store is seeded; over-budget prompts run the rule compressor (`compress_when_over`).
+- Init: `knowledge ingest-if-empty` + `context_budget cold-start --compress`. Reviewer DONE harvest when parent looks like `_PROJECT` is the documented default path.
+- Tests: knowledge block when DB seeded; `ingest_if_empty` helper.
+
 ## [3.6.0] - 2026-08-20
 
 ### Added (cross-project experience harvest — 2026-08-20 self-improve)

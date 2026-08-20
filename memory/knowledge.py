@@ -261,6 +261,48 @@ def _iter_markdown(root: Path, pattern: str) -> List[Path]:
     return found or sorted(p for p in root.rglob("*.md") if p.is_file())
 
 
+def ingest_if_empty(
+    root: Path,
+    *,
+    pattern: str = "**/*.md",
+    category: str = "doc",
+    budget_tokens: int = DEFAULT_INGEST_BUDGET,
+    db: Optional[Path] = None,
+    cwd: Optional[Path] = None,
+    max_per_category: int = MAX_PER_CATEGORY,
+) -> Dict[str, Any]:
+    """Заливаем docs только если база ещё пустая. Повторный Init безопасен."""
+    root = Path(root)
+    if not root.exists():
+        return {
+            "ingested": 0,
+            "skipped": 0,
+            "reason": "root_missing",
+            "root": str(root),
+            "stats": stats(db=db),
+        }
+    snap = stats(db=db)
+    if int(snap.get("entries") or 0) > 0:
+        return {
+            "ingested": 0,
+            "skipped": 0,
+            "reason": "not_empty",
+            "root": str(root),
+            "stats": snap,
+        }
+    report = ingest_docs(
+        root,
+        pattern=pattern,
+        category=category,
+        budget_tokens=budget_tokens,
+        db=db,
+        cwd=cwd,
+        max_per_category=max_per_category,
+    )
+    report["reason"] = "empty"
+    return report
+
+
 def ingest_docs(
     root: Path,
     *,
@@ -360,6 +402,16 @@ def cli(argv: Optional[Sequence[str]] = None) -> int:
     pi.add_argument("--budget", type=int, default=DEFAULT_INGEST_BUDGET)
     pi.add_argument("--max-per-category", type=int, default=MAX_PER_CATEGORY)
 
+    pie = sub.add_parser(
+        "ingest-if-empty",
+        help="ingest-docs только если в базе 0 записей",
+        parents=[shared],
+    )
+    pie.add_argument("--root", type=Path, default=Path("docs"))
+    pie.add_argument("--category", default="doc")
+    pie.add_argument("--budget", type=int, default=DEFAULT_INGEST_BUDGET)
+    pie.add_argument("--max-per-category", type=int, default=MAX_PER_CATEGORY)
+
     sub.add_parser("stats", help="Сводка по базе", parents=[shared])
 
     args = parser.parse_args(list(argv) if argv is not None else None)
@@ -389,8 +441,9 @@ def cli(argv: Optional[Sequence[str]] = None) -> int:
         )
         print(json.dumps(row, ensure_ascii=False, indent=2))
         return 0
-    if args.cmd == "ingest-docs":
-        report = ingest_docs(
+    if args.cmd in {"ingest-docs", "ingest-if-empty"}:
+        fn = ingest_if_empty if args.cmd == "ingest-if-empty" else ingest_docs
+        report = fn(
             args.root,
             category=args.category,
             budget_tokens=args.budget,
@@ -398,6 +451,8 @@ def cli(argv: Optional[Sequence[str]] = None) -> int:
             max_per_category=args.max_per_category,
         )
         print(json.dumps(report, ensure_ascii=False, indent=2))
+        if args.cmd == "ingest-if-empty":
+            return 0
         return 0 if report.get("ingested", 0) >= 0 and "error" not in report else 1
     report = stats(db=db)
     print(json.dumps(report, ensure_ascii=False, indent=2))

@@ -25,7 +25,7 @@
 - Check cycle start discipline: did Orchestrator read latest PLAN.md + TODO.md and advance the *last unfinished iteration*? (Reject with BLOCKED + explicit feedback if skipped.)
 - Verify natural Russian human-style commits from all previous roles.
 - Perform **Context Distillation** (structured summary appended to SELF_IMPROVEMENT_LOG.md or PROJECT_CONTEXT.md) when cycle ends or context is heavy.
-- **Mandatory on DONE:** follow `skills/reflective-improvement/SKILL.md` (6-step ritual) before the final handoff. Do not skip. If this session touched sibling repos under a parent folder, run `python -m memory.experience_harvester cycle --parent ..` (dry-run; `--apply` when lessons are real).
+- **Mandatory on DONE:** follow `skills/reflective-improvement/SKILL.md` (6-step ritual) before the final handoff. Do not skip. If this session touched sibling repos under a parent folder, run `python -m memory.experience_harvester cycle --parent ..` (dry-run; `--apply` when lessons are real). This harvest is the default Reviewer path when `../` looks like `_PROJECT` (sibling layout).
 - If `python -m memory.context_budget cold-start` (or check) reports over budget: re-run with `--compress` and set `distillation_performed` in the handoff. Comment on what was dropped vs kept.
 - Update Workspace Memory with 1–3 actionable patterns (`memory_updated`, `patterns_merged`).
 - Update Performance Ledger (use performance_ledger append or meta integration) with cycle stats for P1 Metrics/ROI tracking. Include "performance" object in handoff.

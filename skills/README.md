@@ -23,6 +23,8 @@ python tools/select.py --intent harvest
 # "Follow skills/reflective-improvement/SKILL.md ritual"
 python -m memory.context_budget check --files .agent/PLAN.md --budget 12000 --compress
 python -m memory.knowledge query --q "git sync" --top 5
+# Init default: ingest-if-empty + cold-start --compress (no HTTP hop; proxy is a separate path)
+python -m memory.knowledge ingest-if-empty --root docs --budget 800
 ```
 
 Skills integrate with:
