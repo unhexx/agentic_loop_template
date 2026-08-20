@@ -1,4 +1,37 @@
-# Analysis: agentic-loop usage across `_PROJECT/*` (2026-07-29)
+# Analysis: agentic-loop usage across `_PROJECT/*`
+
+## 2026-08-20 (current tree — self-improve cycle)
+
+Live sibling folders (eegent / tunex / agent-box **gone** from this host):
+
+| Tier | Project | Agent experience |
+|------|---------|------------------|
+| SSOT | `agentic_loop_template` | Full harness. `_PROJECT` clone is **root-owned 3.5.0**; writable work clone is `~/work/agentic_loop_template` @ 3.6.0 |
+| stale | `classifier` | Copied template files + Windows `LOOP_STATE.md` (2026-06-10, `C:\Users\ROOT\...`). `Agent-Init.ps1` only — no `.sh`. Product DONE v1.10 |
+| lite+ | `contact-vault` | Best product playbook: `docs/06-ENGINEERING/Agent-Playbook.md` + CONTRIBUTING (contracts-first, provenance, MUST NOT, exact `pnpm` DoD). No Agentix loop |
+| partial | `telegrok` | `AGENTS.md` (exact uv/ruff/mypy commands, NEVER list) + Linux `SYSTEM_PROMPT` + `Agent-Init.sh` symlink-to-SSOT. `.agent/PLAN+TODO` present; **no `.venv` / LOOP_STATE** — Init unfinished |
+| docs_gap | `signet`, `nesttunnel` | README claims `docs/AGENT_PLAYBOOK.md` / `AGENTIC_LOOP.md` — files **missing**. PRD/ARCHITECTURE/ROADMAP only |
+| none | `hashtager`, `outline-gate`, `telegrator`, `serial-number-extractor-ms` | Product code. outline-gate has superpowers plans; telegrator TIPS_AND_TRICKS is ops not agents |
+| empty | `localhost` | Workspace stub |
+
+### Harvester before this cycle
+
+`python -m memory.experience_harvester scan --parent /home/unhex/_PROJECT` → **`count: 0`**.
+Only `LESSONS.md` / `SELF_IMPROVEMENT_LOG.md` were scanned; no current project has them.
+
+### Recommendations applied in 3.6.0
+
+1. Harvest AGENTS.md, playbooks, CONTRIBUTING, living plans, LOOP_STATE drift, broken README links.
+2. `audit` + `cycle` CLI for parent-folder self-improve.
+3. Two-tier consumer starter: lite `AGENTS.md` vs full O→C→T→D→R; **symlink SSOT** (telegrok pattern), do not vendor the tree.
+4. `SYSTEM_PROMPT.md` Linux/Grok-first; PowerShell only on Windows.
+5. Detect classifier-style stale Windows LOOP_STATE and Windows-only Init.
+
+See `docs/TOP10_IMPROVEMENTS.md` (3.6 rows) and `EXPERIENCE_EXTRACTION_TOOLS.md`.
+
+---
+
+# Historical: 2026-07-29 (eegent / tunex era)
 
 ## Projects scored (agentic signals)
 

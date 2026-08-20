@@ -9,6 +9,8 @@ First-class reusable skills for the agentic loop. Skills are progressive knowled
 | [reflective-improvement](reflective-improvement/SKILL.md) | Structured 6-step reflection after tasks/errors/DONE cycles → persistent lessons, playbook updates, meta proposals | Reviewer on DONE; any role after failure or major milestone |
 | [local-knowledge-ingestion](local-knowledge-ingestion/SKILL.md) | Templates for crawlers, SQLite local knowledge store, sovereign mirroring of docs/code into structured memory | Orchestrator bootstrap; when external docs or multi-repo knowledge needed |
 
+Cross-project harvest is not a separate skill file: run `python tools/select.py --intent harvest` → `experience_harvester cycle` (see `EXPERIENCE_EXTRACTION_TOOLS.md`).
+
 ## Usage
 
 ```bash
@@ -16,6 +18,7 @@ First-class reusable skills for the agentic loop. Skills are progressive knowled
 python tools/select.py --intent reflect
 python tools/select.py --intent knowledge
 python tools/select.py --intent compress
+python tools/select.py --intent harvest
 # or reference in handoff / prompt:
 # "Follow skills/reflective-improvement/SKILL.md ritual"
 python -m memory.context_budget check --files .agent/PLAN.md --budget 12000 --compress

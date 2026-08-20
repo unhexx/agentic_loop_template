@@ -1,11 +1,12 @@
 # Agentix
 
 [![Version](https://img.shields.io/badge/version-3.6.0-blue?style=flat-square)](CHANGELOG.md)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white)](docs/getting-started.md)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](docs/cross-platform.md)
-[![Docs](https://img.shields.io/badge/docs-available-brightgreen)](docs/README.md)
-[![Maintained](https://img.shields.io/badge/maintained-yes-success)](https://github.com/unhexx/agentic_loop_template)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](docs/getting-started.md)
+[![Platform](https://img.shields.io/badge/platform-Linux_%7C_macOS_%7C_Windows-lightgrey?style=flat-square)](docs/cross-platform.md)
+[![Frontend](https://img.shields.io/badge/frontend-Grok_CLI-black?style=flat-square)](docs/multi-frontend.md)
+[![Docs](https://img.shields.io/badge/docs-available-brightgreen?style=flat-square)](docs/README.md)
+[![Maintained](https://img.shields.io/badge/maintained-yes-success?style=flat-square)](https://github.com/unhexx/agentic_loop_template)
 
 **Production-grade, self-improving multi-role agentic development loop.**
 
@@ -38,7 +39,7 @@ Maintained by [exception.expert](https://exception.expert).
 |-------------|---------|
 | Python | 3.10+ |
 | Git | any recent |
-| Agent frontend | [Cursor](docs/multi-frontend.md), Claude Code, Blackbox, or compatible |
+| Agent frontend | [Grok CLI](docs/multi-frontend.md) (default on this host), Cursor, Claude Code, Blackbox |
 
 ### 1. Bootstrap (choose your platform)
 
@@ -98,11 +99,11 @@ PLAN + SPEC: OK
 
 ### 3. Launch the agent loop
 
-1. Open your project in **Cursor**, **Claude Code**, or **Blackbox**.
+1. Open your project in **Grok**, **Cursor**, **Claude Code**, or **Blackbox**.
 2. Paste the contents of [`prompts/short_orchestrator_prompt.md`](prompts/short_orchestrator_prompt.md) as the **first message**.
 3. The agent starts as **Orchestrator**, reads `.agent/PLAN.md`, and begins the cycle.
 
-> **New consumer project?** Copy [`examples/consumer-starter/`](examples/consumer-starter/) into your repo first.
+> **New consumer project?** Two tiers — see [`examples/consumer-starter/`](examples/consumer-starter/): **lite** `AGENTS.md` (most products) or **full** loop via `Agent-Init.consumer.sh` (symlink the SSOT, do not copy the tree).
 
 ---
 
@@ -238,6 +239,7 @@ python -m memory.playbooks export --format hub
 | `python -m memory.audit_log list` | Enterprise audit trail |
 | `python -m memory.resume --json` | Resume after session crash |
 | `python -m memory.eval_harness --recent 5` | Score recent trajectories |
+| `python -m memory.experience_harvester cycle --parent ..` | Cross-project experience harvest + adoption audit |
 | `python -m memory.context_budget check --files … --compress` | Token budget gate; compress if over (no rewrite) |
 | `python -m memory.compressor files --budget 12000 …` | Rule-based distillation (priority drop + head/tail) |
 | `python -m memory.knowledge query --q "…" --category playbook` | Local SQLite knowledge (ingest-docs / upsert / stats) |
@@ -256,7 +258,8 @@ Full memory layer docs: [`memory/README.md`](memory/README.md).
 | **Self-improvement** | Playbooks (ACE scoring), meta-harvester, performance ledger, [skills](skills/README.md) |
 | **Context** | Bounded LOOP_STATE, `context_budget` gate, rule-based compressor, local SQLite knowledge |
 | **Cross-platform** | `Agent-Init.ps1` + `Agent-Init.sh`, platform-adaptive prompts |
-| **Multi-frontend** | Cursor, Claude Code, Blackbox adapters |
+| **Multi-frontend** | Grok (default), Cursor, Claude Code, Blackbox adapters |
+| **Experience harvest** | Scan sibling `AGENTS.md` / playbooks; `audit` + `cycle` self-improve |
 | **Productization** | `docs/` site, consumer-starter, Agentix Hub |
 | **Enterprise** | Audit log, policy samples, GitHub Actions trigger |
 | **DX** | Onboarding wizard, stack templates, VS Code extension recommendations |

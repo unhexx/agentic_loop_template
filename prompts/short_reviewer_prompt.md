@@ -18,14 +18,14 @@
 ### 2. Full Review & Context Loading
 - Read **all previous handoffs** in the current cycle + compact state from `PROJECT_CONTEXT.md`, `SPRINTPLAN.md`, `.agent/LESSONS.md`, `DECISIONS.md`.
 - On-demand deep reads only. Apply aggressive compression.
-- **Compare result ruthlessly against `{{SPEC_FILE}}`** (architecture, tests, docs, edge cases, Russian language in code/comments/commits, UTF-8, PowerShell hygiene, TOOLS_INSTRUCTIONS compliance).
+- **Compare result ruthlessly against `{{SPEC_FILE}}`** (architecture, tests, docs, edge cases, Russian language in code/comments/commits, UTF-8, **host-OS** tool blocks, TOOLS_INSTRUCTIONS compliance).
 
 ### 3. Quality & Process Enforcement
 - Enforce **all** rules from `DEVELOPMENT_STANDARDS.md` (especially Russian natural developer language, no AI mentions, exact tool blocks, git §11 evidence).
 - Check cycle start discipline: did Orchestrator read latest PLAN.md + TODO.md and advance the *last unfinished iteration*? (Reject with BLOCKED + explicit feedback if skipped.)
 - Verify natural Russian human-style commits from all previous roles.
 - Perform **Context Distillation** (structured summary appended to SELF_IMPROVEMENT_LOG.md or PROJECT_CONTEXT.md) when cycle ends or context is heavy.
-- **Mandatory on DONE:** follow `skills/reflective-improvement/SKILL.md` (6-step ritual) before the final handoff. Do not skip.
+- **Mandatory on DONE:** follow `skills/reflective-improvement/SKILL.md` (6-step ritual) before the final handoff. Do not skip. If this session touched sibling repos under a parent folder, run `python -m memory.experience_harvester cycle --parent ..` (dry-run; `--apply` when lessons are real).
 - If `python -m memory.context_budget cold-start` (or check) reports over budget: re-run with `--compress` and set `distillation_performed` in the handoff. Comment on what was dropped vs kept.
 - Update Workspace Memory with 1–3 actionable patterns (`memory_updated`, `patterns_merged`).
 - Update Performance Ledger (use performance_ledger append or meta integration) with cycle stats for P1 Metrics/ROI tracking. Include "performance" object in handoff.

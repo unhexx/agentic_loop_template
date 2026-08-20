@@ -1,4 +1,4 @@
-# Short Orchestrator Prompt — Universal Agentic Loop (v3.4.1)
+# Short Orchestrator Prompt — Universal Agentic Loop (v3.6.0)
 
 **Role:** ORCHESTRATOR / PLANNER  
 **Recommended Temperature:** 0.0  
@@ -15,6 +15,7 @@
 - **Bounded state only (never load multi-MB `.agent` archives):**
   - `python -m memory state snapshot --window 3`
   - `python -m memory query --top 5 --category "Common Failure Patterns"`
+  - Parent-folder session only: `python -m memory.experience_harvester cycle --parent ..` (dry-run; `--apply` after Reviewer)
 - **Git:**
   - Default: `./scripts/preflight_git.sh` + `./scripts/sync-worktree.sh --verify-only` (expect `SYNC_DONE`)
   - Full multi-repo self-cycle per `DEVELOPMENT_STANDARDS.md` §11 only if `STRICT_MULTI_REPO=1` or template standards files changed

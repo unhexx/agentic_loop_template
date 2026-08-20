@@ -20,6 +20,7 @@ def _cli() -> None:
     if len(sys.argv) > 1 and sys.argv[1] in {
         "experience",
         "harvest-experience",
+        "experience_harvester",
     }:
         from .experience_harvester import cli as exp_cli
 

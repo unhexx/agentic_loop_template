@@ -1,6 +1,6 @@
 # Agentic Loop Memory System
 
-[![Version](https://img.shields.io/badge/version-3.4.0-blue.svg)](../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.6.0-blue?style=flat-square)](../CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue)](../README.md)
 [![Architecture](https://img.shields.io/badge/docs-architecture-green)](../docs/architecture.md)
 
@@ -41,6 +41,16 @@ python -m memory.knowledge ingest-docs --root docs --budget 800
 python -m memory.knowledge query --q "git sync" --category doc --top 5
 python -m memory.knowledge stats
 ```
+
+## Cross-project experience (`memory.experience_harvester`, v3.6)
+
+```bash
+python -m memory.experience_harvester cycle --parent /path/to/_PROJECT
+python -m memory.experience_harvester audit --parent /path/to/_PROJECT
+python -m memory.experience_harvester cycle --parent /path/to/_PROJECT --apply
+```
+
+Scans `AGENTS.md`, playbooks, living plans, LOOP_STATE drift — not only `LESSONS.md`. See `EXPERIENCE_EXTRACTION_TOOLS.md`.
 
 ## Clarification Questions Pool (questions_collector)
 

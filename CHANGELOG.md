@@ -4,6 +4,15 @@
 
 ## [3.6.0] - 2026-08-20
 
+### Added (cross-project experience harvest — 2026-08-20 self-improve)
+- Harvester v3.6: scan `AGENTS.md`, Agent-Playbook, CONTRIBUTING, living plans, LOOP_STATE drift, broken README agent-doc links (old scan of LESSONS-only returned **0** on current `_PROJECT/*`)
+- CLI: `python -m memory.experience_harvester audit|cycle --parent …`
+- Seeds from live tree: docs_gap (signet/nesttunnel), classifier Windows-only Init + stale LOOP_STATE, telegrok incomplete Init, two-tier adoption
+- Lite consumer: `examples/consumer-starter/AGENTS.md.example`, `Agent-Init.consumer.sh` (sibling SSOT symlink + PYTHONPATH)
+- `tools/select.py --intent harvest`; `tools/blocks/common/experience.md`
+- Tests: `memory/test_experience_harvester.py`
+- Docs: `docs/ANALYSIS_FROM_PROJECTS.md` 2026-08-20 section; Linux/Grok-first `SYSTEM_PROMPT.md`
+
 ### Added (skills + rule-based context compressor)
 - Skills registry: `skills/README.md`
   - `skills/reflective-improvement/SKILL.md` — 6-step reflection ritual (Reviewer MUST on DONE)

@@ -24,6 +24,7 @@ INTENTS = {
     "reflect": [],
     "knowledge": [],
     "compress": ["common/memory.md"],
+    "harvest": ["common/experience.md"],
 }
 
 # Skills живут в корне репозитория, не в tools/blocks.
@@ -31,6 +32,7 @@ SKILL_INTENTS = {
     "reflect": ["skills/reflective-improvement/SKILL.md"],
     "knowledge": ["skills/local-knowledge-ingestion/SKILL.md"],
     "compress": ["skills/README.md"],
+    "harvest": ["skills/reflective-improvement/SKILL.md"],
 }
 
 

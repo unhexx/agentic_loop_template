@@ -1,30 +1,49 @@
 # Consumer Starter Template
 
-[![Main README](https://img.shields.io/badge/Main-README-blue)](../../README.md)
-[![Getting Started](https://img.shields.io/badge/docs-getting%20started-green)](../../docs/getting-started.md)
+[![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](../../README.md)
+[![Getting Started](https://img.shields.io/badge/docs-getting_started-green?style=flat-square)](../../docs/getting-started.md)
 
-Minimal adoption skeleton for new projects using Agentix.
+Two adoption tiers. **Do not copy the whole `agentic_loop_template/` tree** into a product — that is how `classifier` drifted to a stale Windows `LOOP_STATE` and lost Linux `Agent-Init.sh`.
 
 ---
 
-## Quick Start
+## Tier A — lite (most product repos)
+
+Enough for a coding agent: exact commands, Definition of Done, NEVER list.
 
 ```bash
-# 1. Copy template into your project
-cp -r agentic_loop_template/ /path/to/your-project/
-cd /path/to/your-project
-
-# 2. Copy starter files from this directory
-cp examples/consumer-starter/TASK_SPECIFICATION.example.md TASK_SPECIFICATION.md
-cp examples/consumer-starter/PROJECT_CONTEXT.example.md PROJECT_CONTEXT.md
-cat examples/consumer-starter/.gitignore.agentic >> .gitignore
-
-# 3. Bootstrap
-bash agentic_loop_template/Agent-Init.sh --wizard
-source .venv/bin/activate
-
-# 4. Launch loop — paste prompts/short_orchestrator_prompt.md to your agent
+cp examples/consumer-starter/AGENTS.md.example /path/to/your-project/AGENTS.md
+# fill {{placeholders}}
 ```
+
+Pattern sources: `contact-vault/docs/06-ENGINEERING/Agent-Playbook.md`, `telegrok/AGENTS.md`.
+
+Use this when the work is a normal PR, not a multi-cycle autonomous sprint.
+
+---
+
+## Tier B — full Agentix loop
+
+Autonomous O→C→T→D→R. Keep the template as a **sibling SSOT** (symlink + `PYTHONPATH`).
+
+```bash
+# layout
+#   _PROJECT/agentic_loop_template/   ← SSOT
+#   _PROJECT/your-project/
+
+cd /path/to/your-project
+cp ../agentic_loop_template/examples/consumer-starter/TASK_SPECIFICATION.example.md TASK_SPECIFICATION.md
+cp ../agentic_loop_template/examples/consumer-starter/PROJECT_CONTEXT.example.md PROJECT_CONTEXT.md
+cp ../agentic_loop_template/examples/consumer-starter/AGENTS.md.example AGENTS.md
+cp ../agentic_loop_template/examples/consumer-starter/Agent-Init.consumer.sh Agent-Init.sh
+cat ../agentic_loop_template/examples/consumer-starter/.gitignore.agentic >> .gitignore
+chmod +x Agent-Init.sh
+bash Agent-Init.sh --wizard
+source .venv/bin/activate
+# paste ../agentic_loop_template/prompts/short_orchestrator_prompt.md
+```
+
+`Agent-Init.consumer.sh` will `ln -s ../agentic_loop_template` and export `PYTHONPATH` so `python -m memory` comes from SSOT.
 
 ---
 
@@ -32,8 +51,10 @@ source .venv/bin/activate
 
 | File | Action |
 |------|--------|
-| `TASK_SPECIFICATION.example.md` | Rename → `TASK_SPECIFICATION.md`, fill placeholders |
-| `PROJECT_CONTEXT.example.md` | Rename → `PROJECT_CONTEXT.md` |
+| `AGENTS.md.example` | Rename → `AGENTS.md` (lite **or** full) |
+| `Agent-Init.consumer.sh` | Copy → product `Agent-Init.sh` (full tier) |
+| `TASK_SPECIFICATION.example.md` | Rename → `TASK_SPECIFICATION.md` (full) |
+| `PROJECT_CONTEXT.example.md` | Rename → `PROJECT_CONTEXT.md` (full) |
 | `.gitignore.agentic` | Merge into project `.gitignore` |
 | `agentic.env.example` | Copy → `.env.agentic` (never commit) |
 
@@ -42,7 +63,7 @@ source .venv/bin/activate
 ## What to Ignore in Git
 
 ```
-agentic_loop_template/    # if synced separately
+agentic_loop_template/    # symlink to SSOT; do not vendor
 .agent/handoff_*.json
 PROJECT_CONTEXT.md        # optional: keep local only
 .env.agentic
@@ -50,21 +71,9 @@ PROJECT_CONTEXT.md        # optional: keep local only
 
 ---
 
-## Example: First Task in SPEC
-
-```markdown
-## Success Criteria
-- Implement user authentication API endpoint
-- Tests pass with >80% coverage
-- Reviewer approves with status=DONE
-```
-
-The Orchestrator decomposes this into INVEST tasks in `.agent/TODO.md`.
-
----
-
 ## Docs
 
 - [Getting Started](../../docs/getting-started.md)
+- [Experience harvest](../../EXPERIENCE_EXTRACTION_TOOLS.md)
 - [Multi-Frontend](../../docs/multi-frontend.md)
 - [Architecture](../../docs/architecture.md)

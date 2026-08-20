@@ -1,0 +1,58 @@
+# AGENTS.md — Instructions for Coding Agents
+
+Copy to repo root as `AGENTS.md` and fill the `{{...}}` placeholders.
+This is the **lite** adoption tier: enough for a coding agent without copying the full Agentix loop.
+
+## Project Goal
+
+{{ONE_SENTENCE_GOAL}}
+
+## Current Status
+
+{{STATUS_ONE_LINER}}
+
+## Recommended Stack (do not deviate without an ADR)
+
+- Language / runtime: {{STACK}}
+- Package manager: {{PKG}}
+- Tests: {{TEST_CMD}}
+- Lint / types: {{LINT_CMD}}
+
+## Exact Commands
+
+```bash
+{{INSTALL_CMD}}
+{{LINT_CMD}}
+{{TEST_CMD}}
+{{RUN_CMD}}
+```
+
+## Definition of Done (any feature)
+
+- [ ] Types / schemas updated at the single source of truth (no parallel interfaces)
+- [ ] Tests for the change (fixture or unit); existing suite still green
+- [ ] Docs / mapping table updated when the data shape changes
+- [ ] No secrets, tokens, real user IDs, or raw PII committed
+- [ ] One logical change per PR; conventional commit
+
+## Boundaries — NEVER
+
+- Commit `.env`, tokens, private keys, or live personal data
+- Invent a second source of truth for types or domain objects
+- Skip the exact commands above in favor of an improvised toolchain
+- Mix unrelated concerns (parser + UI restyle, schema + drive-by refactors)
+
+## Preferred Development Loop
+
+1. Read this file + the spec / domain doc named in `{{SPEC_FILE}}`
+2. Smallest vertical slice that meets the next acceptance criterion
+3. Write or update tests first when behavior changes
+4. Run the exact lint + test commands
+5. Commit as a human mid/senior developer (see DEVELOPMENT_STANDARDS if the full loop is wired)
+
+## When to upgrade to the full Agentix loop
+
+Use `Agent-Init.consumer.sh` + `prompts/short_orchestrator_prompt.md` when you need
+autonomous multi-cycle work (O→C→T→D→R), not for a one-shot product PR.
+
+See `examples/consumer-starter/README.md`.
