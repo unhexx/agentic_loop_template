@@ -8,6 +8,8 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from memory.proxy.policy import assert_ready
+
 
 def extract_json_object(text: str) -> Dict[str, Any]:
     """
@@ -62,6 +64,8 @@ class GrokAdapter:
             )
         if not shutil.which(self.command):
             raise RuntimeError(f"{self.command} not on PATH")
+        # Живой адаптер не ходит в публичный апстрим, пока pxpipe молчит.
+        assert_ready(workdir, adapter_name="grok")
         # grok --help: -p/--single PROMPT for single-turn stdout; cwd via subprocess
         cmd = [self.command, "-p", prompt]
         r = subprocess.run(

@@ -37,6 +37,10 @@ python -m pip install -q pyyaml pytest jsonschema 2>/dev/null || true
 
 export PYTHONPATH="${ROOT}${PYTHONPATH:+:$PYTHONPATH}"
 
+python -m memory.proxy install-venv >/dev/null 2>&1 || python -m memory.proxy install-venv || true
+# shellcheck disable=SC1091
+source .venv/bin/activate
+
 mkdir -p .agent
 if [[ ! -f .agent/project_config.json && -f .agent/project_config.example.json ]]; then
   cp .agent/project_config.example.json .agent/project_config.json
@@ -86,6 +90,26 @@ if [[ "$WIZARD" == true ]]; then
 else
   log "Env ready. source .venv/bin/activate"
   log "Tip: bash Agent-Init.sh --wizard for interactive setup"
+fi
+
+INIT_FE=""
+if [[ "$WIZARD" == true ]]; then
+  case "${FRONTEND_CHOICE:-1}" in
+    2) INIT_FE="cursor" ;;
+    3) INIT_FE="cursor" ;;
+    4) INIT_FE="blackbox" ;;
+    *) INIT_FE="grok" ;;
+  esac
+fi
+if [[ -n "$INIT_FE" ]]; then
+  if ! python -m memory.proxy health --init --frontend "$INIT_FE"; then
+    echo "AGENT_INIT: pxpipe required for frontend=$INIT_FE (or export AGENTIX_PROXY=0)" >&2
+    echo "  systemctl --user enable --now pxpipe.service" >&2
+    echo "  template: scripts/systemd/pxpipe.service.example" >&2
+    exit 1
+  fi
+else
+  python -m memory.proxy health --init >/dev/null 2>&1 || true
 fi
 
 PROMPT_PATH="${OUT_PROMPT:-$ROOT/.agent/starter_prompt_grok.txt}"

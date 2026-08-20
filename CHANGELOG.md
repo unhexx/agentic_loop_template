@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Added (request proxy policy — wrap host pxpipe)
+- `memory/proxy`: config + policy + health (stdlib). `python -m memory.proxy health|install-venv|install-host`
+- Fail-closed `proxy.mode=required` for live adapters (`grok` / HTTP). Mock and CI stay proxy-free.
+- Explicit opt-out: `AGENTIX_PROXY=0` or `proxy.mode=off`. `preferred` is an escape hatch, not the example-config default.
+- `GrokAdapter` probes pxpipe (`127.0.0.1:8100`) before `grok -p`; unhealthy + required → BLOCKED, no silent public upstream.
+- Init writes `GROK_CLI_CHAT_PROXY_BASE_URL` into `.venv/bin/activate` (marker `# agentix-proxy`). Does **not** rewrite `~/.grok/config.toml` (opt-in `install-host`).
+- Example config `proxy` section; systemd unit template `scripts/systemd/pxpipe.service.example`.
+- Tests: `python -m memory.test_proxy` (mode matrix, mock skip, fake TCP). No live pxpipe required.
+
+### Changed
+- Existing clones without a `proxy` key are treated as `mode=required` once this code ships; mock adapter still skips the probe. Set `AGENTIX_PROXY=0` if a Grok clone has no pxpipe yet.
+
 ## [3.6.0] - 2026-08-20
 
 ### Added (cross-project experience harvest — 2026-08-20 self-improve)

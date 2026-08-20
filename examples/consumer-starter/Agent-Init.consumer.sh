@@ -57,6 +57,10 @@ if ! grep -q "$MARKER" .venv/bin/activate 2>/dev/null; then
 fi
 export PYTHONPATH="${TEMPLATE}${PYTHONPATH:+:$PYTHONPATH}"
 
+python -m memory.proxy install-venv >/dev/null 2>&1 || python -m memory.proxy install-venv || true
+# shellcheck disable=SC1091
+source .venv/bin/activate
+
 if command -v uv >/dev/null 2>&1; then
   uv pip install -q pyyaml pytest jsonschema >/dev/null 2>&1 || true
 else
@@ -72,6 +76,7 @@ fi
 
 python -m memory state init 2>/dev/null || true
 python -m memory.experience_harvester seed-defaults --apply >/dev/null 2>&1 || true
+python -m memory.proxy health --init >/dev/null 2>&1 || true
 
 VERSION="$(cat "$TEMPLATE/VERSION" 2>/dev/null || echo unknown)"
 log "template=$TEMPLATE version=$VERSION"

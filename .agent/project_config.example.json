@@ -65,6 +65,23 @@
       "parallel": true
     }
   },
+  "proxy": {
+    "mode": "required",
+    "listen": "127.0.0.1:8110",
+    "pxpipe_base": "http://127.0.0.1:8100",
+    "upstream_fallback": "https://cli-chat-proxy.grok.com",
+    "bind": "loopback",
+    "timeout_s": 900,
+    "compress_body": true,
+    "body_budget_tokens": 24000,
+    "keep_recent_turns": 2,
+    "exact_cache": true,
+    "fidelity": true,
+    "plugins": {
+      "llmlingua": false,
+      "sqlite_vec": false
+    }
+  },
   "supervisor": {
     "adapter": "mock",
     "max_cycles": 5,

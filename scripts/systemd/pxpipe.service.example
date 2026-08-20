@@ -1,0 +1,23 @@
+[Unit]
+Description=pxpipe token-saving LLM proxy (host imager for Agentix)
+Documentation=https://github.com/teamchong/pxpipe
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Подставьте свой бинарник: `command -v pxpipe` или pnpm-store.
+# %h — домашний каталог пользователя (systemd user unit).
+ExecStart=%h/.local/share/pnpm/pxpipe
+Restart=on-failure
+RestartSec=2
+Environment=HOST=127.0.0.1
+Environment=PORT=8100
+Environment=OPENAI_UPSTREAM=https://cli-chat-proxy.grok.com
+Environment=PXPIPE_MODELS=grok
+Environment=PATH=/usr/bin:%h/.local/share/pnpm:%h/.local/bin
+WorkingDirectory=%h
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
