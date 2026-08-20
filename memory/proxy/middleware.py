@@ -66,6 +66,13 @@ def _looks_like_tool(msg: Any) -> bool:
 def _distill_message(msg: Any) -> Any:
     if _looks_like_tool(msg) or not isinstance(msg, dict):
         return msg
+    try:
+        from memory.proxy.fidelity import is_fidelity_block
+    except Exception:
+        is_fidelity_block = lambda _t: False  # noqa: E731
+    content_preview = msg.get("content")
+    if isinstance(content_preview, str) and is_fidelity_block(content_preview):
+        return msg
     out = dict(msg)
     content = out.get("content")
     if isinstance(content, str):

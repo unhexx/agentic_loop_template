@@ -36,7 +36,7 @@ python -m memory.knowledge ingest-docs --root docs --budget 800
 python -m memory.knowledge stats
 ```
 
-Implemented as `memory/knowledge.py` (SQLite under `.agent/knowledge/knowledge.sqlite`, unique `source+title`, category cap, distill-on-ingest).
+Implemented as `memory/knowledge.py` (SQLite under `.agent/knowledge/knowledge.sqlite`, unique `source+title`, category cap, distill-on-ingest). Queries with `--q` use FTS5 `MATCH` when SQLite was built with FTS5; otherwise LIKE `%q%`. `sqlite-vec` stays off unless `proxy.plugins.sqlite_vec` is explicitly true (not a default, not a CI dep).
 
 ### 2. Crawler templates
 

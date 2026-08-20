@@ -26,6 +26,11 @@
 - `scripts/agentix-proxy.sh`, `scripts/systemd/agentix-gateway.service.example`.
 - Tests: chunked SSE fake upstream, `/v1/responses` round-trip, `/healthz`, header redaction.
 
+### Added (identifier fidelity + knowledge FTS5)
+- Gateway extracts SHA/UUID/workspace ids into a native-text `FIDELITY` sidecar before pxpipe imaging. Compressor still does not rewrite source files.
+- `memory.knowledge query` uses FTS5 MATCH with LIKE fallback. `sqlite-vec` remains disabled.
+- Tests: golden SHA/UUID survive distill.
+
 ## [3.6.0] - 2026-08-20
 
 ### Added (cross-project experience harvest — 2026-08-20 self-improve)

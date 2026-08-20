@@ -147,6 +147,24 @@ def test_cli_query_and_stats_json():
         assert s["by_category"][0]["category"] == "playbook"
 
 
+def test_query_fts_match_russian_and_english():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = Path(tmp) / "k.sqlite"
+        upsert(
+            source="docs/ru.md",
+            title="Синхронизация git",
+            content="preflight then worktree sync и проверка SYNC_DONE",
+            category="playbook",
+            db=db,
+            provenance="t",
+        )
+        rows = query(q="синхронизация git", db=db)
+        assert rows
+        assert rows[0]["title"] == "Синхронизация git"
+        rows_en = query(q="SYNC_DONE", db=db)
+        assert any("SYNC_DONE" in (r.get("content") or "") for r in rows_en)
+
+
 def test_ingest_if_empty_skips_when_seeded_and_fills_when_empty():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -185,6 +203,7 @@ def _run_all() -> None:
         test_ingest_docs_from_markdown_tree,
         test_compact_drops_old_over_cap,
         test_cli_query_and_stats_json,
+        test_query_fts_match_russian_and_english,
         test_ingest_if_empty_skips_when_seeded_and_fills_when_empty,
         test_cli_ingest_missing_root_is_error,
     ]

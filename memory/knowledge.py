@@ -17,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sqlite3
 import sys
 from contextlib import contextmanager
@@ -60,6 +61,31 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_knowledge_src_title
   ON knowledge(source, title);
 """
 
+_FTS_SCHEMA = """
+CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_fts USING fts5(
+  title,
+  content,
+  source,
+  category,
+  content='knowledge',
+  content_rowid='id'
+);
+CREATE TRIGGER IF NOT EXISTS knowledge_ai AFTER INSERT ON knowledge BEGIN
+  INSERT INTO knowledge_fts(rowid, title, content, source, category)
+  VALUES (new.id, new.title, new.content, new.source, new.category);
+END;
+CREATE TRIGGER IF NOT EXISTS knowledge_ad AFTER DELETE ON knowledge BEGIN
+  INSERT INTO knowledge_fts(knowledge_fts, rowid, title, content, source, category)
+  VALUES ('delete', old.id, old.title, old.content, old.source, old.category);
+END;
+CREATE TRIGGER IF NOT EXISTS knowledge_au AFTER UPDATE ON knowledge BEGIN
+  INSERT INTO knowledge_fts(knowledge_fts, rowid, title, content, source, category)
+  VALUES ('delete', old.id, old.title, old.content, old.source, old.category);
+  INSERT INTO knowledge_fts(rowid, title, content, source, category)
+  VALUES (new.id, new.title, new.content, new.source, new.category);
+END;
+"""
+
 
 def db_path(cwd: Optional[Path] = None, override: Optional[Path] = None) -> Path:
     """Путь к sqlite: --db, AGENTIX_KNOWLEDGE_DB, иначе .agent/knowledge/."""
@@ -81,10 +107,30 @@ def _conn(path: Optional[Path] = None) -> Iterator[sqlite3.Connection]:
     try:
         con.row_factory = sqlite3.Row
         con.executescript(_SCHEMA)
+        _ensure_fts(con)
         yield con
         con.commit()
     finally:
         con.close()
+
+
+def _ensure_fts(con: sqlite3.Connection) -> bool:
+    """FTS5, если сборка SQLite умеет. Иначе тихий LIKE."""
+    try:
+        con.executescript(_FTS_SCHEMA)
+        n_fts = int(con.execute("SELECT COUNT(*) FROM knowledge_fts").fetchone()[0])
+        n_src = int(con.execute("SELECT COUNT(*) FROM knowledge").fetchone()[0])
+        if n_src and n_fts != n_src:
+            con.execute("INSERT INTO knowledge_fts(knowledge_fts) VALUES('rebuild')")
+        return True
+    except sqlite3.OperationalError:
+        return False
+
+
+def _fts_match_query(q: str) -> str:
+    """Простые AND-термы, без произвольного синтаксиса MATCH."""
+    terms = re.findall(r"[A-Za-zА-Яа-я0-9_-]+", q or "")
+    return " AND ".join(terms)
 
 
 def _row_to_dict(row: sqlite3.Row) -> Dict[str, Any]:
@@ -157,7 +203,35 @@ def query(
     top: int = 5,
     db: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
-    """Поиск по LIKE (title/content), фильтры category/source, свежие сверху."""
+    """Поиск: FTS5 MATCH при непустом q, иначе/при сбое — LIKE."""
+    limit = max(1, int(top))
+    match = _fts_match_query(q or "")
+    if q and match:
+        fts_clauses: List[str] = ["knowledge_fts MATCH ?"]
+        fts_args: List[Any] = [match]
+        if category:
+            fts_clauses.append("k.category = ?")
+            fts_args.append(category)
+        if source:
+            fts_clauses.append("k.source = ?")
+            fts_args.append(source)
+        fts_sql = (
+            "SELECT k.id, k.source, k.category, k.title, k.content, k.provenance, "
+            "k.tokens, k.created_at "
+            "FROM knowledge k JOIN knowledge_fts ON knowledge_fts.rowid = k.id "
+            f"WHERE {' AND '.join(fts_clauses)} "
+            "ORDER BY rank LIMIT ?"
+        )
+        fts_args.append(limit)
+        try:
+            with _conn(db) as con:
+                if _ensure_fts(con):
+                    rows = con.execute(fts_sql, fts_args).fetchall()
+                    if rows:
+                        return [_row_to_dict(r) for r in rows]
+        except sqlite3.OperationalError:
+            pass
+
     clauses: List[str] = []
     args: List[Any] = []
     if category:
@@ -171,7 +245,6 @@ def query(
         clauses.append("(title LIKE ? OR content LIKE ?)")
         args.extend([like, like])
     where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
-    limit = max(1, int(top))
     sql = (
         "SELECT id, source, category, title, content, provenance, tokens, created_at "
         f"FROM knowledge {where} ORDER BY id DESC LIMIT ?"

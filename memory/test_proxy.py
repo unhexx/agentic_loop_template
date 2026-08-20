@@ -444,6 +444,49 @@ def test_gateway_required_no_public_fallback() -> None:
                 gw.shutdown()
 
 
+def test_fidelity_golden_ids_survive_distill() -> None:
+    from memory.proxy.middleware import process_request
+
+    sha = "c5ca061"
+    uuid = "550e8400-e29b-41d4-a716-446655440000"
+    digest = "0123456789abcdef" * 4  # 64 hex
+    filler = ("lorem ipsum dolor sit amet " * 220) + f" commit {sha} id {uuid} hash {digest}"
+    obj = {
+        "model": "grok",
+        "input": [
+            {"role": "user", "content": filler},
+            {"role": "assistant", "content": filler},
+            {"role": "user", "content": "latest turn only"},
+        ],
+    }
+    body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
+    cfg = {
+        "compress_body": True,
+        "body_budget_tokens": 80,
+        "keep_recent_turns": 1,
+        "exact_cache": False,
+        "fidelity": True,
+    }
+    out, meta = process_request(
+        body,
+        path="/v1/responses",
+        headers={},
+        cfg=cfg,
+        project_root=None,
+    )
+    text = out.decode("utf-8")
+    assert "--- FIDELITY ---" in text
+    assert sha in text
+    assert uuid in text
+    assert digest in text
+    # sidecar держит оригиналы даже если старые ходы ужаты
+    sidecar = text.split("--- FIDELITY ---", 1)[1].split("--- END FIDELITY ---", 1)[0]
+    assert sha in sidecar
+    assert uuid in sidecar
+    assert digest in sidecar
+    assert meta.get("fidelity") is True
+
+
 def test_grok_adapter_calls_assert_ready(monkeypatch=None) -> None:
     """GrokAdapter.run_role_turn должен упасть на политике до subprocess."""
     import memory.adapters.grok as grok_mod
@@ -491,6 +534,7 @@ def _run_all() -> None:
         test_bind_rejects_non_loopback,
         test_gateway_healthz_sse_roundtrip_and_redaction,
         test_gateway_required_no_public_fallback,
+        test_fidelity_golden_ids_survive_distill,
         test_grok_adapter_calls_assert_ready,
     ]
     for fn in tests:
