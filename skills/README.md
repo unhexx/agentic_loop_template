@@ -14,8 +14,11 @@ First-class reusable skills for the agentic loop. Skills are progressive knowled
 ```bash
 # Progressive load example
 python tools/select.py --intent reflect
+python tools/select.py --intent knowledge
+python tools/select.py --intent compress
 # or reference in handoff / prompt:
 # "Follow skills/reflective-improvement/SKILL.md ritual"
+python -m memory.context_budget check --files .agent/PLAN.md --budget 12000 --compress
 ```
 
 Skills integrate with:

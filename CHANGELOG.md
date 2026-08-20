@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-08-20
+
+### Added (skills + rule-based context compressor)
+- Skills registry: `skills/README.md`
+  - `skills/reflective-improvement/SKILL.md` — 6-step reflection ritual (Reviewer MUST on DONE)
+  - `skills/local-knowledge-ingestion/SKILL.md` — SQLite knowledge template, crawlers, sovereign mirroring
+- Rule-based compressor: `memory/compressor.py`
+  - CLI: `python -m memory.compressor files --budget 12000 …` / `distill --text-file`
+  - Priority drop (history/trajectories first), markdown distill, head+tail truncate
+  - Inspired by Acon (arXiv:2510.00615, 26–54% peak reduction), PAACE / rate-distortion — rules only, no network
+- `context_budget` `--compress`: when over budget, run compressor (sources not rewritten)
+- Tests: `memory/test_compressor.py`
+- Config: `context_budget.compress_when_over` in `.agent/project_config.example.json`
+
+### Changed
+- `VERSION` → 3.6.0
+- README features/CLI + ROADMAP milestone
+- Reviewer short prompt: mandatory reflective-improvement + compress-when-over
+- `PROMPT_COMPRESSION_GUIDE.md`: 2026 research mapped to the rule compressor
+- `python -m memory compressor` / `python -m memory context-budget` dispatch
+
 ## [3.5.0] - 2026-07-29
 
 ### Added (Agentix Supervisor — multi-frontend autonomy)

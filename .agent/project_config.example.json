@@ -40,7 +40,8 @@
   },
   "context_budget": {
     "cold_start_tokens": 16000,
-    "next_input_files_tokens": 12000
+    "next_input_files_tokens": 12000,
+    "compress_when_over": true
   },
   "state": {
     "max_working_json_bytes": 8192,

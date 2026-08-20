@@ -78,6 +78,23 @@ This is the main mechanism for keeping very long-running loops (10+ cycles) prac
 
 **This document itself should stay relatively short.** Its purpose is to guide future compression work, not to become another source of bloat.
 
+## 2026 research → rule compressor (v3.6.0)
+
+Applied as **local rules**, not as extra model calls:
+
+| Paper / idea | What we took | Where |
+|--------------|--------------|--------|
+| Acon (arXiv:2510.00615), 26–54% peak-context cut | Adaptive drop of low-utility spans first | `memory/compressor.py` file priorities |
+| PAACE / SuperCompress / rate-distortion | Spend remaining budget on high-utility head+tail | `truncate_to_budget`, `--compress` |
+| Mem0-style tiers | Working set vs history archives | `.agent/LOOP_STATE` vs `.agent/history/` |
+
+```bash
+python -m memory.context_budget check --files .agent/PLAN.md .agent/TODO.md --budget 12000 --compress
+python -m memory.compressor files --budget 4000 .agent/history/x.md TRAJECTORIES.json
+```
+
+Reviewer on DONE must run the reflective-improvement skill and, if over budget, `--compress`. Sources are never rewritten; the report is the contract.
+
 ## Selective Memory (P7)
 
 Do not load full history. Use targeted retrieval:

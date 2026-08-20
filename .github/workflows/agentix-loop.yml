@@ -34,6 +34,7 @@ jobs:
           test -f TASK_SPECIFICATION.md
           python -m memory.test_performance_ledger
           python -m memory.test_playbooks_hub
+          python -m memory.test_compressor
 
       - name: Export Hub index
         run: |

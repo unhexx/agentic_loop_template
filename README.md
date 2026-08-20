@@ -1,6 +1,6 @@
 # Agentix
 
-[![Version](https://img.shields.io/badge/version-3.5.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.6.0-blue?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?logo=python&logoColor=white)](docs/getting-started.md)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](docs/cross-platform.md)
@@ -238,6 +238,8 @@ python -m memory.playbooks export --format hub
 | `python -m memory.audit_log list` | Enterprise audit trail |
 | `python -m memory.resume --json` | Resume after session crash |
 | `python -m memory.eval_harness --recent 5` | Score recent trajectories |
+| `python -m memory.context_budget check --files … --compress` | Token budget gate; compress if over (no rewrite) |
+| `python -m memory.compressor files --budget 12000 …` | Rule-based distillation (priority drop + head/tail) |
 
 Supervisor drives O→C→T→R turns, validates handoffs, and on `PR_READY` opens a PR via `gh pr create` (never merges to `main`). Use `--no-pr` for local/CI dry runs. Config lives under `supervisor` in `.agent/project_config.json` (see `project_config.example.json`).
 
@@ -250,7 +252,8 @@ Full memory layer docs: [`memory/README.md`](memory/README.md).
 | Category | Capability |
 |----------|------------|
 | **Loop discipline** | 5 roles, JSON handoffs, INVEST tasks, git §11 sync |
-| **Self-improvement** | Playbooks (ACE scoring), meta-harvester, performance ledger |
+| **Self-improvement** | Playbooks (ACE scoring), meta-harvester, performance ledger, [skills](skills/README.md) |
+| **Context** | Bounded LOOP_STATE, `context_budget` gate, rule-based compressor |
 | **Cross-platform** | `Agent-Init.ps1` + `Agent-Init.sh`, platform-adaptive prompts |
 | **Multi-frontend** | Cursor, Claude Code, Blackbox adapters |
 | **Productization** | `docs/` site, consumer-starter, Agentix Hub |
@@ -338,4 +341,4 @@ Source: [`.agent/PERFORMANCE_LEDGER.md`](.agent/PERFORMANCE_LEDGER.md) · [docs/
 
 ## License
 
-[MIT](LICENSE) · **Agentix 3.4.0** · Maintained by **exception.expert**
+[MIT](LICENSE) · **Agentix 3.6.0** · Maintained by **exception.expert**

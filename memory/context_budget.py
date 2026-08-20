@@ -6,7 +6,8 @@ Heuristic: tokens ≈ chars / 4 (override with tiktoken if installed).
 
 Usage:
   python -m memory.context_budget check --files a.md b.md --budget 12000
-  python -m memory.context_budget cold-start --budget 16000
+  python -m memory.context_budget check --files a.md b.md --budget 12000 --compress
+  python -m memory.context_budget cold-start --budget 16000 --compress
 """
 
 from __future__ import annotations
@@ -42,16 +43,30 @@ def file_tokens(path: Path, max_read: int = 2_000_000) -> Dict[str, Any]:
     }
 
 
-def check_files(files: List[Path], budget: int) -> Dict[str, Any]:
+def check_files(
+    files: List[Path],
+    budget: int,
+    compress: bool = False,
+) -> Dict[str, Any]:
     rows = [file_tokens(p) for p in files]
     total = sum(int(r["tokens"]) for r in rows)
-    return {
+    report: Dict[str, Any] = {
         "budget_tokens": budget,
         "total_tokens": total,
         "within_budget": total <= budget,
         "files": rows,
         "over_by": max(0, total - budget),
     }
+    if compress and not report["within_budget"]:
+        # Ленивый импорт: compressor тянет estimate_tokens отсюда.
+        from memory.compressor import compress_files
+
+        crep = compress_files(files, budget)
+        report["compression"] = crep
+        report["total_tokens_after_compress"] = int(crep["tokens_out"])
+        report["within_budget"] = bool(crep["within_budget"])
+        report["over_by"] = int(crep.get("over_by") or 0)
+    return report
 
 
 def cold_start_default_files(root: Path | None = None) -> List[Path]:
@@ -73,18 +88,29 @@ def cli(argv: Optional[List[str]] = None) -> int:
     p_check.add_argument("--files", nargs="+", type=Path, required=True)
     p_check.add_argument("--budget", type=int, default=12000)
     p_check.add_argument("--strict", action="store_true", help="Exit 1 if over budget")
+    p_check.add_argument(
+        "--compress",
+        action="store_true",
+        help="If over budget, run rule-based compressor (does not rewrite sources)",
+    )
 
     p_cold = sub.add_parser("cold-start")
     p_cold.add_argument("--budget", type=int, default=16000)
     p_cold.add_argument("--strict", action="store_true")
     p_cold.add_argument("--root", type=Path, default=None)
+    p_cold.add_argument("--compress", action="store_true")
 
     args = parser.parse_args(argv)
 
+    do_compress = bool(getattr(args, "compress", False))
     if args.cmd == "check":
-        report = check_files(args.files, args.budget)
+        report = check_files(args.files, args.budget, compress=do_compress)
     else:
-        report = check_files(cold_start_default_files(args.root), args.budget)
+        report = check_files(
+            cold_start_default_files(args.root),
+            args.budget,
+            compress=do_compress,
+        )
         report["profile"] = "cold-start"
 
     print(json.dumps(report, ensure_ascii=False, indent=2))
