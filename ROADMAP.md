@@ -34,7 +34,7 @@
 
 | Version | Highlight |
 |---------|-----------|
-| **v3.6.0** | Skills (reflective-improvement, local-knowledge-ingestion) + rule compressor |
+| **v3.6.0** | Skills (reflective-improvement, local-knowledge-ingestion) + rule compressor + SQLite knowledge store |
 | **v3.5.0** | Supervisor CLI, multi-frontend adapters, mock CI cycle |
 | **v3.4.0** | P5–P7 complete, initiative closed |
 | **v3.3.0** | docs/, Hub, Pro tier |

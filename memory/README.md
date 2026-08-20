@@ -32,6 +32,16 @@ Example for this repo:
 
 Run `python -m agentic_loop_template.memory info` (or the PS1) to see the ID and paths for the current workspace.
 
+## Local knowledge store (`memory.knowledge`, v3.6)
+
+SQLite под `.agent/knowledge/knowledge.sqlite` — дистиллированные docs/playbooks, чтобы не тащить сырые файлы в контекст.
+
+```bash
+python -m memory.knowledge ingest-docs --root docs --budget 800
+python -m memory.knowledge query --q "git sync" --category doc --top 5
+python -m memory.knowledge stats
+```
+
 ## Clarification Questions Pool (questions_collector)
 
 New helper for non-blocking operation when external clarifications are needed:

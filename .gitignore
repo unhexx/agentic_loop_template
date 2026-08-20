@@ -219,6 +219,8 @@ __marimo__/
 
 # Bounded state archives (local)
 .agent/history/
+.agent/knowledge/*.sqlite
+.agent/knowledge/*.sqlite-*
 .agent/starter_prompt_grok.txt
 .agent/metrics.jsonl
 .agent/LOOP_STATE.json

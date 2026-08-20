@@ -13,8 +13,12 @@
   - Priority drop (history/trajectories first), markdown distill, head+tail truncate
   - Inspired by Acon (arXiv:2510.00615, 26–54% peak reduction), PAACE / rate-distortion — rules only, no network
 - `context_budget` `--compress`: when over budget, run compressor (sources not rewritten)
-- Tests: `memory/test_compressor.py`
+- Tests: `memory/test_compressor.py`, `memory/test_knowledge.py`
 - Config: `context_budget.compress_when_over` in `.agent/project_config.example.json`
+- Local knowledge store: `memory/knowledge.py`
+  - CLI: `python -m memory.knowledge query|upsert|ingest-docs|stats`
+  - SQLite schema from `skills/local-knowledge-ingestion` (unique source+title, category cap)
+  - `ingest-docs` distills markdown via the rule compressor before upsert
 
 ### Changed
 - `VERSION` → 3.6.0

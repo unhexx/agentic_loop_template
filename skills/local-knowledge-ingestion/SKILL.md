@@ -32,9 +32,11 @@ Query via CLI or Python before loading full files:
 
 ```bash
 python -m memory.knowledge query --category playbook --top 5 --q "git sync"
+python -m memory.knowledge ingest-docs --root docs --budget 800
+python -m memory.knowledge stats
 ```
 
-(Implement thin wrapper over store.py or standalone `memory/knowledge.py`.)
+Implemented as `memory/knowledge.py` (SQLite under `.agent/knowledge/knowledge.sqlite`, unique `source+title`, category cap, distill-on-ingest).
 
 ### 2. Crawler templates
 

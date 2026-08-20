@@ -19,6 +19,7 @@ python tools/select.py --intent compress
 # or reference in handoff / prompt:
 # "Follow skills/reflective-improvement/SKILL.md ritual"
 python -m memory.context_budget check --files .agent/PLAN.md --budget 12000 --compress
+python -m memory.knowledge query --q "git sync" --top 5
 ```
 
 Skills integrate with:

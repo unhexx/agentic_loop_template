@@ -35,6 +35,7 @@ jobs:
           python -m memory.test_performance_ledger
           python -m memory.test_playbooks_hub
           python -m memory.test_compressor
+          python -m memory.test_knowledge
 
       - name: Export Hub index
         run: |

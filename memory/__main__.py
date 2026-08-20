@@ -32,6 +32,10 @@ def _cli() -> None:
         from .context_budget import cli as budget_cli
 
         raise SystemExit(budget_cli(sys.argv[2:]))
+    if len(sys.argv) > 1 and sys.argv[1] == "knowledge":
+        from .knowledge import cli as knowledge_cli
+
+        raise SystemExit(knowledge_cli(sys.argv[2:]))
 
     parser = argparse.ArgumentParser(description="Agentic Loop structured memory")
     sub = parser.add_subparsers(dest="cmd", required=True)
