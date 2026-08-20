@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
+REPO = ROOT.parent
 BLOCKS = ROOT / "blocks"
 
 INTENTS = {
@@ -20,6 +21,16 @@ INTENTS = {
     "state": ["common/state.md"],
     "handoff": ["common/handoff.md"],
     "bootstrap": ["linux/bootstrap.md", "windows/bootstrap.md"],
+    "reflect": [],
+    "knowledge": [],
+    "compress": ["common/memory.md"],
+}
+
+# Skills живут в корне репозитория, не в tools/blocks.
+SKILL_INTENTS = {
+    "reflect": ["skills/reflective-improvement/SKILL.md"],
+    "knowledge": ["skills/local-knowledge-ingestion/SKILL.md"],
+    "compress": ["skills/README.md"],
 }
 
 
@@ -39,6 +50,10 @@ def resolve_paths(intent: str, os_name: str) -> list[Path]:
         if rel.startswith("windows/") and os_name != "windows":
             continue
         p = BLOCKS / rel
+        if p.is_file():
+            out.append(p)
+    for rel in SKILL_INTENTS.get(intent, []):
+        p = REPO / rel
         if p.is_file():
             out.append(p)
     return out
@@ -63,11 +78,18 @@ def main() -> int:
         return 1
     if args.list:
         for p in paths:
-            print(p.relative_to(ROOT))
+            try:
+                print(p.relative_to(REPO))
+            except ValueError:
+                print(p)
         return 0
     print(f"# tools/select intent={args.intent} os={os_name}\n")
     for p in paths:
-        print(f"## {p.relative_to(ROOT)}\n")
+        try:
+            rel = p.relative_to(REPO)
+        except ValueError:
+            rel = p
+        print(f"## {rel}\n")
         print(p.read_text(encoding="utf-8").rstrip())
         print()
     return 0

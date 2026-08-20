@@ -1,6 +1,6 @@
 # Agentix Public Roadmap
 
-[![Version](https://img.shields.io/badge/version-3.4.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.6.0-blue?style=flat-square)](CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue)](README.md)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen)](docs/README.md)
 
@@ -34,6 +34,8 @@
 
 | Version | Highlight |
 |---------|-----------|
+| **v3.6.0** | Skills (reflective-improvement, local-knowledge-ingestion) + rule compressor + SQLite knowledge store |
+| **v3.5.0** | Supervisor CLI, multi-frontend adapters, mock CI cycle |
 | **v3.4.0** | P5–P7 complete, initiative closed |
 | **v3.3.0** | docs/, Hub, Pro tier |
 | **v3.2** | Meta + MCP/vision/isolation |
