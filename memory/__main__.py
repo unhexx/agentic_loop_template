@@ -17,6 +17,10 @@ def _cli() -> None:
         from .supervisor import main
 
         raise SystemExit(main(sys.argv[2:]))
+    if len(sys.argv) > 1 and sys.argv[1] == "dashboard":
+        from .dashboard.__main__ import main as dashboard_main
+
+        raise SystemExit(dashboard_main(sys.argv[2:]))
     if len(sys.argv) > 1 and sys.argv[1] in {
         "experience",
         "harvest-experience",

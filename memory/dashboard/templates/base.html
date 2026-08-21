@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{title}} — Agentix</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script defer src="https://unpkg.com/alpinejs@3.14.3"></script>
+  <style>
+    .nav-active { background: #27272a; color: #fff; }
+  </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100"
+      x-data="{ toast: '' }"
+      hx-headers='{"X-CSRF-Token": "{{csrf}}"}'>
+  <div class="flex min-h-screen">
+    <aside class="w-56 bg-zinc-900 border-r border-zinc-800 p-4 flex flex-col">
+      <div class="flex items-center gap-2 mb-4">
+        <div class="w-8 h-8 bg-emerald-600 rounded flex items-center justify-center text-sm font-bold">Ax</div>
+        <div>
+          <div class="font-semibold">Agentix Control</div>
+          <div class="text-xs text-zinc-500 truncate" title="{{workdir_path}}">{{workdir_name}}</div>
+        </div>
+      </div>
+      <div id="conn-dot" class="text-xs px-2 py-0.5 rounded bg-amber-900 text-amber-300 mb-6">{{conn_dot}}</div>
+      <nav class="space-y-1 text-sm">
+        <a href="/" class="block px-3 py-2 rounded nav-active">Loop</a>
+        <a href="/handoff" class="block px-3 py-2 rounded hover:bg-zinc-800 text-zinc-400">Handoff</a>
+        <a href="/ledger" class="block px-3 py-2 rounded hover:bg-zinc-800 text-zinc-400">Ledger</a>
+        <a href="/playbooks" class="block px-3 py-2 rounded hover:bg-zinc-800 text-zinc-400">Playbooks</a>
+        <a href="/audit" class="block px-3 py-2 rounded hover:bg-zinc-800 text-zinc-400">Audit</a>
+        <a href="/questions" class="block px-3 py-2 rounded hover:bg-zinc-800 text-zinc-400">Questions</a>
+        <a href="/plan" class="block px-3 py-2 rounded hover:bg-zinc-800 text-zinc-400">Plan</a>
+        <a href="/memory" class="block px-3 py-2 rounded hover:bg-zinc-800 text-zinc-400">Memory</a>
+      </nav>
+      <div class="mt-auto pt-8 text-[10px] text-zinc-500">{{year}}</div>
+    </aside>
+    <main class="flex-1 p-8">
+      <div class="max-w-5xl mx-auto">
+        {{body_html}}
+      </div>
+    </main>
+  </div>
+</body>
+</html>
