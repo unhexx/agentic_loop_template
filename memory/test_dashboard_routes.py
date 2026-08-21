@@ -481,6 +481,9 @@ def test_playbooks_page_and_partial(dashboard_client, tmp_path: Path):
     assert "item_count 1" in body
     assert "data-hub-header" in body
     assert 'hx-get="/partials/playbook/global-dev"' in body
+    assert 'hx-target="#playbook-detail"' in body
+    assert 'id="playbook-detail"' in body
+    assert "hx-target=\"#pb-" not in body
     assert "hx-post" not in body
     assert "see {{title}}" in body
     partial = dashboard_client.get("/partials/playbooks-list")
@@ -489,6 +492,9 @@ def test_playbooks_page_and_partial(dashboard_client, tmp_path: Path):
     assert "global-dev" in partial.text
     # фрагмент списка сам по себе не poll'ит outerHTML
     assert "every 20s" not in partial.text
+    # слот раскрытия живёт на странице, не внутри poll innerHTML
+    assert 'id="playbook-detail"' not in partial.text
+    assert 'hx-target="#playbook-detail"' in partial.text
 
 
 def test_playbooks_empty_no_hub_header(dashboard_client, tmp_path: Path):
@@ -512,6 +518,43 @@ def test_playbook_expand_escapes_and_literal_title(dashboard_client, tmp_path: P
     assert "<title>Playbooks — Agentix</title>" in page.text
     title_end = page.text.find("</title>")
     assert "see {{title}}" in page.text[title_end:]
+
+
+def test_playbook_expand_target_dot_and_colon(dashboard_client, tmp_path: Path):
+    _write_json(
+        tmp_path / ".agent" / "PLAYBOOKS.json",
+        {
+            "playbooks": {
+                "tool.git": {
+                    "scope": "tool:git",
+                    "name": "Git dots",
+                    "bullets": [{"id": "b-d", "content": "dot-id", "effectiveness": 1}],
+                },
+                "role:coder": {
+                    "scope": "role:coder",
+                    "name": "Coder colon",
+                    "bullets": [{"id": "b-c", "content": "colon-id", "effectiveness": 1}],
+                },
+            }
+        },
+    )
+    page = dashboard_client.get("/playbooks")
+    assert page.status_code == 200
+    body = page.text
+    assert 'hx-target="#playbook-detail"' in body
+    assert 'hx-target="#pb-tool.git"' not in body
+    assert 'hx-target="#pb-role:coder"' not in body
+    assert 'id="pb-tool.git"' not in body
+    list_at = body.find('id="playbooks-list"')
+    detail_at = body.find('id="playbook-detail"')
+    assert list_at != -1 and detail_at != -1
+    assert detail_at > list_at
+    assert dashboard_client.get("/partials/playbook/tool.git").status_code == 200
+    colon = dashboard_client.get("/partials/playbook/role:coder")
+    assert colon.status_code == 200
+    assert "colon-id" in colon.text
+    partial = dashboard_client.get("/partials/playbooks-list")
+    assert 'id="playbook-detail"' not in partial.text
 
 
 def test_playbook_unknown_and_traversal_404(dashboard_client, tmp_path: Path):
@@ -583,6 +626,16 @@ def test_plan_page_missing_and_present(dashboard_client, tmp_path: Path):
     assert partial.status_code == 200
     assert "Do {{title}}" in partial.text
     assert "<title>" not in partial.text
+    assert "data-truncated" not in page.text
+
+    from memory.dashboard.read_model import PLAN_MAX_BYTES
+
+    (agent / "PLAN.md").write_text("Q" * (PLAN_MAX_BYTES + 8), encoding="utf-8")
+    big = dashboard_client.get("/plan")
+    assert big.status_code == 200
+    assert "data-truncated" in big.text
+    assert "(truncated)" in big.text
+    assert "Q" * 16 in big.text
 
 
 def test_memory_page_missing_and_excerpt(dashboard_client, tmp_path: Path, monkeypatch):
@@ -619,6 +672,16 @@ def test_memory_page_missing_and_excerpt(dashboard_client, tmp_path: Path, monke
     assert partial.status_code == 200
     assert "hello {{title}}" in partial.text
     assert "<title>" not in partial.text
+    assert "data-truncated" not in page.text
+
+    long_lines = "\n".join(f"line-{i}" for i in range(100))
+    (root / f"{wid}.md").write_text(long_lines, encoding="utf-8")
+    truncated_page = dashboard_client.get("/memory")
+    assert truncated_page.status_code == 200
+    assert "data-truncated" in truncated_page.text
+    assert "(truncated)" in truncated_page.text
+    assert "line-0" in truncated_page.text
+    assert "line-80" not in truncated_page.text
 
 
 def test_playbooks_audit_plan_memory_are_read_only(dashboard_client, tmp_path: Path, monkeypatch):

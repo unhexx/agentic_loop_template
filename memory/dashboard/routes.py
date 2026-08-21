@@ -483,11 +483,14 @@ def render_playbooks_list(store: DashboardStore) -> str:
                 )
             pid = _str(item.get("id"))
             if PLAYBOOK_ID_RE.fullmatch(pid):
+                pid_attr = escape(pid, quote=True)
+                # цель — соседняя панель #playbook-detail, не #pb-{id}:
+                # точка и двоеточие ломают CSS-селектор, слот вне poll innerHTML.
                 expand = (
                     f'<button type="button" class="text-emerald-400 underline text-xs" '
-                    f'hx-get="/partials/playbook/{pid}" '
-                    f'hx-target="#pb-{pid}" hx-swap="innerHTML">expand</button>'
-                    f'<div id="pb-{pid}"></div>'
+                    f'data-pb-id="{pid_attr}" '
+                    f'hx-get="/partials/playbook/{pid_attr}" '
+                    f'hx-target="#playbook-detail" hx-swap="innerHTML">expand</button>'
                 )
             else:
                 expand = ""
@@ -562,9 +565,9 @@ def render_audit_rows(store: DashboardStore) -> str:
     return render_partial("audit_rows.html", rows_html=rows_html)
 
 
-def _md_block(title: str, text: Optional[str]) -> str:
+def _md_block(title: str, info: Optional[Dict[str, Any]]) -> str:
     heading = f'<h2 class="text-sm font-medium mb-2">{escape(title, quote=True)}</h2>'
-    if text is None:
+    if info is None:
         body = (
             '<p class="text-zinc-500 text-sm">not present in this workdir.</p>'
         )
@@ -572,8 +575,12 @@ def _md_block(title: str, text: Optional[str]) -> str:
         body = (
             '<pre class="whitespace-pre-wrap text-xs bg-zinc-900 border '
             'border-zinc-800 rounded p-3 overflow-x-auto">'
-            f"{escape(text, quote=True)}</pre>"
+            f"{escape(_str(info.get('text')), quote=True)}</pre>"
         )
+        if info.get("truncated"):
+            body += (
+                '<p class="text-[10px] text-zinc-500" data-truncated>(truncated)</p>'
+            )
     return f'<div class="space-y-2">{heading}{body}</div>'
 
 
@@ -593,6 +600,10 @@ def render_memory_excerpt(store: DashboardStore) -> str:
             'border-zinc-800 rounded p-3 overflow-x-auto">'
             f"{escape(_str(info.get('excerpt')), quote=True)}</pre>"
         )
+        if info.get("truncated"):
+            body_html += (
+                '<p class="text-[10px] text-zinc-500" data-truncated>(truncated)</p>'
+            )
     else:
         body_html = (
             '<p class="text-zinc-500 text-sm">no institutional memory file yet</p>'

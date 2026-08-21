@@ -797,8 +797,11 @@ def test_plan_and_todo_read_or_missing(tmp_path: Path, cwd_guard):
     agent.mkdir()
     (agent / "PLAN.md").write_text("Do {{title}}\n", encoding="utf-8")
     (agent / "TODO.md").write_text("- task\n", encoding="utf-8")
-    assert "Do {{title}}" in store.plan_text()
-    assert store.todo_text() == "- task\n"
+    plan = store.plan_text()
+    todo = store.todo_text()
+    assert plan is not None and "Do {{title}}" in plan["text"]
+    assert plan["truncated"] is False
+    assert todo is not None and todo["text"] == "- task\n"
     assert Path.cwd() == cwd_guard
 
 
@@ -810,8 +813,25 @@ def test_plan_explicit_paths(tmp_path: Path, monkeypatch, cwd_guard):
     (cwd_wd / ".agent" / "PLAN.md").write_text("cwd-plan", encoding="utf-8")
     (real_wd / ".agent" / "PLAN.md").write_text("real-plan", encoding="utf-8")
     monkeypatch.chdir(cwd_wd)
-    assert DashboardStore(real_wd).plan_text() == "real-plan"
+    got = DashboardStore(real_wd).plan_text()
+    assert got is not None and got["text"] == "real-plan"
     assert Path.cwd() == cwd_wd
+
+
+def test_plan_todo_byte_cap(tmp_path: Path, cwd_guard):
+    agent = tmp_path / ".agent"
+    agent.mkdir()
+    (agent / "PLAN.md").write_text("P" * (read_model.PLAN_MAX_BYTES + 50), encoding="utf-8")
+    (agent / "TODO.md").write_text("T" * 10, encoding="utf-8")
+    store = DashboardStore(tmp_path)
+    plan = store.plan_text()
+    todo = store.todo_text()
+    assert plan is not None
+    assert plan["truncated"] is True
+    assert plan["text"] == "P" * read_model.PLAN_MAX_BYTES
+    assert todo is not None
+    assert todo["truncated"] is False
+    assert todo["text"] == "T" * 10
 
 
 def test_memory_excerpt_missing_does_not_mkdir(tmp_path: Path, monkeypatch, cwd_guard):
@@ -888,4 +908,21 @@ def test_memory_does_not_list_parent(tmp_path: Path, monkeypatch, cwd_guard):
     monkeypatch.setattr(Path, "iterdir", guarded)
     info = DashboardStore(tmp_path).memory_excerpt()
     assert info["excerpt"] == "mine"
+    assert Path.cwd() == cwd_guard
+
+
+def test_workspace_id_cached(tmp_path: Path, monkeypatch, cwd_guard):
+    calls = []
+
+    def fake(cwd=None):
+        calls.append(cwd)
+        return "wid-cached"
+
+    monkeypatch.setattr(read_model, "get_workspace_id", fake)
+    monkeypatch.setattr(read_model, "_memory_root", lambda: tmp_path / "memroot")
+    store = DashboardStore(tmp_path)
+    store.memory_excerpt()
+    store.memory_excerpt()
+    assert store.workspace_id() == "wid-cached"
+    assert len(calls) == 1
     assert Path.cwd() == cwd_guard

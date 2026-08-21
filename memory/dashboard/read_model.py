@@ -26,6 +26,7 @@ LEDGER_CYCLE_CAP = 50
 AUDIT_ENTRY_CAP = 50
 MEMORY_EXCERPT_LINES = 80
 MEMORY_EXCERPT_BYTES = 8 * 1024
+PLAN_MAX_BYTES = 64 * 1024
 # id в /partials/playbook/{id}: без слэшей, чтобы не выйти из PLAYBOOKS/.
 PLAYBOOK_ID_RE = re.compile(r"^[A-Za-z0-9._:-]+$")
 
@@ -41,6 +42,7 @@ class DashboardStore:
         self.agent = self.workdir / ".agent"
         self._cache: Dict[str, Dict[str, Any]] = {}
         self._stale: Set[str] = set()
+        self._workspace_id: Optional[str] = None
 
     def loop_state(self) -> Dict[str, Any]:
         return self._read_json(
@@ -319,15 +321,21 @@ class DashboardStore:
             return []
         return out[-limit:]
 
-    def plan_text(self) -> Optional[str]:
-        return _read_text_file(self.agent / "PLAN.md")
+    def plan_text(self) -> Optional[Dict[str, Any]]:
+        return _read_text_capped(self.agent / "PLAN.md", PLAN_MAX_BYTES)
 
-    def todo_text(self) -> Optional[str]:
-        return _read_text_file(self.agent / "TODO.md")
+    def todo_text(self) -> Optional[Dict[str, Any]]:
+        return _read_text_capped(self.agent / "TODO.md", PLAN_MAX_BYTES)
+
+    def workspace_id(self) -> str:
+        """Стабильный id процесса: git только при первом обращении."""
+        if self._workspace_id is None:
+            self._workspace_id = get_workspace_id(cwd=self.workdir)
+        return self._workspace_id
 
     def memory_excerpt(self) -> Dict[str, Any]:
         """Выдержка ~/.grok/agentic-loop-memory/{wid}.md без mkdir и без листинга каталога."""
-        wid = get_workspace_id(cwd=self.workdir)
+        wid = self.workspace_id()
         mem_file = _memory_root() / f"{wid}.md"
         result: Dict[str, Any] = {
             "workspace_id": wid,
@@ -408,13 +416,18 @@ def _memory_root() -> Path:
     return Path.home() / ".grok" / "agentic-loop-memory"
 
 
-def _read_text_file(path: Path) -> Optional[str]:
+def _read_text_capped(path: Path, max_bytes: int) -> Optional[Dict[str, Any]]:
     if not path.is_file():
         return None
     try:
-        return path.read_text(encoding="utf-8")
-    except (OSError, UnicodeError):
+        with path.open("rb") as fh:
+            raw = fh.read(max_bytes + 1)
+    except OSError:
         return None
+    truncated = len(raw) > max_bytes
+    raw = raw[:max_bytes]
+    text = raw.decode("utf-8", errors="replace")
+    return {"text": text, "truncated": truncated}
 
 
 def _playbook_id_allowed(agent_dir: Path, playbook_id: str) -> bool:
