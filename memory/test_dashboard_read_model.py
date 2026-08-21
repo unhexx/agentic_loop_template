@@ -355,31 +355,46 @@ def test_history_tail_64kib_from_eof_drops_head(tmp_path: Path, monkeypatch, cwd
 
     real_open = Path.open
 
+    class _GuardedJsonl:
+        """Обёртка: слоты read/seek у BufferedReader только для чтения."""
+
+        def __init__(self, fh, src: Path):
+            self._fh = fh
+            self._src = src
+            self._pos = fh.tell()
+
+        def seek(self, offset, whence=0):
+            r = self._fh.seek(offset, whence)
+            self._pos = self._fh.tell()
+            return r
+
+        def read(self, n=-1):
+            if n is None or n < 0 or n > HISTORY_TAIL_MAX_BYTES:
+                raise AssertionError(f"jsonl must not slurp n={n}")
+            if self._pos == 0 and self._src.stat().st_size > HISTORY_TAIL_MAX_BYTES:
+                raise AssertionError("jsonl must seek from EOF, not read from start")
+            data = self._fh.read(n)
+            self._pos = self._fh.tell()
+            return data
+
+        def tell(self):
+            return self._fh.tell()
+
+        def close(self):
+            return self._fh.close()
+
+        def __enter__(self):
+            self._fh.__enter__()
+            return self
+
+        def __exit__(self, *exc):
+            return self._fh.__exit__(*exc)
+
     def guarded_open(self, *args, **kwargs):
         fh = real_open(self, *args, **kwargs)
         if self.suffix != ".jsonl":
             return fh
-        orig_read = fh.read
-        orig_seek = fh.seek
-        state = {"pos": fh.tell()}
-
-        def seek(offset, whence=0):
-            r = orig_seek(offset, whence)
-            state["pos"] = fh.tell()
-            return r
-
-        def read(n=-1):
-            if n is None or n < 0 or n > HISTORY_TAIL_MAX_BYTES:
-                raise AssertionError(f"jsonl must not slurp n={n}")
-            if state["pos"] == 0 and self.stat().st_size > HISTORY_TAIL_MAX_BYTES:
-                raise AssertionError("jsonl must seek from EOF, not read from start")
-            data = orig_read(n)
-            state["pos"] = fh.tell()
-            return data
-
-        fh.seek = seek
-        fh.read = read
-        return fh
+        return _GuardedJsonl(fh, self)
 
     monkeypatch.setattr(Path, "open", guarded_open)
     tail = DashboardStore(tmp_path).history_tail()
