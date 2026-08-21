@@ -118,6 +118,7 @@ def test_save_and_load_last_handoff_roundtrip(tmp_path: Path):
     assert loaded["handoff_to"] == "Tester"
     assert loaded["summary"] == "implemented feature"
     assert load_last_handoff(tmp_path / "missing") is None
+    assert not (tmp_path / ".agent" / "last_handoff.json.tmp").exists()
 
 
 def test_load_config_reads_project_config(tmp_path: Path):

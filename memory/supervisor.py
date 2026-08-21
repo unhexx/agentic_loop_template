@@ -7,6 +7,8 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -35,6 +37,9 @@ _PROMPT_BODY_CAP = 8000
 _SNAP_JSON_CAP = 4000
 _KNOWLEDGE_BUDGET = 800
 _PROMPT_TOKEN_CAP = 8000
+HEARTBEAT_FILENAME = "supervisor.heartbeat"
+HEARTBEAT_INTERVAL_S = 20.0
+HEARTBEAT_JOIN_S = 1.0
 _TERMINAL_STATE_STATUSES = frozenset(
     {
         Terminal.PR_READY.value,
@@ -101,12 +106,80 @@ def load_last_handoff(workdir: Path) -> Optional[Dict[str, Any]]:
 
 
 def save_handoff(workdir: Path, data: Dict[str, Any]) -> Path:
-    """Persist handoff dict to workdir/.agent/last_handoff.json."""
+    """Пишет last_handoff.json через tmp+replace, чтобы не отдавать оборванный JSON."""
     agent = Path(workdir) / ".agent"
     agent.mkdir(parents=True, exist_ok=True)
     p = agent / "last_handoff.json"
-    p.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    text = json.dumps(data, ensure_ascii=False, indent=2)
+    tmp = p.with_suffix(".json.tmp")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(p)
     return p
+
+
+def _heartbeat_path(workdir: Path) -> Path:
+    return Path(workdir) / ".agent" / HEARTBEAT_FILENAME
+
+
+def _heartbeat_ts() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def load_heartbeat(workdir: Path) -> Optional[Dict[str, Any]]:
+    """Пульс процесса, не статус цикла: LOOP_STATE остаётся единственным источником."""
+    p = _heartbeat_path(workdir)
+    if not p.is_file():
+        return None
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def _write_heartbeat(path: Path, role: str, status: str) -> None:
+    payload = {
+        "pid": os.getpid(),
+        "role": role,
+        "status": status,
+        "ts": _heartbeat_ts(),
+    }
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.parent / (path.name + ".tmp")
+        tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        tmp.replace(path)
+    except Exception:
+        pass
+
+
+def _heartbeat_ticker(
+    path: Path, role: str, status: str, stop: threading.Event
+) -> None:
+    # wait() сразу выходит по Event — зависший адаптер не держит join.
+    while not stop.wait(HEARTBEAT_INTERVAL_S):
+        _write_heartbeat(path, role, status)
+
+
+def _stop_heartbeat_thread(
+    stop: threading.Event,
+    thread: Optional[threading.Thread],
+    path: Path,
+) -> None:
+    stop.set()
+    if thread is not None and thread.ident is not None:
+        try:
+            thread.join(timeout=HEARTBEAT_JOIN_S)
+        except RuntimeError:
+            pass
+    try:
+        path.unlink(missing_ok=True)
+    except Exception:
+        pass
+    try:
+        (path.parent / (path.name + ".tmp")).unlink(missing_ok=True)
+    except Exception:
+        pass
 
 
 def _bind_state_paths(state_mod: Any, workdir: Path) -> Dict[str, Any]:
@@ -357,6 +430,15 @@ def run_loop(
     adapter = get_adapter(adapter_name, cfg)
     prev_cwd = Path.cwd()
     orig_paths = _bind_state_paths(state_mod, workdir)
+    hb_path = _heartbeat_path(workdir)
+    hb_stop = threading.Event()
+    hb_thread: Optional[threading.Thread] = None
+
+    def _halt_heartbeat() -> None:
+        nonlocal hb_thread
+        _stop_heartbeat_thread(hb_stop, hb_thread, hb_path)
+        hb_thread = None
+
     try:
         os.chdir(workdir)
         state_mod._ensure_dirs()
@@ -399,7 +481,18 @@ def run_loop(
             while True:
                 prompt = build_role_prompt(role, handoff, workdir)
                 last_path = workdir / ".agent" / "last_handoff.json"
+                hb_stop.clear()
+                hb_thread = None
                 try:
+                    hb_status = str((_load().get("status") or "IN_PROGRESS"))
+                    _write_heartbeat(hb_path, role, hb_status)
+                    hb_thread = threading.Thread(
+                        target=_heartbeat_ticker,
+                        args=(hb_path, role, hb_status, hb_stop),
+                        name="supervisor-heartbeat",
+                        daemon=True,
+                    )
+                    hb_thread.start()
                     out_path = adapter.run_role_turn(
                         role=role,
                         prompt=prompt,
@@ -424,6 +517,8 @@ def run_loop(
                             "role": role,
                         }
                     continue
+                finally:
+                    _halt_heartbeat()
 
                 strict = (handoff.get("status") or "").upper() == "DONE"
                 ok, errors = validate_handoff(handoff, strict_done=strict)
@@ -529,6 +624,7 @@ def run_loop(
             "role": role,
         }
     finally:
+        _halt_heartbeat()
         _restore_state_paths(state_mod, orig_paths)
         try:
             os.chdir(prev_cwd)
@@ -591,6 +687,9 @@ def main(argv: Optional[List[str]] = None) -> int:
                 "last_handoff_status": (handoff or {}).get("status"),
                 "last_handoff_role": (handoff or {}).get("role"),
             }
+            hb = load_heartbeat(workdir)
+            if hb is not None:
+                out["heartbeat"] = hb
             print(json.dumps(out, ensure_ascii=False, indent=2))
         finally:
             _restore_state_paths(state_mod, orig)
