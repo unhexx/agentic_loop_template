@@ -135,9 +135,13 @@ def test_torn_handoff_partial_is_not_500(dashboard_client, tmp_path: Path, monke
 
     monkeypatch.setattr(read_model, "TORN_RETRY_S", 0)
     _seed(tmp_path, summary="stable summary")
-    first = dashboard_client.get("/partials/handoff-card")
-    assert first.status_code == 200
-    assert "stable summary" in first.text
+    first_card = dashboard_client.get("/partials/handoff-card")
+    assert first_card.status_code == 200
+    assert "stable summary" in first_card.text
+    first_strip = dashboard_client.get("/partials/loop-strip")
+    assert first_strip.status_code == 200
+    assert 'data-stale="false"' in first_strip.text
+    assert "data-stale-banner" not in first_strip.text
 
     (tmp_path / ".agent" / "last_handoff.json").write_text("{", encoding="utf-8")
     second = dashboard_client.get("/partials/handoff-card")
@@ -145,7 +149,8 @@ def test_torn_handoff_partial_is_not_500(dashboard_client, tmp_path: Path, monke
     assert "stable summary" in second.text
     strip = dashboard_client.get("/partials/loop-strip")
     assert strip.status_code == 200
-    assert "stale" in strip.text
+    assert 'data-stale="true"' in strip.text
+    assert "data-stale-banner" in strip.text
 
 
 def test_missing_files_partials_200(dashboard_client, tmp_path: Path):

@@ -1,10 +1,10 @@
 <div data-stale="{{stale}}">
-  <div class="text-amber-400 text-xs mb-2">{{stale_label}}</div>
+  {{stale_html}}
   <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
     <div class="bg-zinc-900 border border-zinc-800 rounded p-2">
       <div class="text-[10px] text-zinc-400">loop.status</div>
       <div class="font-semibold"><span class="px-1.5 py-0.5 rounded {{loop_status_class}}">{{loop_status}}</span></div>
-      <div class="text-[10px] text-amber-400 mt-1">{{loop_status_note}}</div>
+      {{loop_status_note_html}}
     </div>
     <div class="bg-zinc-900 border border-zinc-800 rounded p-2">
       <div class="text-[10px] text-zinc-400">role</div>

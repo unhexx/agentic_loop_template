@@ -99,6 +99,8 @@ def test_snapshot_loop_strip_fields_and_handoff_keys(tmp_path: Path, cwd_guard):
     assert snap["last_handoff_status"] == "IN_PROGRESS"
     assert snap["last_handoff_role"] == "Coder"
     assert snap["last_handoff_to"] == "Tester"
+    assert snap["last_handoff_confidence"] == 0.86
+    assert snap["last_handoff_metrics"]["tests_total"] == 12
     assert snap["stop"] is True
     assert "heartbeat" in snap
     assert Path.cwd() == cwd_guard
@@ -172,11 +174,14 @@ def test_torn_handoff_uses_last_good_and_stale(tmp_path: Path, monkeypatch, cwd_
     assert first["last_handoff_summary"] == "good summary"
     assert first["stale"] is False
 
+    sleeps = []
+    monkeypatch.setattr(read_model.time, "sleep", lambda s: sleeps.append(s))
     (agent / "last_handoff.json").write_text("{", encoding="utf-8")
     second = store.snapshot()
     assert second["last_handoff_summary"] == "good summary"
     assert second["stale"] is True
     assert second["state"]["status"] == "IN_PROGRESS"
+    assert sleeps == []
 
 
 def test_torn_loop_state_uses_last_good(tmp_path: Path, monkeypatch, cwd_guard):
@@ -231,6 +236,38 @@ def test_heartbeat_fresh_running(tmp_path: Path, cwd_guard):
     assert hb["status"] == "running"
     assert "4242" in hb["label"]
     assert "Coder" in hb["label"]
+
+
+def test_torn_heartbeat_does_not_flip_strip_stale(
+    tmp_path: Path, monkeypatch, cwd_guard
+):
+    monkeypatch.setattr(read_model, "TORN_RETRY_S", 0)
+    _write_json(tmp_path / ".agent" / "LOOP_STATE.json", _loop_payload())
+    ts = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    _write_json(
+        tmp_path / ".agent" / "supervisor.heartbeat",
+        {"pid": 4242, "role": "Coder", "status": "IN_PROGRESS", "ts": ts},
+    )
+    store = DashboardStore(tmp_path)
+    first = store.snapshot()
+    assert first["stale"] is False
+    assert first["heartbeat"]["status"] == "running"
+
+    (tmp_path / ".agent" / "supervisor.heartbeat").write_text("{", encoding="utf-8")
+    snap = store.snapshot()
+    assert snap["stale"] is False
+    hb = store.heartbeat()
+    assert hb["status"] in ("running", "unknown")
+    if hb["status"] == "running":
+        assert hb.get("pid") == 4242
+
+    cold = DashboardStore(tmp_path).snapshot()
+    assert cold["stale"] is False
+    assert cold["heartbeat"]["status"] == "unknown"
+
+    (tmp_path / ".agent" / "last_handoff.json").write_text("{", encoding="utf-8")
+    torn_ho = store.snapshot()
+    assert torn_ho["stale"] is True
 
 
 def test_heartbeat_stale_file(tmp_path: Path, cwd_guard):

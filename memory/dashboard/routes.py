@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from html import escape
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -42,12 +42,11 @@ def register_routes(app: FastAPI) -> None:
     async def loop_page(request: Request) -> HTMLResponse:
         store: DashboardStore = request.app.state.store
         snap = store.snapshot()
-        ho = store.last_handoff() or {}
         html = render_page(
             "loop.html",
             **_chrome(request.app),
             loop_strip_html=render_loop_strip(snap),
-            handoff_card_html=render_handoff_card(snap, ho),
+            handoff_card_html=render_handoff_card(snap),
             deltas_html=render_deltas(snap),
         )
         return HTMLResponse(html)
@@ -60,9 +59,7 @@ def register_routes(app: FastAPI) -> None:
     @app.get("/partials/handoff-card")
     async def handoff_card(request: Request) -> HTMLResponse:
         store: DashboardStore = request.app.state.store
-        snap = store.snapshot()
-        ho = store.last_handoff() or {}
-        return HTMLResponse(render_handoff_card(snap, ho))
+        return HTMLResponse(render_handoff_card(store.snapshot()))
 
     @app.get("/partials/deltas")
     async def deltas(request: Request) -> HTMLResponse:
@@ -91,11 +88,22 @@ def render_loop_strip(snap: Dict[str, Any]) -> str:
     handoff_status = _str(snap.get("last_handoff_status"))
     hb = snap.get("heartbeat") or {}
     stale = bool(snap.get("stale"))
+    note = _LOOP_STATUS_NOTE.get(loop_status, "")
+    stale_html = (
+        '<div class="text-amber-400 text-xs mb-2" data-stale-banner>stale</div>'
+        if stale
+        else ""
+    )
+    note_html = (
+        f'<div class="text-[10px] text-amber-400 mt-1">{escape(note, quote=True)}</div>'
+        if note
+        else ""
+    )
     return render_partial(
         "loop_strip.html",
         loop_status=loop_status or "missing",
         loop_status_class=_LOOP_STATUS_CLASS.get(loop_status, "bg-zinc-800 text-zinc-300"),
-        loop_status_note=_LOOP_STATUS_NOTE.get(loop_status, ""),
+        loop_status_note_html=note_html,
         active_role=_str(st.get("active_role")),
         cycle_number=_str(st.get("cycle_number")),
         branch=_str(st.get("branch")),
@@ -109,15 +117,18 @@ def render_loop_strip(snap: Dict[str, Any]) -> str:
         updated_at=_str(st.get("updated_at")),
         notes=_str(st.get("notes")),
         stale="true" if stale else "false",
-        stale_label="stale" if stale else "",
+        stale_html=stale_html,
     )
 
 
-def render_handoff_card(snap: Dict[str, Any], ho: Optional[Dict[str, Any]] = None) -> str:
-    ho = ho or {}
-    gss = ho.get("git_sync_status") if isinstance(ho.get("git_sync_status"), dict) else {}
-    metrics = ho.get("metrics") if isinstance(ho.get("metrics"), dict) else {}
-    conf = ho.get("confidence")
+def render_handoff_card(snap: Dict[str, Any]) -> str:
+    gss = snap.get("last_handoff_git_sync")
+    if not isinstance(gss, dict):
+        gss = {}
+    metrics = snap.get("last_handoff_metrics")
+    if not isinstance(metrics, dict):
+        metrics = {}
+    conf = snap.get("last_handoff_confidence")
     if conf is None:
         conf_s = "—"
     else:
@@ -126,10 +137,10 @@ def render_handoff_card(snap: Dict[str, Any], ho: Optional[Dict[str, Any]] = Non
     tests_failed = metrics.get("tests_failed")
     return render_partial(
         "handoff_card.html",
-        last_handoff_role=_str(snap.get("last_handoff_role") or ho.get("role")),
-        last_handoff_to=_str(snap.get("last_handoff_to") or ho.get("handoff_to")),
-        last_handoff_summary=_str(snap.get("last_handoff_summary") or ho.get("summary")),
-        last_handoff_status=_str(snap.get("last_handoff_status") or ho.get("status")),
+        last_handoff_role=_str(snap.get("last_handoff_role")),
+        last_handoff_to=_str(snap.get("last_handoff_to")),
+        last_handoff_summary=_str(snap.get("last_handoff_summary")),
+        last_handoff_status=_str(snap.get("last_handoff_status")),
         confidence=conf_s,
         git_sync_verified=_bool_label(gss.get("verified")),
         tests_total=_str(tests_total if tests_total is not None else "—"),

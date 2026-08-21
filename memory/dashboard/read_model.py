@@ -94,6 +94,12 @@ class DashboardStore:
         git_sync = st.get("git_sync") or {}
         if not isinstance(git_sync, dict):
             git_sync = {}
+        gss = ho.get("git_sync_status") or {}
+        if not isinstance(gss, dict):
+            gss = {}
+        metrics = ho.get("metrics") or {}
+        if not isinstance(metrics, dict):
+            metrics = {}
         return {
             "state": {
                 "cycle_number": st.get("cycle_number"),
@@ -111,6 +117,10 @@ class DashboardStore:
             "last_handoff_status": ho.get("status"),
             "last_handoff_role": ho.get("role"),
             "last_handoff_to": ho.get("handoff_to"),
+            # поля карточки — чтобы GET / и /partials/handoff-card не читали файл второй раз
+            "last_handoff_confidence": ho.get("confidence"),
+            "last_handoff_git_sync": gss,
+            "last_handoff_metrics": metrics,
             "stop": self.stop_present(),
             "heartbeat": self.heartbeat(),
             "stale": bool(self._stale.intersection(_SSOT_JSON)),
@@ -121,8 +131,10 @@ class DashboardStore:
         if not path.is_file():
             self._stale.discard(key)
             return _copy_default(default)
-        last_exc: Optional[BaseException] = None
-        for attempt in range(TORN_RETRIES + 1):
+        # Повтор 3×20мс только на холодном порванном чтении: last-good уже есть —
+        # sleep на event loop не помогает, запись уже прошла или файл мёртвый.
+        attempts = 1 if key in self._cache else TORN_RETRIES + 1
+        for attempt in range(attempts):
             try:
                 text = path.read_text(encoding="utf-8")
                 if not text.strip():
@@ -133,11 +145,9 @@ class DashboardStore:
                 self._cache[key] = data
                 self._stale.discard(key)
                 return dict(data)
-            except (json.JSONDecodeError, OSError, UnicodeError) as exc:
-                last_exc = exc
-                if attempt < TORN_RETRIES:
+            except (json.JSONDecodeError, OSError, UnicodeError):
+                if attempt + 1 < attempts:
                     time.sleep(TORN_RETRY_S)
-        _ = last_exc
         if key in self._cache:
             self._stale.add(key)
             return dict(self._cache[key])
