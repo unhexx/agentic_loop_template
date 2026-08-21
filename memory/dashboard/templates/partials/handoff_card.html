@@ -1,4 +1,7 @@
-<div class="bg-zinc-900 border border-zinc-800 rounded p-3 text-sm">
+<div class="bg-zinc-900 border border-zinc-800 rounded p-3 text-sm"
+     hx-get="/partials/handoff-card"
+     hx-trigger="load, every 5s, ws-refresh from:body"
+     hx-swap="outerHTML">
   <div class="flex flex-wrap justify-between gap-2 text-xs text-zinc-400 mb-2">
     <div>
       Last handoff

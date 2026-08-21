@@ -42,5 +42,82 @@
       </div>
     </main>
   </div>
+  <script>
+  (function () {
+    var MAX = 15;
+    var attempt = 0;
+    var gen = 0;
+    var timer = null;
+    var sock = null;
+    var dot = document.getElementById('conn-dot');
+
+    function setDot(live) {
+      if (!dot) return;
+      if (live) {
+        dot.textContent = 'WS: live';
+        dot.className = 'text-xs px-2 py-0.5 rounded bg-emerald-900 text-emerald-300 mb-6';
+      } else {
+        dot.textContent = 'WS: polling';
+        dot.className = 'text-xs px-2 py-0.5 rounded bg-amber-900 text-amber-300 mb-6';
+      }
+    }
+
+    function wsUrl() {
+      var proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      var url = proto + '://' + location.host + '/ws/ui';
+      var q = new URLSearchParams(location.search).get('token');
+      if (q) url += '?token=' + encodeURIComponent(q);
+      return url;
+    }
+
+    function schedule() {
+      setDot(false);
+      if (timer) return;
+      var base = Math.min(MAX, Math.pow(2, attempt));
+      attempt += 1;
+      var wait = Math.random() * base;
+      timer = setTimeout(function () {
+        timer = null;
+        connect();
+      }, wait * 1000);
+    }
+
+    function connect() {
+      gen += 1;
+      var my = gen;
+      try { if (sock) sock.close(); } catch (e) {}
+      try {
+        sock = new WebSocket(wsUrl());
+      } catch (e) {
+        schedule();
+        return;
+      }
+      sock.onopen = function () {
+        if (my !== gen) return;
+        attempt = 0;
+        setDot(true);
+      };
+      sock.onmessage = function (ev) {
+        if (my !== gen) return;
+        try {
+          var d = JSON.parse(ev.data);
+          if (d && d.type === 'heartbeat') return;
+        } catch (e) {}
+        try {
+          if (window.htmx) htmx.trigger(document.body, 'ws-refresh');
+        } catch (e) {}
+      };
+      sock.onclose = function () {
+        if (my === gen) schedule();
+      };
+      sock.onerror = function () {
+        try { sock.close(); } catch (e) {}
+      };
+    }
+
+    setDot(false);
+    connect();
+  })();
+  </script>
 </body>
 </html>
