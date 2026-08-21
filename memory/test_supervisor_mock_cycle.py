@@ -116,6 +116,12 @@ def test_maybe_create_pr_no_gh(monkeypatch, tmp_path):
     assert term == s.Terminal.PR_READY_LOCAL
 
 
+def test_heartbeat_interval_default_is_20s():
+    from memory import supervisor as s
+
+    assert s.HEARTBEAT_INTERVAL_S == 20.0
+
+
 def test_heartbeat_during_blocking_turn_and_unlinked_after(tmp_path, monkeypatch):
     _setup(tmp_path, monkeypatch)
     from memory import supervisor as s

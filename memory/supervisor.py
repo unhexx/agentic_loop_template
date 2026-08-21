@@ -137,7 +137,14 @@ def load_heartbeat(workdir: Path) -> Optional[Dict[str, Any]]:
         return None
 
 
-def _write_heartbeat(path: Path, role: str, status: str) -> None:
+def _write_heartbeat(
+    path: Path,
+    role: str,
+    status: str,
+    stop: Optional[threading.Event] = None,
+) -> None:
+    if stop is not None and stop.is_set():
+        return
     payload = {
         "pid": os.getpid(),
         "role": role,
@@ -148,6 +155,13 @@ def _write_heartbeat(path: Path, role: str, status: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.parent / (path.name + ".tmp")
         tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        # После set() не публикуем файл — иначе пульс может пережить unlink в halt.
+        if stop is not None and stop.is_set():
+            try:
+                tmp.unlink(missing_ok=True)
+            except Exception:
+                pass
+            return
         tmp.replace(path)
     except Exception:
         pass
@@ -156,9 +170,9 @@ def _write_heartbeat(path: Path, role: str, status: str) -> None:
 def _heartbeat_ticker(
     path: Path, role: str, status: str, stop: threading.Event
 ) -> None:
-    # wait() сразу выходит по Event — зависший адаптер не держит join.
+    # wait() возвращает True сразу после Event.set — join не выжидает весь интервал.
     while not stop.wait(HEARTBEAT_INTERVAL_S):
-        _write_heartbeat(path, role, status)
+        _write_heartbeat(path, role, status, stop)
 
 
 def _stop_heartbeat_thread(
@@ -180,6 +194,12 @@ def _stop_heartbeat_thread(
         (path.parent / (path.name + ".tmp")).unlink(missing_ok=True)
     except Exception:
         pass
+    # Join мог истечь по таймауту, пока поток ещё писал — убрать запоздалый replace.
+    if thread is not None and thread.is_alive():
+        try:
+            path.unlink(missing_ok=True)
+        except Exception:
+            pass
 
 
 def _bind_state_paths(state_mod: Any, workdir: Path) -> Dict[str, Any]:
@@ -431,13 +451,15 @@ def run_loop(
     prev_cwd = Path.cwd()
     orig_paths = _bind_state_paths(state_mod, workdir)
     hb_path = _heartbeat_path(workdir)
-    hb_stop = threading.Event()
+    hb_stop: Optional[threading.Event] = None
     hb_thread: Optional[threading.Thread] = None
 
     def _halt_heartbeat() -> None:
-        nonlocal hb_thread
-        _stop_heartbeat_thread(hb_stop, hb_thread, hb_path)
+        nonlocal hb_thread, hb_stop
+        stop = hb_stop if hb_stop is not None else threading.Event()
+        _stop_heartbeat_thread(stop, hb_thread, hb_path)
         hb_thread = None
+        hb_stop = None
 
     try:
         os.chdir(workdir)
@@ -481,11 +503,12 @@ def run_loop(
             while True:
                 prompt = build_role_prompt(role, handoff, workdir)
                 last_path = workdir / ".agent" / "last_handoff.json"
-                hb_stop.clear()
+                # Свой Event на ход: clear() общего флага оживлял бы старый тикер.
+                hb_stop = threading.Event()
                 hb_thread = None
                 try:
                     hb_status = str((_load().get("status") or "IN_PROGRESS"))
-                    _write_heartbeat(hb_path, role, hb_status)
+                    _write_heartbeat(hb_path, role, hb_status, hb_stop)
                     hb_thread = threading.Thread(
                         target=_heartbeat_ticker,
                         args=(hb_path, role, hb_status, hb_stop),
