@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -182,3 +183,197 @@ def test_dashboard_sources_do_not_import_runner():
         text = (root / rel).read_text(encoding="utf-8")
         assert "run_loop" not in text
         assert "get_adapter" not in text
+        assert "performance_ledger" not in text
+        assert "generate_report" not in text
+        assert "get_recent" not in text
+        assert "tail_history" not in text
+
+
+def _current_ym() -> str:
+    now = datetime.now(timezone.utc)
+    return f"{now.year:04d}{now.month:02d}"
+
+
+def _seed_history(tmp_path: Path, text: str = "hist-ok") -> None:
+    hist = tmp_path / ".agent" / "history"
+    hist.mkdir(parents=True, exist_ok=True)
+    path = hist / f"loop_state-{_current_ym()}.jsonl"
+    path.write_text(
+        json.dumps({"ts": "2026-08-21T12:00:00Z", "type": "delta", "text": text})
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def _seed_ledger(tmp_path: Path, outcome: str = "DONE") -> None:
+    _write_json(
+        tmp_path / ".agent" / "PERFORMANCE_LEDGER.json",
+        {
+            "cycles": [
+                {
+                    "cycle": 12,
+                    "timestamp": "2026-08-21T12:00:00Z",
+                    "outcome": outcome,
+                    "elapsed_minutes": 4.0,
+                    "tool_calls": 8,
+                    "tokens_est": 1200,
+                    "confidence": 0.8,
+                    "tests_total": 12,
+                    "tests_failed": 0,
+                    "violations": 1,
+                    "meta_applied": 2,
+                },
+                {
+                    "cycle": 13,
+                    "timestamp": "2026-08-21T13:00:00Z",
+                    "outcome": "DONE",
+                    "elapsed_minutes": 6.0,
+                    "tool_calls": 3,
+                    "tokens_est": 900,
+                    "confidence": 1.0,
+                    "tests_total": 10,
+                    "tests_failed": 1,
+                    "violations": 0,
+                    "meta_applied": 0,
+                },
+            ]
+        },
+    )
+
+
+def test_handoff_page_dl_and_history_tail(dashboard_client, tmp_path: Path):
+    _seed(tmp_path)
+    _seed_history(tmp_path, "wired parser")
+    r = dashboard_client.get("/handoff")
+    assert r.status_code == 200
+    body = r.text
+    assert "<title>Handoff — Agentix</title>" in body
+    assert "Last 20" in body or "History tail" in body
+    assert "View JSON" in body
+    assert "handoff_to" in body
+    assert "current_phase" in body
+    assert "Coder" in body
+    assert "Tester" in body
+    assert "Implemented parser. Tests pending." in body
+    assert "wired parser" in body
+    assert "History tail" in body
+    # определение, не сырой dump как основной вид: есть dt/dd
+    assert "<dt" in body
+    assert "<dd" in body
+
+
+def test_handoff_summary_literal_title_placeholder(dashboard_client, tmp_path: Path):
+    _seed(tmp_path, summary="see {{title}}")
+    r = dashboard_client.get("/handoff")
+    assert r.status_code == 200
+    html = r.text
+    assert "<title>Handoff — Agentix</title>" in html
+    assert "see {{title}}" in html
+    title_end = html.find("</title>")
+    assert title_end != -1
+    assert "see {{title}}" in html[title_end:]
+    assert "summary" in html
+    loop = dashboard_client.get("/")
+    assert loop.status_code == 200
+    assert "<title>Loop — Agentix</title>" in loop.text
+    assert "see {{title}}" in loop.text
+
+
+def test_handoff_xss_escaped(dashboard_client, tmp_path: Path):
+    _seed(tmp_path, summary="<script>alert(1)</script>")
+    _seed_history(tmp_path, "<script>hist()</script>")
+    r = dashboard_client.get("/handoff")
+    assert r.status_code == 200
+    assert "<script>alert(1)</script>" not in r.text
+    assert "<script>hist()</script>" not in r.text
+    assert "&lt;script&gt;" in r.text
+
+
+def test_ledger_page_and_partial(dashboard_client, tmp_path: Path):
+    _seed_ledger(tmp_path)
+    page = dashboard_client.get("/ledger")
+    assert page.status_code == 200
+    body = page.text
+    assert "<title>Ledger — Agentix</title>" in body
+    assert 'hx-get="/partials/ledger-rows"' in body
+    assert "load, every 20s, ws-refresh" in body
+    assert "cycle" in body
+    assert "elapsed_min" in body
+    assert "meta_applied" in body
+    assert "12" in body
+    assert "13" in body
+    assert "DONE" in body
+    assert "avg elapsed" in body
+    assert "avg confidence" in body
+    #  (4+6)/2 = 5.0 , (0.8+1.0)/2 = 0.9 , meta 2+0 = 2
+    assert "5.0" in body
+    assert "0.9" in body
+    partial = dashboard_client.get("/partials/ledger-rows")
+    assert partial.status_code == 200
+    assert "12/0" in partial.text
+    assert "10/1" in partial.text
+    assert "<title>" not in partial.text
+
+
+def test_ledger_empty_message(dashboard_client, tmp_path: Path):
+    r = dashboard_client.get("/ledger")
+    assert r.status_code == 200
+    assert "No cycles recorded yet." in r.text
+    assert "<title>Ledger — Agentix</title>" in r.text
+    rows = dashboard_client.get("/partials/ledger-rows")
+    assert rows.status_code == 200
+    assert "No cycles recorded yet." in rows.text
+
+
+def test_handoff_ledger_missing_files_200(dashboard_client, tmp_path: Path):
+    h = dashboard_client.get("/handoff")
+    assert h.status_code == 200
+    assert "no last_handoff.json" in h.text
+    assert "(none)" in h.text
+    assert dashboard_client.get("/ledger").status_code == 200
+    assert dashboard_client.get("/partials/ledger-rows").status_code == 200
+
+
+def test_handoff_ledger_are_read_only(dashboard_client, tmp_path: Path):
+    _seed(tmp_path)
+    _seed_history(tmp_path)
+    _seed_ledger(tmp_path)
+    files = [p for p in tmp_path.rglob("*") if p.is_file()]
+    mtimes = {p: p.stat().st_mtime_ns for p in files}
+    snapshot = {p: p.read_bytes() for p in files}
+    assert dashboard_client.get("/handoff").status_code == 200
+    assert dashboard_client.get("/ledger").status_code == 200
+    assert dashboard_client.get("/partials/ledger-rows").status_code == 200
+    after = [p for p in tmp_path.rglob("*") if p.is_file()]
+    assert set(after) == set(files)
+    for p in files:
+        assert p.stat().st_mtime_ns == mtimes[p]
+        assert p.read_bytes() == snapshot[p]
+    assert not (tmp_path / ".agent" / "STOP").exists()
+
+
+def test_ledger_torn_partial_not_500(dashboard_client, tmp_path: Path, monkeypatch):
+    from memory.dashboard import read_model
+
+    monkeypatch.setattr(read_model, "TORN_RETRY_S", 0)
+    _seed_ledger(tmp_path)
+    first = dashboard_client.get("/partials/ledger-rows")
+    assert first.status_code == 200
+    assert "12" in first.text
+    (tmp_path / ".agent" / "PERFORMANCE_LEDGER.json").write_text("{", encoding="utf-8")
+    second = dashboard_client.get("/partials/ledger-rows")
+    assert second.status_code == 200
+    assert "12" in second.text
+
+
+def test_handoff_chrome_not_overwritten_by_json_placeholder(
+    dashboard_client, tmp_path: Path
+):
+    _seed(tmp_path, summary="see {{title}}")
+    r = dashboard_client.get("/handoff")
+    html = r.text
+    assert html.count("<title>Handoff — Agentix</title>") == 1
+    # литерал в dl/summary, не только в <title>
+    dl_at = html.find("id=\"handoff-dl\"")
+    assert dl_at != -1
+    assert "see {{title}}" in html[dl_at:]

@@ -13,7 +13,10 @@ import pytest
 pytest.importorskip("fastapi")
 
 from memory.dashboard import read_model
-from memory.dashboard.read_model import DashboardStore
+from memory.dashboard.read_model import (
+    HISTORY_TAIL_MAX_BYTES,
+    DashboardStore,
+)
 
 
 # Ключи memory.state.snapshot(), которых нет в проекции полосы Loop.
@@ -281,3 +284,241 @@ def test_heartbeat_stale_file(tmp_path: Path, cwd_guard):
     hb = DashboardStore(tmp_path).heartbeat()
     assert hb["status"] == "stale"
     assert hb["label"] == "not running / stale"
+
+
+def _ym_pair():
+    now = datetime.now(timezone.utc)
+    cur = f"{now.year:04d}{now.month:02d}"
+    if now.month == 1:
+        prev = f"{now.year - 1:04d}12"
+        older_y, older_m = now.year - 1, 11
+    else:
+        prev = f"{now.year:04d}{now.month - 1:02d}"
+        if now.month == 2:
+            older_y, older_m = now.year - 1, 12
+        else:
+            older_y, older_m = now.year, now.month - 2
+    older = f"{older_y:04d}{older_m:02d}"
+    return cur, prev, older
+
+
+def _write_jsonl(path: Path, rows) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = [json.dumps(r, ensure_ascii=False) for r in rows]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def test_history_tail_last_20_current_month(tmp_path: Path, cwd_guard):
+    cur, _, _ = _ym_pair()
+    rows = [{"n": i, "ts": f"t{i}", "text": f"line-{i}"} for i in range(25)]
+    _write_jsonl(tmp_path / ".agent" / "history" / f"loop_state-{cur}.jsonl", rows)
+    tail = DashboardStore(tmp_path).history_tail()
+    assert len(tail) == 20
+    assert [r["n"] for r in tail] == list(range(5, 25))
+    assert Path.cwd() == cwd_guard
+
+
+def test_history_tail_fills_from_previous_month(tmp_path: Path, cwd_guard):
+    cur, prev, older = _ym_pair()
+    hist = tmp_path / ".agent" / "history"
+    _write_jsonl(
+        hist / f"loop_state-{cur}.jsonl",
+        [{"n": i, "src": "cur", "text": f"c{i}"} for i in range(5)],
+    )
+    _write_jsonl(
+        hist / f"loop_state-{prev}.jsonl",
+        [{"n": i, "src": "prev", "text": f"p{i}"} for i in range(20)],
+    )
+    _write_jsonl(
+        hist / f"loop_state-{older}.jsonl",
+        [{"n": i, "src": "old", "text": "MUST-NOT-APPEAR"} for i in range(30)],
+    )
+    tail = DashboardStore(tmp_path).history_tail()
+    assert len(tail) == 20
+    assert [r["src"] for r in tail] == ["prev"] * 15 + ["cur"] * 5
+    assert [r["n"] for r in tail] == list(range(5, 20)) + list(range(5))
+    assert all(r.get("src") != "old" for r in tail)
+
+
+def test_history_tail_64kib_from_eof_drops_head(tmp_path: Path, cwd_guard):
+    cur, _, _ = _ym_pair()
+    path = tmp_path / ".agent" / "history" / f"loop_state-{cur}.jsonl"
+    path.parent.mkdir(parents=True)
+    early = json.dumps({"marker": "HEAD", "text": "early"}) + "\n"
+    # одна огромная строка без \n, чтобы last-20 по всему файлу захватил HEAD
+    padding = "x" * (HISTORY_TAIL_MAX_BYTES + 4096)
+    late = "\n".join(
+        json.dumps({"marker": "TAIL", "n": i, "text": f"late-{i}"}) for i in range(3)
+    ) + "\n"
+    path.write_text(early + padding + "\n" + late, encoding="utf-8")
+    assert path.stat().st_size > HISTORY_TAIL_MAX_BYTES
+
+    tail = DashboardStore(tmp_path).history_tail()
+    assert all(r.get("marker") != "HEAD" for r in tail)
+    assert [r.get("n") for r in tail] == [0, 1, 2]
+    assert all(r.get("marker") == "TAIL" for r in tail)
+
+
+def test_history_tail_never_read_text_whole_jsonl(tmp_path: Path, monkeypatch, cwd_guard):
+    cur, _, _ = _ym_pair()
+    path = tmp_path / ".agent" / "history" / f"loop_state-{cur}.jsonl"
+    _write_jsonl(path, [{"n": 1, "text": "ok"}])
+    real = Path.read_text
+
+    def guarded(self, *args, **kwargs):
+        if self.suffix == ".jsonl":
+            raise AssertionError("jsonl must not be read via read_text")
+        return real(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", guarded)
+    tail = DashboardStore(tmp_path).history_tail()
+    assert len(tail) == 1
+    assert tail[0]["n"] == 1
+
+
+def test_history_tail_explicit_paths_and_no_mkdir(tmp_path: Path, monkeypatch, cwd_guard):
+    cwd_wd = tmp_path / "cwd"
+    real_wd = tmp_path / "real"
+    cur, _, _ = _ym_pair()
+    _write_jsonl(
+        cwd_wd / ".agent" / "history" / f"loop_state-{cur}.jsonl",
+        [{"n": 1, "text": "cwd-hist"}],
+    )
+    _write_jsonl(
+        real_wd / ".agent" / "history" / f"loop_state-{cur}.jsonl",
+        [{"n": 2, "text": "real-hist"}],
+    )
+    monkeypatch.chdir(cwd_wd)
+    store = DashboardStore(real_wd)
+    tail = store.history_tail()
+    assert [r["text"] for r in tail] == ["real-hist"]
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    missing = DashboardStore(empty)
+    assert missing.history_tail() == []
+    assert not (empty / ".agent").exists()
+    assert Path.cwd() == cwd_wd
+
+
+def test_history_tail_does_not_write(tmp_path: Path, cwd_guard):
+    cur, _, _ = _ym_pair()
+    path = tmp_path / ".agent" / "history" / f"loop_state-{cur}.jsonl"
+    _write_jsonl(path, [{"n": 1, "text": "keep"}])
+    before = path.read_bytes()
+    mtime = path.stat().st_mtime_ns
+    DashboardStore(tmp_path).history_tail()
+    assert path.read_bytes() == before
+    assert path.stat().st_mtime_ns == mtime
+    assert not (tmp_path / ".agent" / "STOP").exists()
+
+
+def test_ledger_cycles_last_50_and_summary(tmp_path: Path, cwd_guard):
+    cycles = []
+    for i in range(55):
+        cycles.append(
+            {
+                "cycle": i,
+                "timestamp": f"2026-08-21T12:00:{i:02d}Z",
+                "outcome": "DONE",
+                "elapsed_minutes": 2.0,
+                "tool_calls": 1,
+                "tokens_est": 10,
+                "confidence": 0.5,
+                "tests_total": 4,
+                "tests_failed": 0,
+                "violations": 0,
+                "meta_applied": 2,
+            }
+        )
+    _write_json(
+        tmp_path / ".agent" / "PERFORMANCE_LEDGER.json",
+        {"cycles": cycles, "summary": {"total_cycles": 55}},
+    )
+    store = DashboardStore(tmp_path)
+    got = store.ledger_cycles()
+    assert len(got) == 50
+    assert got[0]["cycle"] == 5
+    assert got[-1]["cycle"] == 54
+    summ = store.ledger_summary()
+    assert summ["count"] == 50
+    assert summ["avg_elapsed_min"] == 2.0
+    assert summ["avg_confidence"] == 0.5
+    assert summ["total_meta_applied"] == 100
+    assert Path.cwd() == cwd_guard
+
+
+def test_ledger_summary_empty_and_missing_file(tmp_path: Path, cwd_guard):
+    store = DashboardStore(tmp_path)
+    assert store.ledger_cycles() == []
+    summ = store.ledger_summary()
+    assert summ == {
+        "count": 0,
+        "avg_elapsed_min": 0.0,
+        "avg_confidence": 0.0,
+        "total_meta_applied": 0,
+    }
+    assert not (tmp_path / ".agent").exists()
+
+
+def test_ledger_explicit_paths_ignore_cwd(tmp_path: Path, monkeypatch, cwd_guard):
+    cwd_wd = tmp_path / "cwd"
+    real_wd = tmp_path / "real"
+    _write_json(
+        cwd_wd / ".agent" / "PERFORMANCE_LEDGER.json",
+        {
+            "cycles": [
+                {"cycle": 1, "elapsed_minutes": 9, "confidence": 0.1, "meta_applied": 0}
+            ]
+        },
+    )
+    _write_json(
+        real_wd / ".agent" / "PERFORMANCE_LEDGER.json",
+        {
+            "cycles": [
+                {"cycle": 7, "elapsed_minutes": 3, "confidence": 0.8, "meta_applied": 4}
+            ]
+        },
+    )
+    monkeypatch.chdir(cwd_wd)
+    store = DashboardStore(real_wd)
+    got = store.ledger_cycles()
+    assert len(got) == 1
+    assert got[0]["cycle"] == 7
+    summ = store.ledger_summary()
+    assert summ["avg_elapsed_min"] == 3.0
+    assert summ["avg_confidence"] == 0.8
+    assert summ["total_meta_applied"] == 4
+    assert Path.cwd() == cwd_wd
+
+
+def test_ledger_torn_uses_last_good(tmp_path: Path, monkeypatch, cwd_guard):
+    monkeypatch.setattr(read_model, "TORN_RETRY_S", 0)
+    p = tmp_path / ".agent" / "PERFORMANCE_LEDGER.json"
+    _write_json(
+        p,
+        {
+            "cycles": [
+                {"cycle": 3, "elapsed_minutes": 1.5, "confidence": 0.9, "meta_applied": 1}
+            ]
+        },
+    )
+    store = DashboardStore(tmp_path)
+    assert store.ledger_cycles()[0]["cycle"] == 3
+    p.write_text("{", encoding="utf-8")
+    got = store.ledger_cycles()
+    assert got[0]["cycle"] == 3
+    summ = store.ledger_summary()
+    assert summ["count"] == 1
+
+
+def test_ledger_does_not_write(tmp_path: Path, cwd_guard):
+    p = tmp_path / ".agent" / "PERFORMANCE_LEDGER.json"
+    _write_json(p, {"cycles": [{"cycle": 1, "elapsed_minutes": 1, "confidence": 1}]})
+    before = p.read_bytes()
+    mtime = p.stat().st_mtime_ns
+    store = DashboardStore(tmp_path)
+    store.ledger_cycles()
+    store.ledger_summary()
+    assert p.read_bytes() == before
+    assert p.stat().st_mtime_ns == mtime
+    assert not (tmp_path / ".agent" / "STOP").exists()

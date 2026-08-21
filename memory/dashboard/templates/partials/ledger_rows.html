@@ -1,0 +1,27 @@
+<div>
+  <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-400 mb-3">
+    <div>cycles: {{count}}</div>
+    <div>avg elapsed: {{avg_elapsed_min}} min</div>
+    <div>avg confidence: {{avg_confidence}}</div>
+    <div>total meta_applied: {{total_meta_applied}}</div>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-xs">
+      <thead class="text-zinc-400 border-b border-zinc-800">
+        <tr>
+          <th class="py-1 pr-3 font-medium">cycle</th>
+          <th class="py-1 pr-3 font-medium">timestamp</th>
+          <th class="py-1 pr-3 font-medium">outcome</th>
+          <th class="py-1 pr-3 font-medium">elapsed_min</th>
+          <th class="py-1 pr-3 font-medium">tool_calls</th>
+          <th class="py-1 pr-3 font-medium">tokens_est</th>
+          <th class="py-1 pr-3 font-medium">confidence</th>
+          <th class="py-1 pr-3 font-medium">tests_total/failed</th>
+          <th class="py-1 pr-3 font-medium">violations</th>
+          <th class="py-1 pr-3 font-medium">meta_applied</th>
+        </tr>
+      </thead>
+      <tbody class="text-zinc-200">{{rows_html}}</tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,13 @@
+<section class="space-y-6">
+  <h1 class="text-2xl font-semibold tracking-tight">{{title}}</h1>
+  <p class="text-xs text-zinc-500">Full last_handoff.json. handoff.status and loop.status are separate fields.</p>
+  <div id="handoff-dl">{{fields_html}}</div>
+  <details class="text-sm">
+    <summary class="cursor-pointer text-zinc-400">View JSON</summary>
+    <pre class="mt-2 text-xs bg-zinc-900 border border-zinc-800 rounded p-3 overflow-x-auto whitespace-pre-wrap">{{handoff_json}}</pre>
+  </details>
+  <div id="history-tail">
+    <h2 class="text-sm font-medium mb-2">History tail (last 20)</h2>
+    <ul class="text-xs space-y-1 text-zinc-300 list-disc pl-4">{{history_html}}</ul>
+  </div>
+</section>

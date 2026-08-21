@@ -3,9 +3,10 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from html import escape
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -35,6 +36,38 @@ _HANDOFF_STATUS_CLASS = {
 _LOOP_STATUS_NOTE = {
     "PR_READY_LOCAL": "local only — gh missing or failed",
 }
+
+# Поля last_handoff в порядке схемы, не сырой dump.
+_HANDOFF_FIELDS = (
+    "role",
+    "handoff_to",
+    "current_phase",
+    "cycle_number",
+    "summary",
+    "context_delta",
+    "status",
+    "confidence",
+    "git_sync_status",
+    "metrics",
+    "issues_found",
+    "process_tags",
+    "clarification_questions",
+    "artifacts",
+    "next_input_files",
+)
+
+_LEDGER_COLS = (
+    "cycle",
+    "timestamp",
+    "outcome",
+    "elapsed_min",
+    "tool_calls",
+    "tokens_est",
+    "confidence",
+    "tests",
+    "violations",
+    "meta_applied",
+)
 
 
 def register_routes(app: FastAPI) -> None:
@@ -66,11 +99,39 @@ def register_routes(app: FastAPI) -> None:
         store: DashboardStore = request.app.state.store
         return HTMLResponse(render_deltas(store.snapshot()))
 
+    @app.get("/handoff")
+    async def handoff_page(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        ho = store.last_handoff()
+        html = render_page(
+            "handoff.html",
+            **_chrome(request.app, title="Handoff"),
+            fields_html=render_handoff_fields(ho),
+            handoff_json=_handoff_json_text(ho),
+            history_html=render_history_list(store.history_tail()),
+        )
+        return HTMLResponse(html)
 
-def _chrome(app: FastAPI) -> Dict[str, str]:
+    @app.get("/ledger")
+    async def ledger_page(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        html = render_page(
+            "ledger.html",
+            **_chrome(request.app, title="Ledger"),
+            ledger_rows_html=render_ledger_rows(store),
+        )
+        return HTMLResponse(html)
+
+    @app.get("/partials/ledger-rows")
+    async def ledger_rows(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        return HTMLResponse(render_ledger_rows(store))
+
+
+def _chrome(app: FastAPI, title: str = "Loop") -> Dict[str, str]:
     wd = app.state.workdir
     return {
-        "title": "Loop",
+        "title": title,
         "csrf": "",
         "year": str(datetime.now(timezone.utc).year),
         "conn_dot": "WS: polling",
@@ -193,3 +254,111 @@ def _list_html(items: List[Any], fmt) -> str:
     for it in items:
         parts.append(f"<li>{escape(fmt(it), quote=True)}</li>")
     return "".join(parts)
+
+
+def _handoff_json_text(ho: Optional[Dict[str, Any]]) -> str:
+    if not ho:
+        return ""
+    return json.dumps(ho, ensure_ascii=False, indent=2)
+
+
+def _fmt_field_value(v: Any) -> str:
+    if v is None:
+        return "—"
+    if isinstance(v, (dict, list)):
+        return json.dumps(v, ensure_ascii=False, indent=2)
+    return str(v)
+
+
+def render_handoff_fields(ho: Optional[Dict[str, Any]]) -> str:
+    if not ho:
+        return '<p class="text-zinc-500 text-sm">no last_handoff.json</p>'
+    parts = ['<dl class="grid grid-cols-1 gap-2 text-sm">']
+    for key in _HANDOFF_FIELDS:
+        if key in ho:
+            val = _fmt_field_value(ho.get(key))
+        else:
+            val = "—"
+        parts.append(
+            '<div class="bg-zinc-900 border border-zinc-800 rounded p-2">'
+            f'<dt class="text-[10px] text-zinc-400">{escape(key, quote=True)}</dt>'
+            f'<dd class="whitespace-pre-wrap text-zinc-200">{escape(val, quote=True)}</dd>'
+            "</div>"
+        )
+    parts.append("</dl>")
+    return "".join(parts)
+
+
+def _fmt_history_row(item: Dict[str, Any]) -> str:
+    ts = item.get("ts") or item.get("timestamp") or ""
+    kind = item.get("type") or item.get("role") or ""
+    text = item.get("summary") or item.get("text") or item.get("notes") or ""
+    if not text and item.get("raw"):
+        text = str(item["raw"])
+    if not text:
+        skip = {"ts", "timestamp", "type", "role", "summary", "text", "notes", "raw"}
+        rest = {k: v for k, v in item.items() if k not in skip}
+        if rest:
+            text = json.dumps(rest, ensure_ascii=False)[:200]
+    bits = [str(ts), str(kind), str(text)]
+    return " ".join(b for b in bits if b).strip() or json.dumps(
+        item, ensure_ascii=False
+    )[:200]
+
+
+def render_history_list(rows: List[Dict[str, Any]]) -> str:
+    if not rows:
+        return '<li class="text-zinc-500">(none)</li>'
+    parts = []
+    for row in rows:
+        if not isinstance(row, dict):
+            row = {"raw": str(row)[:200]}
+        parts.append(f"<li>{escape(_fmt_history_row(row), quote=True)}</li>")
+    return "".join(parts)
+
+
+def _ledger_cell(cycle: Dict[str, Any], col: str) -> str:
+    if col == "elapsed_min":
+        v = cycle.get("elapsed_minutes")
+        if v is None:
+            v = cycle.get("elapsed_min")
+        return _str(v) if v is not None else ""
+    if col == "tests":
+        total = cycle.get("tests_total")
+        failed = cycle.get("tests_failed")
+        if total is None and failed is None:
+            return ""
+        return f"{_str(total if total is not None else '—')}/{_str(failed if failed is not None else '—')}"
+    v = cycle.get(col)
+    return _str(v) if v is not None else ""
+
+
+def render_ledger_rows(store: DashboardStore) -> str:
+    cycles = store.ledger_cycles()
+    summary = store.ledger_summary(cycles)
+    if not cycles:
+        rows_html = (
+            '<tr><td colspan="10" class="py-3 text-zinc-500">'
+            "No cycles recorded yet.</td></tr>"
+        )
+    else:
+        parts = []
+        for c in reversed(cycles):
+            cells = []
+            for col in _LEDGER_COLS:
+                cells.append(
+                    f'<td class="py-1 pr-3 whitespace-nowrap">'
+                    f"{escape(_ledger_cell(c, col), quote=True)}</td>"
+                )
+            parts.append(
+                '<tr class="border-b border-zinc-800/80">' + "".join(cells) + "</tr>"
+            )
+        rows_html = "".join(parts)
+    return render_partial(
+        "ledger_rows.html",
+        count=_str(summary.get("count")),
+        avg_elapsed_min=_str(summary.get("avg_elapsed_min")),
+        avg_confidence=_str(summary.get("avg_confidence")),
+        total_meta_applied=_str(summary.get("total_meta_applied")),
+        rows_html=rows_html,
+    )
