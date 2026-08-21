@@ -11,3 +11,4 @@ blackbox_start_prompt.txt
 .agent/proxy_events.jsonl
 .agent/proxy_cache.sqlite
 .agent/proxy_cache.sqlite-*
+.agent/sft/

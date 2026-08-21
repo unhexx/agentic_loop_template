@@ -65,6 +65,15 @@ def test_basic():
         n = mh.apply_safe_proposals(dry_run=True)
         print("✓ apply_safe_proposals (dry) обработал", n)
 
+        sft = tmp_path / "train.jsonl"
+        report = mh.export_sft(out=sft, min_confidence=0.85)
+        assert report["written"] >= 1
+        line = sft.read_text(encoding="utf-8").splitlines()[0]
+        rec = json.loads(line)
+        assert rec["messages"][0]["role"] == "user"
+        assert rec["messages"][1]["role"] == "assistant"
+        print("✓ export_sft wrote", report["written"])
+
         # Тест новых функций (seed + ledger)
         seeded = mh.seed_example_trajectory()
         print("✓ seed_example_trajectory создал", seeded)

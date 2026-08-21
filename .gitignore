@@ -227,4 +227,5 @@ __marimo__/
 .agent/proxy_events.jsonl
 .agent/proxy_cache.sqlite
 .agent/proxy_cache.sqlite-*
+.agent/sft/
 .venv/

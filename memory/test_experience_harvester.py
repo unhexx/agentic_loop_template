@@ -19,6 +19,8 @@ from memory.experience_harvester import (
     DEFAULT_SEEDS,
     audit_parent,
     dedupe,
+    looks_like_project_parent,
+    maybe_cycle_on_done,
     scan_parent,
     cli,
 )
@@ -106,6 +108,27 @@ def test_cycle_cli_dry_run() -> None:
         assert out["projects"][0]["project"] == "demo"
 
 
+def test_maybe_cycle_on_done_sibling_layout() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        parent = Path(tmp) / "_PROJECT"
+        tmpl = parent / "agentic_loop_template"
+        prod = parent / "demo"
+        _write(
+            prod / "AGENTS.md",
+            "## Boundaries\n- Never commit .env, tokens, private keys or real user IDs\n",
+        )
+        (tmpl / "memory").mkdir(parents=True)
+        (tmpl / "memory" / "supervisor.py").write_text("# stub\n", encoding="utf-8")
+        assert looks_like_project_parent(parent) is True
+        found = maybe_cycle_on_done(prod, apply=False)
+        assert found is not None
+        assert found["dry_run"] is True
+        assert found["pattern_count"] >= 1
+        lonely = Path(tmp) / "lonely"
+        lonely.mkdir()
+        assert maybe_cycle_on_done(lonely, apply=False) is None
+
+
 def test_seeds_dedupe_grows() -> None:
     rows = dedupe(DEFAULT_SEEDS + DEFAULT_SEEDS)
     assert len(rows) == len(DEFAULT_SEEDS)
@@ -120,6 +143,7 @@ def _run_all() -> None:
         test_scan_reads_agents_and_playbook,
         test_audit_docs_gap_and_stale_loop,
         test_cycle_cli_dry_run,
+        test_maybe_cycle_on_done_sibling_layout,
         test_seeds_dedupe_grows,
     ]
     for fn in tests:

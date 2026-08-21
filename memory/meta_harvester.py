@@ -45,6 +45,7 @@ TRAJECTORIES_INDEX = Path(".agent/TRAJECTORIES.json")
 TRAJECTORIES_DIR = Path(".agent/TRAJECTORIES")
 META_PROPOSALS_MD = Path(".agent/META_PROPOSALS.md")
 PROJECT_CONFIG = Path(".agent/project_config.json")
+SFT_PATH = Path(".agent/sft/train.jsonl")
 
 
 def _now_iso() -> str:
@@ -298,6 +299,78 @@ def get_recent_trajectories(limit: int = 5) -> List[Dict[str, Any]]:
     """Возвращает последние N траекторий (для анализа и памяти)."""
     index = _load_index()
     return list(reversed(index.get("trajectories", [])))[:limit]
+
+
+def _traj_qualifies(traj: Dict[str, Any], min_confidence: float) -> bool:
+    if str(traj.get("outcome") or "").upper() != "DONE":
+        return False
+    q = traj.get("quality_signals") or {}
+    try:
+        conf = float(q.get("confidence") or 0)
+    except (TypeError, ValueError):
+        conf = 0.0
+    if conf < min_confidence:
+        return False
+    try:
+        failed = int(q.get("tests_failed") or 0)
+    except (TypeError, ValueError):
+        failed = 1
+    return failed == 0
+
+
+def _sft_record(traj: Dict[str, Any]) -> Dict[str, Any]:
+    chain = traj.get("compressed_handoff_chain") or []
+    user = str(traj.get("task_ref") or traj.get("spec_ref") or "")
+    if not user and chain and isinstance(chain[0], dict):
+        user = str(chain[0].get("summary") or "")
+    last = chain[-1] if chain and isinstance(chain[-1], dict) else {}
+    assistant = {
+        "summary": last.get("summary") or traj.get("outcome"),
+        "lessons": traj.get("lessons_learned") or last.get("lessons") or [],
+        "success_patterns": traj.get("success_patterns") or [],
+    }
+    return {
+        "messages": [
+            {"role": "user", "content": user},
+            {"role": "assistant", "content": json.dumps(assistant, ensure_ascii=False)},
+        ],
+        "trajectory_id": traj.get("id"),
+        "confidence": (traj.get("quality_signals") or {}).get("confidence"),
+        "cycle": traj.get("cycle"),
+    }
+
+
+def export_sft(
+    out: Optional[Path] = None,
+    min_confidence: float = DEFAULT_MIN_CONFIDENCE,
+    recent: int = 100,
+) -> Dict[str, Any]:
+    """
+    Локальный JSONL для дообучения. GPU/LoRA здесь нет — только экспорт.
+    Файл в .agent/sft/ и должен быть в gitignore.
+    """
+    dest = Path(out) if out is not None else SFT_PATH
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    index = _load_index()
+    trajs = list(index.get("trajectories") or [])
+    if recent:
+        trajs = trajs[-int(recent) :]
+    written = 0
+    skipped = 0
+    with dest.open("a", encoding="utf-8") as fh:
+        for traj in trajs:
+            if not _traj_qualifies(traj, min_confidence):
+                skipped += 1
+                continue
+            rec = _sft_record(traj)
+            fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+            written += 1
+    return {
+        "written": written,
+        "skipped": skipped,
+        "path": str(dest),
+        "min_confidence": min_confidence,
+    }
 
 
 def analyze_for_proposals(recent: int = 5, min_confidence: float = 0.8) -> List[Dict[str, Any]]:
@@ -663,6 +736,11 @@ def _cli() -> None:
     apy.add_argument("--dry-run", action="store_true", default=True)
     apy.add_argument("--ids", default=None, help="P-001,P-002 (опционально)")
 
+    es = sub.add_parser("export-sft", help="JSONL для локального дообучения (без GPU)")
+    es.add_argument("--out", type=Path, default=None)
+    es.add_argument("--min-confidence", type=float, default=DEFAULT_MIN_CONFIDENCE)
+    es.add_argument("--recent", type=int, default=100)
+
     args = p.parse_args()
 
     if args.cmd == "harvest":
@@ -680,6 +758,13 @@ def _cli() -> None:
         ids = [x.strip() for x in args.ids.split(",")] if args.ids else None
         n = apply_safe_proposals(dry_run=args.dry_run, ids=ids)
         print(json.dumps({"applied": n, "dry_run": args.dry_run}, ensure_ascii=False))
+    elif args.cmd == "export-sft":
+        report = export_sft(
+            out=args.out,
+            min_confidence=args.min_confidence,
+            recent=args.recent,
+        )
+        print(json.dumps(report, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

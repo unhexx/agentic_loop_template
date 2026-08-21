@@ -42,6 +42,10 @@
 - `VERSION` → 3.7.0
 - README / ROADMAP / consumer-starter: default live path is gateway `:8110` → pxpipe `:8100`.
 
+### Added (continual-learning export)
+- `python -m memory.meta_harvester export-sft` writes `.agent/sft/train.jsonl` (gitignored, no GPU).
+- `experience_harvester.maybe_cycle_on_done` runs a dry-run parent harvest after Reviewer DONE when `../` looks like `_PROJECT`.
+
 ## [3.6.0] - 2026-08-20
 
 ### Added (cross-project experience harvest — 2026-08-20 self-improve)

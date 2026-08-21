@@ -31,6 +31,7 @@ This directly implements "the agentic loop exists to improve both the product **
   - Orchestrator can request "consider recent meta proposals" at start of planning (like memory snapshot).
 - **Storage locations** (outside repo, like memory; or .agent/ for project-specific):
   - Machine: `.agent/TRAJECTORIES.json` (index) + `.agent/TRAJECTORIES/<cycle>-<shortid>.json` (full compact trace) or single append-only log.
+  - SFT export (v3.7, no GPU): `python -m memory.meta_harvester export-sft` → `.agent/sft/train.jsonl` (gitignored). Records are `{messages, trajectory_id, confidence, cycle}` from DONE trajectories with `confidence ≥ 0.85` and `tests_failed=0`.
   - Human: `.agent/TRAJECTORIES_SUMMARY.md` (auto-updated, similar to QUESTIONS_POOL.md).
   - Cross-project learning: selected high-value patterns flow into workspace memory (same `~/.grok/agentic-loop-memory/<wid>.md`).
 - **Config** (extends existing `.agent/project_config.json`):

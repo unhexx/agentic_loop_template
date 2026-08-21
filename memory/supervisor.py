@@ -479,6 +479,12 @@ def run_loop(
             if _is_terminal_result(nxt):
                 term: Terminal = nxt  # type: ignore[assignment]
                 if term == Terminal.PR_READY:
+                    try:
+                        from memory.experience_harvester import maybe_cycle_on_done
+
+                        maybe_cycle_on_done(workdir, apply=False)
+                    except Exception:
+                        pass
                     if create_pr:
                         term = maybe_create_pr(workdir, sup)
                     pr_ready_count += 1
