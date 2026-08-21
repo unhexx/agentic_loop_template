@@ -124,7 +124,7 @@ def test_ws_origin_nip_io_reject_4403(dashboard_client):
     assert ei.value.code == WS_CLOSE_ORIGIN
 
 
-def test_ws_wrong_token_4401(tmp_path: Path, monkeypatch):
+def test_ws_missing_token_4401(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
     with _client(tmp_path) as client:
         with pytest.raises(_ws_disconnect()) as ei:
@@ -133,7 +133,36 @@ def test_ws_wrong_token_4401(tmp_path: Path, monkeypatch):
         assert ei.value.code == WS_CLOSE_TOKEN
 
 
-def test_ws_missing_token_query_ok_when_set(tmp_path: Path, monkeypatch):
+def test_ws_wrong_token_4401(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
+    with _client(tmp_path) as client:
+        with pytest.raises(_ws_disconnect()) as ei:
+            with client.websocket_connect(_WS + "?token=nope") as ws:
+                ws.receive_json()
+        assert ei.value.code == WS_CLOSE_TOKEN
+
+
+def test_ws_wrong_bearer_4401(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
+    with _client(tmp_path) as client:
+        with pytest.raises(_ws_disconnect()) as ei:
+            with client.websocket_connect(
+                _WS, headers={"Authorization": "Bearer nope"}
+            ) as ws:
+                ws.receive_json()
+        assert ei.value.code == WS_CLOSE_TOKEN
+
+
+def test_ws_bearer_token_ok(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
+    with _client(tmp_path) as client:
+        with client.websocket_connect(
+            _WS, headers={"Authorization": "Bearer s3cret"}
+        ) as ws:
+            assert ws.receive_json()["type"] == "connected"
+
+
+def test_ws_query_token_ok(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
     with _client(tmp_path) as client:
         with client.websocket_connect(_WS + "?token=s3cret") as ws:
@@ -174,6 +203,26 @@ def test_loop_page_has_ws_client_and_refresh(dashboard_client):
     assert "ws-refresh from:body" in body
     assert 'hx-trigger="load, every 5s, ws-refresh from:body"' in body
     assert 'id="conn-dot"' in body
+    assert "d.type === 'heartbeat'" in body
+    assert "MAX = 15" in body
+    assert "Math.min(MAX," in body
+
+
+def test_partials_are_fragments_triggers_live_on_wrappers():
+    root = Path(__file__).resolve().parents[1]
+    for name in ("loop_strip.html", "handoff_card.html", "deltas.html"):
+        text = (root / "memory/dashboard/templates/partials" / name).read_text(
+            encoding="utf-8"
+        )
+        assert "hx-trigger" not in text
+        assert "hx-get" not in text
+        assert "hx-swap" not in text
+    loop = (root / "memory/dashboard/templates/pages/loop.html").read_text(
+        encoding="utf-8"
+    )
+    assert loop.count('hx-trigger="load, every 5s, ws-refresh from:body"') == 3
+    assert 'hx-swap="innerHTML"' in loop
+    assert 'hx-swap="outerHTML"' not in loop
 
 
 def test_watched_set_skips_loop_state_md():
@@ -218,6 +267,90 @@ def test_watcher_state_and_stop_signals(tmp_path: Path):
     (agent / "LOOP_STATE.md").write_text("# projection", encoding="utf-8")
     asyncio.run(w.tick())
     assert sink.events == []
+
+
+def test_watcher_debounce_coalesces_burst(tmp_path: Path):
+    async def _run():
+        agent = tmp_path / ".agent"
+        agent.mkdir()
+        sink = _Sink()
+        w = Watcher(tmp_path, sink, poll_s=0, debounce_s=0.05)  # type: ignore[arg-type]
+        w.prime()
+        (agent / "STOP").write_text("1", encoding="utf-8")
+        task = asyncio.create_task(w.tick())
+        await asyncio.sleep(0.02)
+        (agent / "AUDIT_LOG.json").write_text(
+            json.dumps({"entries": [{"id": "A-0001"}]}),
+            encoding="utf-8",
+        )
+        n = await asyncio.wait_for(task, 1.0)
+        types = [e["type"] for e in sink.events]
+        assert types.count("stop:set") == 1
+        assert types.count("audit:appended") == 1
+        assert n == 2
+
+        sink.events.clear()
+        w2 = Watcher(tmp_path, sink, poll_s=0, debounce_s=0.05)  # type: ignore[arg-type]
+        w2.prime()
+        (agent / "STOP").write_text("1", encoding="utf-8")
+        task2 = asyncio.create_task(w2.tick())
+        await asyncio.sleep(0.02)
+        (agent / "STOP").write_text("1", encoding="utf-8")
+        n2 = await asyncio.wait_for(task2, 1.0)
+        assert [e["type"] for e in sink.events] == ["stop:set"]
+        assert n2 == 1
+
+    asyncio.run(_run())
+
+
+def test_watcher_run_survives_tick_error(tmp_path: Path):
+    async def _run():
+        w = Watcher(tmp_path, _Sink(), poll_s=0.01, debounce_s=0)  # type: ignore[arg-type]
+
+        async def boom() -> int:
+            raise RuntimeError("boom")
+
+        w.tick = boom  # type: ignore[method-assign]
+        task = asyncio.create_task(w.run())
+        await asyncio.sleep(0.04)
+        assert not task.done()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(_run())
+
+
+def test_watcher_tick_reaches_ws_client(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr("memory.dashboard.watcher.POLL_INTERVAL_S", 60.0)
+    try:
+        import httpx2  # noqa: F401
+    except ModuleNotFoundError:
+        pytest.importorskip("httpx")
+    from starlette.testclient import TestClient
+
+    app = create_app(workdir=tmp_path)
+    with TestClient(_asgi_loopback(app), base_url="http://127.0.0.1:8112") as client:
+        with client.websocket_connect(_WS) as ws:
+            assert ws.receive_json()["type"] == "connected"
+            agent = tmp_path / ".agent"
+            agent.mkdir(exist_ok=True)
+            (agent / "LOOP_STATE.json").write_text(
+                json.dumps(
+                    {
+                        "status": "IN_PROGRESS",
+                        "active_role": "Coder",
+                        "cycle_number": 12,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            client.portal.call(app.state.watcher.tick)
+            msg = ws.receive_json()
+            assert msg["type"] == "state:changed"
+            assert msg["loop_status"] == "IN_PROGRESS"
+            assert msg["role"] == "Coder"
+            assert msg["cycle"] == 12
 
 
 def test_watcher_handoff_changed(tmp_path: Path):

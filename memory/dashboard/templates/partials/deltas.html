@@ -1,7 +1,4 @@
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm"
-     hx-get="/partials/deltas"
-     hx-trigger="load, every 5s, ws-refresh from:body"
-     hx-swap="outerHTML">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
   <div>
     <h2 class="text-sm font-medium mb-2">Recent deltas</h2>
     <ul class="text-xs space-y-1 text-zinc-300 list-disc pl-4">{{deltas_html}}</ul>

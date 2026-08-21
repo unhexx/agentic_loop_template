@@ -60,7 +60,11 @@ class Watcher:
         try:
             while True:
                 await asyncio.sleep(self.poll_s)
-                await self.tick()
+                try:
+                    await self.tick()
+                except Exception:
+                    # один сбой тика не должен гасить lifespan: WS остаётся live
+                    continue
         except asyncio.CancelledError:
             raise
 

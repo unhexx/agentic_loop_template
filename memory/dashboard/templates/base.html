@@ -86,18 +86,20 @@
       gen += 1;
       var my = gen;
       try { if (sock) sock.close(); } catch (e) {}
+      var s;
       try {
-        sock = new WebSocket(wsUrl());
+        s = new WebSocket(wsUrl());
       } catch (e) {
         schedule();
         return;
       }
-      sock.onopen = function () {
+      sock = s;
+      s.onopen = function () {
         if (my !== gen) return;
         attempt = 0;
         setDot(true);
       };
-      sock.onmessage = function (ev) {
+      s.onmessage = function (ev) {
         if (my !== gen) return;
         try {
           var d = JSON.parse(ev.data);
@@ -107,11 +109,11 @@
           if (window.htmx) htmx.trigger(document.body, 'ws-refresh');
         } catch (e) {}
       };
-      sock.onclose = function () {
+      s.onclose = function () {
         if (my === gen) schedule();
       };
-      sock.onerror = function () {
-        try { sock.close(); } catch (e) {}
+      s.onerror = function () {
+        try { s.close(); } catch (e) {}
       };
     }
 

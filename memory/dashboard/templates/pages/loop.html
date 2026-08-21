@@ -3,14 +3,14 @@
   <span class="hidden bg-emerald-900 text-emerald-300 bg-amber-900 text-amber-300 bg-red-900 text-red-300 bg-zinc-800 text-zinc-300"></span>
   <div id="loop-strip"
        hx-get="/partials/loop-strip"
-       hx-trigger="load, every 5s"
+       hx-trigger="load, every 5s, ws-refresh from:body"
        hx-swap="innerHTML">{{loop_strip_html}}</div>
   <div id="handoff-card"
        hx-get="/partials/handoff-card"
-       hx-trigger="load, every 5s"
+       hx-trigger="load, every 5s, ws-refresh from:body"
        hx-swap="innerHTML">{{handoff_card_html}}</div>
   <div id="deltas"
        hx-get="/partials/deltas"
-       hx-trigger="load, every 5s"
+       hx-trigger="load, every 5s, ws-refresh from:body"
        hx-swap="innerHTML">{{deltas_html}}</div>
 </section>
