@@ -138,6 +138,7 @@ class DashboardStore:
         if n <= 0:
             return []
         current, previous = self._history_month_paths()
+        # 64 KiB с EOF каждого файла (не общий бюджет на оба месяца).
         rows = _tail_jsonl_file(current, n, HISTORY_TAIL_MAX_BYTES)
         if len(rows) < n:
             older = _tail_jsonl_file(

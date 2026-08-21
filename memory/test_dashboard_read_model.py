@@ -340,7 +340,7 @@ def test_history_tail_fills_from_previous_month(tmp_path: Path, cwd_guard):
     assert all(r.get("src") != "old" for r in tail)
 
 
-def test_history_tail_64kib_from_eof_drops_head(tmp_path: Path, cwd_guard):
+def test_history_tail_64kib_from_eof_drops_head(tmp_path: Path, monkeypatch, cwd_guard):
     cur, _, _ = _ym_pair()
     path = tmp_path / ".agent" / "history" / f"loop_state-{cur}.jsonl"
     path.parent.mkdir(parents=True)
@@ -353,6 +353,35 @@ def test_history_tail_64kib_from_eof_drops_head(tmp_path: Path, cwd_guard):
     path.write_text(early + padding + "\n" + late, encoding="utf-8")
     assert path.stat().st_size > HISTORY_TAIL_MAX_BYTES
 
+    real_open = Path.open
+
+    def guarded_open(self, *args, **kwargs):
+        fh = real_open(self, *args, **kwargs)
+        if self.suffix != ".jsonl":
+            return fh
+        orig_read = fh.read
+        orig_seek = fh.seek
+        state = {"pos": fh.tell()}
+
+        def seek(offset, whence=0):
+            r = orig_seek(offset, whence)
+            state["pos"] = fh.tell()
+            return r
+
+        def read(n=-1):
+            if n is None or n < 0 or n > HISTORY_TAIL_MAX_BYTES:
+                raise AssertionError(f"jsonl must not slurp n={n}")
+            if state["pos"] == 0 and self.stat().st_size > HISTORY_TAIL_MAX_BYTES:
+                raise AssertionError("jsonl must seek from EOF, not read from start")
+            data = orig_read(n)
+            state["pos"] = fh.tell()
+            return data
+
+        fh.seek = seek
+        fh.read = read
+        return fh
+
+    monkeypatch.setattr(Path, "open", guarded_open)
     tail = DashboardStore(tmp_path).history_tail()
     assert all(r.get("marker") != "HEAD" for r in tail)
     assert [r.get("n") for r in tail] == [0, 1, 2]
@@ -371,9 +400,37 @@ def test_history_tail_never_read_text_whole_jsonl(tmp_path: Path, monkeypatch, c
         return real(self, *args, **kwargs)
 
     monkeypatch.setattr(Path, "read_text", guarded)
+
+    real_rb = Path.read_bytes
+
+    def guarded_bytes(self, *args, **kwargs):
+        if self.suffix == ".jsonl":
+            raise AssertionError("jsonl must not be read via read_bytes")
+        return real_rb(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_bytes", guarded_bytes)
     tail = DashboardStore(tmp_path).history_tail()
     assert len(tail) == 1
     assert tail[0]["n"] == 1
+
+
+def test_history_tail_malformed_line_becomes_raw(tmp_path: Path, cwd_guard):
+    cur, _, _ = _ym_pair()
+    path = tmp_path / ".agent" / "history" / f"loop_state-{cur}.jsonl"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        json.dumps({"n": 1, "text": "good"})
+        + "\n{not-json\n"
+        + json.dumps({"n": 2, "text": "also-good"})
+        + "\n",
+        encoding="utf-8",
+    )
+    tail = DashboardStore(tmp_path).history_tail()
+    assert len(tail) == 3
+    assert tail[0]["n"] == 1
+    assert tail[1].get("raw") == "{not-json"
+    assert tail[2]["n"] == 2
+    assert Path.cwd() == cwd_guard
 
 
 def test_history_tail_explicit_paths_and_no_mkdir(tmp_path: Path, monkeypatch, cwd_guard):

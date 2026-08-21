@@ -289,6 +289,24 @@ def test_handoff_xss_escaped(dashboard_client, tmp_path: Path):
     assert "&lt;script&gt;" in r.text
 
 
+def test_handoff_malformed_jsonl_not_500(dashboard_client, tmp_path: Path):
+    _seed(tmp_path)
+    hist = tmp_path / ".agent" / "history"
+    hist.mkdir(parents=True, exist_ok=True)
+    (hist / f"loop_state-{_current_ym()}.jsonl").write_text(
+        '{not-json\n'
+        + json.dumps({"ts": "t", "text": "good-line"})
+        + "\n<script>raw()</script>\n",
+        encoding="utf-8",
+    )
+    r = dashboard_client.get("/handoff")
+    assert r.status_code == 200
+    assert "{not-json" in r.text
+    assert "good-line" in r.text
+    assert "<script>raw()</script>" not in r.text
+    assert "&lt;script&gt;" in r.text
+
+
 def test_ledger_page_and_partial(dashboard_client, tmp_path: Path):
     _seed_ledger(tmp_path)
     page = dashboard_client.get("/ledger")
@@ -296,7 +314,7 @@ def test_ledger_page_and_partial(dashboard_client, tmp_path: Path):
     body = page.text
     assert "<title>Ledger — Agentix</title>" in body
     assert 'hx-get="/partials/ledger-rows"' in body
-    assert "load, every 20s, ws-refresh" in body
+    assert "load, every 20s, ws-refresh from:body" in body
     assert "cycle" in body
     assert "elapsed_min" in body
     assert "meta_applied" in body
@@ -308,11 +326,14 @@ def test_ledger_page_and_partial(dashboard_client, tmp_path: Path):
     #  (4+6)/2 = 5.0 , (0.8+1.0)/2 = 0.9 , meta 2+0 = 2
     assert "5.0" in body
     assert "0.9" in body
+    # newest first: цикл 13 выше 12 (не только оба числа где-то на странице)
+    assert body.find(">13</td>") < body.find(">12</td>")
     partial = dashboard_client.get("/partials/ledger-rows")
     assert partial.status_code == 200
     assert "12/0" in partial.text
     assert "10/1" in partial.text
     assert "<title>" not in partial.text
+    assert partial.text.find(">13</td>") < partial.text.find(">12</td>")
 
 
 def test_ledger_empty_message(dashboard_client, tmp_path: Path):
