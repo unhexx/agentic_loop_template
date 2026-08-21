@@ -40,11 +40,11 @@ def test_root_renders_loop(dashboard_client):
 
 def test_is_loopback_host_rejects_rebinding():
     assert is_loopback_host("127.0.0.1")
-    assert is_loopback_host("127.0.0.1:8110")
+    assert is_loopback_host("127.0.0.1:8112")
     assert is_loopback_host("localhost")
-    assert is_loopback_host("localhost:8110")
+    assert is_loopback_host("localhost:8112")
     assert is_loopback_host("::1")
-    assert is_loopback_host("[::1]:8110")
+    assert is_loopback_host("[::1]:8112")
     assert is_loopback_address("127.0.0.8")
     assert not is_loopback_host("127.0.0.1.nip.io")
     assert not is_loopback_host("evil.com")
@@ -54,6 +54,10 @@ def test_is_loopback_host_rejects_rebinding():
 
 
 def test_non_loopback_peer_403(tmp_path: Path):
+    try:
+        import httpx2  # noqa: F401
+    except ModuleNotFoundError:
+        pytest.importorskip("httpx")
     from starlette.testclient import TestClient
     from memory.dashboard.server import create_app
 
@@ -65,7 +69,7 @@ def test_non_loopback_peer_403(tmp_path: Path):
             scope["client"] = ("10.0.0.2", 9)
         await app(scope, receive, send)
 
-    with TestClient(asgi, base_url="http://127.0.0.1:8110") as client:
+    with TestClient(asgi, base_url="http://127.0.0.1:8112") as client:
         r = client.get("/health")
         assert r.status_code == 403
         assert "dashboard is loopback-only" in r.text
@@ -75,7 +79,7 @@ def test_serve_rejects_non_loopback_bind(tmp_path: Path):
     from memory.dashboard.server import BindError, serve
 
     try:
-        serve(workdir=tmp_path, host="0.0.0.0", port=8110)
+        serve(workdir=tmp_path, host="0.0.0.0", port=8112)
     except BindError as exc:
         msg = str(exc)
         assert "SR-04" in msg

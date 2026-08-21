@@ -15,7 +15,8 @@ from typing import Optional
 
 
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 8110
+# 8110 занят шлюзом memory.proxy; pxpipe слушает 8100.
+DEFAULT_PORT = 8112
 LOOPBACK_BIND_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 
 

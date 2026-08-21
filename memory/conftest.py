@@ -12,6 +12,10 @@ import pytest
 @pytest.fixture
 def dashboard_client(tmp_path: Path):
     pytest.importorskip("fastapi")
+    try:
+        import httpx2  # noqa: F401
+    except ModuleNotFoundError:
+        pytest.importorskip("httpx")
     from starlette.testclient import TestClient
     from memory.dashboard.server import create_app
 
@@ -25,7 +29,7 @@ def dashboard_client(tmp_path: Path):
         await app(scope, receive, send)
 
     try:
-        with TestClient(asgi, base_url="http://127.0.0.1:8110") as client:
+        with TestClient(asgi, base_url="http://127.0.0.1:8112") as client:
             yield client
     finally:
         os.chdir(prev)

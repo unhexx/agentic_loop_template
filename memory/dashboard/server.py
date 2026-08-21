@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import socket
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -16,7 +17,22 @@ from memory.dashboard.security import is_loopback_address, is_loopback_host
 
 
 class BindError(RuntimeError):
-    """Пытались слушать не loopback."""
+    """Не loopback или порт уже занят."""
+
+
+def _raise_if_addr_in_use(host: str, port: int) -> None:
+    # uvicorn при EADDRINUSE делает sys.exit(1); ловим заранее.
+    try:
+        with socket.create_connection((host, int(port)), timeout=0.2):
+            occupied = True
+    except OSError:
+        occupied = False
+    if not occupied:
+        return
+    hint = ""
+    if int(port) == 8110:
+        hint = "; :8110 — шлюз Agentix, дашборд по умолчанию :8112"
+    raise BindError(f"порт {host}:{port} занят{hint}")
 
 
 def create_app(workdir: Optional[Path] = None) -> FastAPI:
@@ -69,6 +85,7 @@ def serve(
         raise BindError(
             f"дашборд только loopback (TeleGrok SR-04), отказ: {cfg.host}"
         )
+    _raise_if_addr_in_use(cfg.host, int(cfg.port))
     app = create_app(workdir=cfg.workdir)
     import uvicorn
 
