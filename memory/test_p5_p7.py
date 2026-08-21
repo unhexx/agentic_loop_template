@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from memory import audit_log, eval_harness, resume
+from memory import audit_log, eval_harness, questions_collector, resume
 
 
 class TestAuditLog(unittest.TestCase):
@@ -26,6 +26,50 @@ class TestAuditLog(unittest.TestCase):
         entries = audit_log.list_entries()
         self.assertEqual(len(entries), 1)
         self.assertEqual(entries[0]["action"], "test_action")
+
+    def test_append_entry_agent_dir_does_not_use_globals(self):
+        agent = Path(self.tmp.name) / "agent"
+        agent.mkdir()
+        e = audit_log.append_entry(
+            "dashboard.stop",
+            "operator",
+            12,
+            {"ok": True},
+            approval_required=True,
+            approved=True,
+            agent_dir=agent,
+        )
+        self.assertEqual(e["role"], "operator")
+        written = json.loads((agent / "AUDIT_LOG.json").read_text(encoding="utf-8"))
+        self.assertEqual(written["entries"][-1]["action"], "dashboard.stop")
+        self.assertFalse(audit_log.AUDIT_JSON.exists())
+
+
+class TestQuestionsAgentDir(unittest.TestCase):
+    def test_mark_reviewed_agent_dir(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        agent = Path(tmp.name) / "agent"
+        agent.mkdir()
+        (agent / "QUESTIONS_POOL.json").write_text(
+            json.dumps(
+                {
+                    "questions": [
+                        {"id": "Q-001", "question": "x", "status": "open"}
+                    ],
+                    "last_escalated_cycle": 0,
+                }
+            ),
+            encoding="utf-8",
+        )
+        n = questions_collector.mark_reviewed(
+            ["Q-001"], "done", "operator", agent_dir=agent
+        )
+        self.assertEqual(n, 1)
+        data = json.loads((agent / "QUESTIONS_POOL.json").read_text(encoding="utf-8"))
+        self.assertEqual(data["questions"][0]["status"], "resolved")
+        self.assertEqual(data["questions"][0]["resolved_by"], "operator")
+        self.assertEqual(data["questions"][0]["resolution"], "done")
 
 
 class TestResume(unittest.TestCase):

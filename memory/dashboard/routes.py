@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-"""GET-страницы и HTMX-частичные; без POST и без WebSocket."""
+"""GET-страницы и HTMX-частичные; POST живут в actions.py."""
 
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timezone
 from html import escape
 from typing import Any, Dict, List, Optional
@@ -80,6 +81,7 @@ def register_routes(app: FastAPI) -> None:
             **_chrome(request.app),
             loop_strip_html=render_loop_strip(snap),
             handoff_card_html=render_handoff_card(snap),
+            stop_banner_html=render_stop_banner(store),
             deltas_html=render_deltas(snap),
         )
         return HTMLResponse(html)
@@ -195,12 +197,32 @@ def register_routes(app: FastAPI) -> None:
         store: DashboardStore = request.app.state.store
         return HTMLResponse(render_memory_excerpt(store))
 
+    @app.get("/questions")
+    async def questions_page(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        html = render_page(
+            "questions.html",
+            **_chrome(request.app, title="Questions"),
+            questions_table_html=render_questions_table(store),
+        )
+        return HTMLResponse(html)
+
+    @app.get("/partials/questions-table")
+    async def questions_table(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        return HTMLResponse(render_questions_table(store))
+
+    @app.get("/partials/stop-banner")
+    async def stop_banner(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        return HTMLResponse(render_stop_banner(store))
+
 
 def _chrome(app: FastAPI, title: str = "Loop") -> Dict[str, str]:
     wd = app.state.workdir
     return {
         "title": title,
-        "csrf": "",
+        "csrf": str(getattr(app.state, "csrf_token", "") or ""),
         "year": str(datetime.now(timezone.utc).year),
         "conn_dot": "WS: polling",
         "workdir_name": wd.name,
@@ -453,6 +475,19 @@ _AUDIT_COLS = (
     "signature",
 )
 
+# id вопроса в форме: без слэшей, как playbook allowlist.
+QUESTION_ID_RE = re.compile(r"^[A-Za-z0-9._:-]+$")
+
+_QUESTION_COLS = (
+    "id",
+    "priority",
+    "question",
+    "context",
+    "source_role",
+    "created_cycle",
+    "suggested_recipient",
+)
+
 
 def render_playbooks_list(store: DashboardStore) -> str:
     items = store.playbooks()
@@ -612,4 +647,81 @@ def render_memory_excerpt(store: DashboardStore) -> str:
         "memory_excerpt.html",
         workspace_id=_str(info.get("workspace_id")),
         body_html=body_html,
+    )
+
+
+def render_stop_banner(store: DashboardStore) -> str:
+    present = store.stop_present()
+    if present:
+        stop_class = "bg-amber-900 text-amber-300 border-amber-800"
+        stop_label = "present"
+        stop_flag = "present"
+    else:
+        stop_class = "bg-zinc-900 text-zinc-400 border-zinc-800"
+        stop_label = "absent"
+        stop_flag = "absent"
+    return render_partial(
+        "stop_banner.html",
+        stop_class=stop_class,
+        stop_label=stop_label,
+        stop_flag=stop_flag,
+    )
+
+
+def render_questions_table(store: DashboardStore) -> str:
+    cadence = store.questions_cadence()
+    escalate = "yes" if cadence.get("escalate") else "no"
+    cadence_html = (
+        '<div class="text-xs text-zinc-400 mb-3" data-cadence '
+        f'data-escalate="{escape(escalate, quote=True)}">'
+        f'frequency {escape(_str(cadence.get("frequency")), quote=True)}'
+        f' (N={escape(_str(cadence.get("N")), quote=True)})'
+        f' · open {escape(_str(cadence.get("open_count")), quote=True)}'
+        f' · escalate {escape(escalate, quote=True)}'
+        f' · {escape(_str(cadence.get("reason")), quote=True)}'
+        "</div>"
+    )
+    items = store.open_questions()
+    if not items:
+        rows_html = (
+            '<tr><td colspan="8" class="py-3 text-zinc-500">'
+            "No open questions.</td></tr>"
+        )
+    else:
+        parts = []
+        for item in items:
+            cells = []
+            for col in _QUESTION_COLS:
+                cells.append(
+                    f'<td class="py-1 pr-3 align-top">'
+                    f"{escape(_str(item.get(col)), quote=True)}</td>"
+                )
+            qid = _str(item.get("id"))
+            if QUESTION_ID_RE.fullmatch(qid):
+                qid_attr = escape(qid, quote=True)
+                form = (
+                    f'<form class="flex flex-col gap-1 min-w-[10rem]" '
+                    f'hx-post="/actions/questions/{qid_attr}/resolve" '
+                    f'hx-target="#questions-table" hx-swap="innerHTML">'
+                    f'<input type="text" name="notes" required placeholder="notes" '
+                    f'class="bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-xs">'
+                    f'<input type="text" name="reviewed_by" value="operator" '
+                    f'class="bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-xs">'
+                    f'<button type="submit" class="bg-zinc-800 hover:bg-zinc-700 '
+                    f'px-2 py-0.5 rounded border border-zinc-700 text-xs">Resolve</button>'
+                    f"</form>"
+                )
+            else:
+                form = ""
+            cells.append(f'<td class="py-1 pr-3 align-top">{form}</td>')
+            parts.append(
+                '<tr class="border-b border-zinc-800/80 align-top">'
+                + "".join(cells)
+                + "</tr>"
+            )
+        rows_html = "".join(parts)
+    return render_partial(
+        "questions_table.html",
+        cadence_html=cadence_html,
+        rows_html=rows_html,
     )

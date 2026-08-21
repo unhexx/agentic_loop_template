@@ -35,6 +35,7 @@ class DashboardStore:
     """Проекция LOOP_STATE / last_handoff / STOP / jsonl / ledger / playbooks / audit.
 
     PLAN/TODO и выдержка памяти — тоже только чтение. Не раннер, не chdir.
+    STOP пишем явно в workdir/.agent/STOP (те же байты, что CLI stop).
     """
 
     def __init__(self, workdir: Path) -> None:
@@ -60,6 +61,59 @@ class DashboardStore:
 
     def stop_present(self) -> bool:
         return (self.agent / "STOP").is_file()
+
+    def write_stop(self) -> Path:
+        """Кооперативный STOP: содержимое ``1``, как у ``supervisor stop``."""
+        self.agent.mkdir(parents=True, exist_ok=True)
+        path = self.agent / "STOP"
+        path.write_text("1", encoding="utf-8")
+        return path
+
+    def clear_stop(self) -> bool:
+        """Снять флаг, если есть. Петлю не запускаем."""
+        path = self.agent / "STOP"
+        try:
+            path.unlink()
+            return True
+        except FileNotFoundError:
+            return False
+
+    def open_questions(self) -> List[Dict[str, Any]]:
+        """Открытые вопросы из QUESTIONS_POOL.json по явному пути."""
+        data = self._read_json(
+            self.agent / "QUESTIONS_POOL.json",
+            default={"questions": []},
+        )
+        if not isinstance(data, dict):
+            return []
+        raw = data.get("questions") or []
+        if not isinstance(raw, list):
+            return []
+        out: List[Dict[str, Any]] = []
+        for item in raw:
+            if isinstance(item, dict) and item.get("status", "open") == "open":
+                out.append(dict(item))
+        return out
+
+    def questions_cadence(self) -> Dict[str, Any]:
+        """Баннер частоты: явный agent_dir, без cwd-глобалей коллектора."""
+        from memory.questions_collector import load_config, should_escalate
+
+        cfg = load_config(agent_dir=self.agent)
+        st = self.loop_state()
+        try:
+            cycle = int(st.get("cycle_number") or 0)
+        except (TypeError, ValueError):
+            cycle = 0
+        need, reason = should_escalate(current_cycle=cycle, agent_dir=self.agent)
+        return {
+            "frequency": cfg.get("frequency"),
+            "N": cfg.get("N"),
+            "escalate": bool(need),
+            "reason": reason,
+            "open_count": len(self.open_questions()),
+            "processors": list(cfg.get("processors") or []),
+        }
 
     def heartbeat(self) -> Dict[str, Any]:
         """Пульс процесса, не статус цикла. Нет файла — liveness unknown."""

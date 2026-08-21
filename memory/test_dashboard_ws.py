@@ -210,7 +210,14 @@ def test_loop_page_has_ws_client_and_refresh(dashboard_client):
 
 def test_partials_are_fragments_triggers_live_on_wrappers():
     root = Path(__file__).resolve().parents[1]
-    for name in ("loop_strip.html", "handoff_card.html", "deltas.html"):
+    for name in (
+        "loop_strip.html",
+        "handoff_card.html",
+        "deltas.html",
+        "stop_banner.html",
+        "pr_link.html",
+        "questions_table.html",
+    ):
         text = (root / "memory/dashboard/templates/partials" / name).read_text(
             encoding="utf-8"
         )
@@ -220,9 +227,11 @@ def test_partials_are_fragments_triggers_live_on_wrappers():
     loop = (root / "memory/dashboard/templates/pages/loop.html").read_text(
         encoding="utf-8"
     )
-    assert loop.count('hx-trigger="load, every 5s, ws-refresh from:body"') == 3
+    assert loop.count('hx-trigger="load, every 5s, ws-refresh from:body"') == 4
     assert 'hx-swap="innerHTML"' in loop
     assert 'hx-swap="outerHTML"' not in loop
+    assert 'hx-confirm="Stop the loop after the current role turn?"' in loop
+    assert 'hx-post="/actions/stop"' in loop
 
 
 def test_watched_set_skips_loop_state_md():

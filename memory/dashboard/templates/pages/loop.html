@@ -9,6 +9,32 @@
        hx-get="/partials/handoff-card"
        hx-trigger="load, every 5s, ws-refresh from:body"
        hx-swap="innerHTML">{{handoff_card_html}}</div>
+  <div id="loop-actions" class="space-y-3">
+    <div id="stop-banner"
+         hx-get="/partials/stop-banner"
+         hx-trigger="load, every 5s, ws-refresh from:body"
+         hx-swap="innerHTML">{{stop_banner_html}}</div>
+    <div class="flex flex-wrap gap-2 items-center">
+      <button type="button"
+              class="bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded border border-zinc-700 text-xs"
+              hx-post="/actions/stop"
+              hx-confirm="Stop the loop after the current role turn?"
+              hx-target="body"
+              hx-swap="none">Stop after current turn</button>
+      <button type="button"
+              class="bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded border border-zinc-700 text-xs"
+              hx-post="/actions/clear-stop"
+              hx-confirm="Clear STOP so the next supervisor run may continue?"
+              hx-target="body"
+              hx-swap="none">Clear STOP</button>
+      <button id="btn-pr" type="button"
+              class="bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 rounded border border-zinc-700 text-xs">Open PR</button>
+      <div id="pr-link-slot"
+           hx-get="/actions/pr-link"
+           hx-trigger="click from:#btn-pr"
+           hx-swap="innerHTML"></div>
+    </div>
+  </div>
   <div id="deltas"
        hx-get="/partials/deltas"
        hx-trigger="load, every 5s, ws-refresh from:body"

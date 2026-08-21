@@ -43,23 +43,39 @@ POOL_MD = Path(".agent/QUESTIONS_POOL.md")
 PROJECT_CONFIG = Path(".agent/project_config.json")
 
 
+def _pool_json(agent_dir: Optional[Path] = None) -> Path:
+    """Путь к json пула: явный agent_dir или модульный (cwd-относительный) дефолт."""
+    return Path(agent_dir) / "QUESTIONS_POOL.json" if agent_dir is not None else POOL_JSON
+
+
+def _pool_md(agent_dir: Optional[Path] = None) -> Path:
+    return Path(agent_dir) / "QUESTIONS_POOL.md" if agent_dir is not None else POOL_MD
+
+
+def _project_config_path(agent_dir: Optional[Path] = None) -> Path:
+    return Path(agent_dir) / "project_config.json" if agent_dir is not None else PROJECT_CONFIG
+
+
 def _now_iso() -> str:
     """Текущее время в ISO с таймзоной."""
     return datetime.now(timezone.utc).isoformat()
 
 
-def _ensure_agent_dir() -> None:
-    """Гарантирует существование .agent/ (создаётся при первом append)."""
-    POOL_JSON.parent.mkdir(parents=True, exist_ok=True)
+def _ensure_agent_dir(agent_dir: Optional[Path] = None) -> None:
+    """Гарантирует существование каталога пула (создаётся при первом append)."""
+    _pool_json(agent_dir).parent.mkdir(parents=True, exist_ok=True)
 
 
-def load_config() -> Dict[str, Any]:
+def load_config(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
     """
     Загружает настройки частоты обработки пула.
 
     Приоритет:
     1. .agent/project_config.json -> question_pool.{frequency, N, processors...}
     2. Дефолты: every_3_cycles (N=3), processors = ["product_owner", "project_manager"]
+
+    agent_dir=None — как CLI: файлы относительно cwd. Иначе читаем
+    ``agent_dir / project_config.json`` (дашборд передаёт workdir/.agent).
 
     Возвращает dict с ключами:
       frequency: str (every_N_cycles | end_of_sprint | end_of_phase | manual)
@@ -74,9 +90,10 @@ def load_config() -> Dict[str, Any]:
         "last_processed_cycle": 0,
     }
 
-    if PROJECT_CONFIG.exists():
+    cfg_path = _project_config_path(agent_dir)
+    if cfg_path.exists():
         try:
-            raw = json.loads(PROJECT_CONFIG.read_text(encoding="utf-8"))
+            raw = json.loads(cfg_path.read_text(encoding="utf-8"))
             qp = raw.get("question_pool", {}) or raw.get("questions_pool_config", {})
             if isinstance(qp, dict):
                 if "frequency" in qp:
@@ -107,31 +124,33 @@ def load_config() -> Dict[str, Any]:
     return cfg
 
 
-def _load_pool_raw() -> Dict[str, Any]:
-    """Внутренняя загрузка json пула. Создаёт пустую структуру при отсутствии."""
-    _ensure_agent_dir()
-    if not POOL_JSON.exists():
+def _load_pool_raw(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Внутренняя загрузка json пула. Каталог не создаём — только чтение."""
+    path = _pool_json(agent_dir)
+    if not path.exists():
         return {"questions": [], "last_escalated_cycle": 0, "updated_at": _now_iso()}
     try:
-        return json.loads(POOL_JSON.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         # Повреждённый файл — начинаем заново, старое сохраняем как .bak
         try:
-            POOL_JSON.rename(POOL_JSON.with_suffix(".json.bak"))
+            path.rename(path.with_suffix(".json.bak"))
         except Exception:
             pass
         return {"questions": [], "last_escalated_cycle": 0, "updated_at": _now_iso()}
 
 
-def _save_pool_raw(data: Dict[str, Any]) -> None:
+def _save_pool_raw(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
     """Сохранение + обновление updated_at + генерация человекочитаемого md."""
     data["updated_at"] = _now_iso()
-    POOL_JSON.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    _write_human_md(data)
+    _ensure_agent_dir(agent_dir)
+    path = _pool_json(agent_dir)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    _write_human_md(data, agent_dir=agent_dir)
 
 
-def _write_human_md(data: Dict[str, Any]) -> None:
-    """Генерирует/перезаписывает .agent/QUESTIONS_POOL.md — для владельцев продукта и PM."""
+def _write_human_md(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
+    """Генерирует/перезаписывает QUESTIONS_POOL.md — для владельцев продукта и PM."""
     lines: List[str] = []
     lines.append("# QUESTIONS_POOL.md — Пул вопросов на уточнение (Clarification Questions Pool)")
     lines.append("")
@@ -139,7 +158,7 @@ def _write_human_md(data: Dict[str, Any]) -> None:
     lines.append("Регулярность определяется настройками проекта (см. project_config.json / PROJECT_CONTEXT.md).")
     lines.append("После обработки — используйте `python -m agentic_loop_template.memory.questions_collector resolve ...`")
     lines.append("")
-    cfg = load_config()
+    cfg = load_config(agent_dir=agent_dir)
     lines.append(f"**Текущая частота:** {cfg.get('frequency', DEFAULT_FREQUENCY)} (N={cfg.get('N', DEFAULT_N)})")
     lines.append(f"**Последняя эскалация:** cycle {data.get('last_escalated_cycle', 0)}")
     lines.append(f"**Обновлено:** {data.get('updated_at', '')}")
@@ -181,7 +200,9 @@ def _write_human_md(data: Dict[str, Any]) -> None:
     lines.append("См. DEVELOPMENT_STANDARDS.md §10 и HANDOFF_SCHEMA.md (поле clarification_questions).")
     lines.append("Настройки частоты: every_N_cycles | end_of_sprint | end_of_phase | manual.")
 
-    POOL_MD.write_text("\n".join(lines), encoding="utf-8")
+    md_path = _pool_md(agent_dir)
+    md_path.parent.mkdir(parents=True, exist_ok=True)
+    md_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def _next_id(existing: List[Dict[str, Any]]) -> str:
@@ -244,15 +265,15 @@ def append_question(
     return qid
 
 
-def get_open_questions() -> List[Dict[str, Any]]:
+def get_open_questions(agent_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
     """Возвращает список открытых вопросов (для эскалации / отчёта)."""
-    pool = _load_pool_raw()
+    pool = _load_pool_raw(agent_dir=agent_dir)
     return [q for q in pool.get("questions", []) if q.get("status", "open") == "open"]
 
 
-def get_all_questions() -> List[Dict[str, Any]]:
+def get_all_questions(agent_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
     """Полный список (для отладки и тестов)."""
-    pool = _load_pool_raw()
+    pool = _load_pool_raw(agent_dir=agent_dir)
     return list(pool.get("questions", []))
 
 
@@ -260,19 +281,20 @@ def should_escalate(
     current_cycle: int = 0,
     current_sprint: Optional[str] = None,
     current_phase: Optional[str] = None,
+    agent_dir: Optional[Path] = None,
 ) -> Tuple[bool, str]:
     """
     Проверяет, пора ли эскалировать пул по настроенной частоте.
 
     Возвращает (нужно_эскалировать: bool, причина: str)
     """
-    cfg = load_config()
-    pool = _load_pool_raw()
+    cfg = load_config(agent_dir=agent_dir)
+    pool = _load_pool_raw(agent_dir=agent_dir)
     last = int(pool.get("last_escalated_cycle", 0))
     freq = cfg.get("frequency", DEFAULT_FREQUENCY)
     n = int(cfg.get("N", DEFAULT_N))
 
-    open_count = len(get_open_questions())
+    open_count = len(get_open_questions(agent_dir=agent_dir))
     if open_count == 0:
         return False, "нет открытых вопросов"
 
@@ -301,16 +323,20 @@ def mark_reviewed(
     ids: List[str],
     resolution_notes: str,
     reviewed_by: str = "product_owner",
+    agent_dir: Optional[Path] = None,
 ) -> int:
     """
     Помечает вопросы как resolved, записывает резолюцию.
 
     Возвращает количество реально обновлённых записей.
     После этого — уроки рекомендуется положить в LESSONS.md и память.
+
+    agent_dir=None оставляет CLI-поведение (пути модуля, cwd). Дашборд
+    передаёт workdir/.agent, чтобы не зависеть от текущего каталога.
     """
     if not ids:
         return 0
-    pool = _load_pool_raw()
+    pool = _load_pool_raw(agent_dir=agent_dir)
     qs = pool.get("questions", [])
     updated = 0
     now = _now_iso()
@@ -324,7 +350,7 @@ def mark_reviewed(
             updated += 1
     if updated > 0:
         pool["last_escalated_cycle"] = pool.get("last_escalated_cycle", 0)
-        _save_pool_raw(pool)
+        _save_pool_raw(pool, agent_dir=agent_dir)
     return updated
 
 

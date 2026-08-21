@@ -1,0 +1,7 @@
+<section class="space-y-6">
+  <h1 class="text-2xl font-semibold tracking-tight">{{title}}</h1>
+  <div id="questions-table"
+       hx-get="/partials/questions-table"
+       hx-trigger="load, every 15s, ws-refresh from:body"
+       hx-swap="innerHTML">{{questions_table_html}}</div>
+</section>

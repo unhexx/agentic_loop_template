@@ -175,14 +175,18 @@ def test_render_page_chrome_keys_only():
 
 def test_dashboard_sources_do_not_import_runner():
     root = Path(__file__).resolve().parents[1]
+    dash = root / "memory" / "dashboard"
+    for p in list(dash.rglob("*.py")) + list(dash.rglob("*.html")):
+        text = p.read_text(encoding="utf-8")
+        assert "run_loop" not in text, p
+        assert "get_adapter" not in text, p
+        assert "gh pr merge" not in text, p
     for rel in (
         "memory/dashboard/read_model.py",
         "memory/dashboard/routes.py",
         "memory/dashboard/server.py",
     ):
         text = (root / rel).read_text(encoding="utf-8")
-        assert "run_loop" not in text
-        assert "get_adapter" not in text
         assert "performance_ledger" not in text
         assert "generate_report" not in text
         assert "get_recent" not in text
@@ -190,6 +194,24 @@ def test_dashboard_sources_do_not_import_runner():
         assert "list_playbooks" not in text
         assert "memory_paths" not in text
         assert "export_hub_index" not in text
+
+
+def test_actions_ast_does_not_import_supervisor():
+    import ast
+
+    root = Path(__file__).resolve().parents[1] / "memory" / "dashboard"
+    for p in root.rglob("*.py"):
+        tree = ast.parse(p.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    assert "supervisor" not in alias.name, p
+                    assert alias.name != "run_loop"
+            elif isinstance(node, ast.ImportFrom):
+                mod = node.module or ""
+                assert "supervisor" not in mod, p
+                names = [a.name for a in node.names]
+                assert "run_loop" not in names, p
 
 
 def _current_ym() -> str:
@@ -731,3 +753,188 @@ def test_playbooks_does_not_export_hub(dashboard_client, tmp_path: Path):
     assert not hub.exists()
     assert dashboard_client.get("/playbooks").status_code == 200
     assert not hub.exists()
+
+
+def _csrf_header(client) -> dict:
+    r = client.get("/")
+    assert r.status_code == 200
+    token = client.cookies.get("agentix_csrf")
+    assert token
+    return {"X-CSRF-Token": token}
+
+
+def _seed_questions(tmp_path: Path, question: str = "Need Ubuntu version?") -> None:
+    _write_json(
+        tmp_path / ".agent" / "QUESTIONS_POOL.json",
+        {
+            "questions": [
+                {
+                    "id": "Q-001",
+                    "question": question,
+                    "context": "os choice",
+                    "priority": "high",
+                    "source_role": "Reviewer",
+                    "created_cycle": 12,
+                    "suggested_recipient": "product_owner",
+                    "status": "open",
+                }
+            ],
+            "last_escalated_cycle": 0,
+        },
+    )
+
+
+def test_loop_confirm_path_and_pr_slot(dashboard_client):
+    r = dashboard_client.get("/")
+    assert r.status_code == 200
+    body = r.text
+    assert 'hx-confirm="Stop the loop after the current role turn?"' in body
+    assert 'hx-confirm="Clear STOP so the next supervisor run may continue?"' in body
+    assert 'hx-post="/actions/stop"' in body
+    assert 'hx-post="/actions/clear-stop"' in body
+    assert 'id="btn-pr"' in body
+    assert 'hx-get="/actions/pr-link"' in body
+    assert 'hx-trigger="click from:#btn-pr"' in body
+    assert 'id="pr-link-slot"' in body
+    assert 'id="stop-banner"' in body
+    assert "Stop after current turn" in body
+    assert "Clear STOP" in body
+
+
+def test_questions_page_and_partial(dashboard_client, tmp_path: Path):
+    _seed_questions(tmp_path)
+    _write_json(
+        tmp_path / ".agent" / "LOOP_STATE.json",
+        {"cycle_number": 12, "status": "IN_PROGRESS"},
+    )
+    page = dashboard_client.get("/questions")
+    assert page.status_code == 200
+    body = page.text
+    assert "<title>Questions — Agentix</title>" in body
+    assert 'hx-get="/partials/questions-table"' in body
+    assert "load, every 15s, ws-refresh from:body" in body
+    assert "Q-001" in body
+    assert "Need Ubuntu version?" in body
+    assert "Reviewer" in body
+    assert "product_owner" in body
+    assert 'name="notes"' in body
+    assert 'name="reviewed_by"' in body
+    assert 'value="operator"' in body
+    assert 'hx-post="/actions/questions/Q-001/resolve"' in body
+    assert "data-cadence" in body
+    partial = dashboard_client.get("/partials/questions-table")
+    assert partial.status_code == 200
+    assert "<title>" not in partial.text
+    assert "every 15s" not in partial.text
+    assert "Q-001" in partial.text
+
+
+def test_questions_empty_and_xss(dashboard_client, tmp_path: Path):
+    empty = dashboard_client.get("/questions")
+    assert empty.status_code == 200
+    assert "No open questions." in empty.text
+    _seed_questions(tmp_path, question="<script>alert(1)</script>")
+    r = dashboard_client.get("/questions")
+    assert "<script>alert(1)</script>" not in r.text
+    assert "&lt;script&gt;" in r.text
+    assert r.status_code == 200
+
+
+def test_questions_get_does_not_mkdir(dashboard_client, tmp_path: Path):
+    agent = tmp_path / ".agent"
+    assert dashboard_client.get("/questions").status_code == 200
+    if agent.exists():
+        assert not (agent / "QUESTIONS_POOL.json").exists()
+
+
+def test_resolve_question_operator_audit(dashboard_client, tmp_path: Path):
+    _seed_questions(tmp_path)
+    _write_json(
+        tmp_path / ".agent" / "LOOP_STATE.json",
+        {"cycle_number": 12, "status": "IN_PROGRESS"},
+    )
+    headers = _csrf_header(dashboard_client)
+    r = dashboard_client.post(
+        "/actions/questions/Q-001/resolve",
+        data={"notes": "Use Ubuntu 24.04", "reviewed_by": "operator"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+    assert "No open questions." in r.text
+    pool = json.loads((tmp_path / ".agent" / "QUESTIONS_POOL.json").read_text(encoding="utf-8"))
+    q = pool["questions"][0]
+    assert q["status"] == "resolved"
+    assert q["resolution"] == "Use Ubuntu 24.04"
+    assert q["resolved_by"] == "operator"
+    audit = json.loads((tmp_path / ".agent" / "AUDIT_LOG.json").read_text(encoding="utf-8"))
+    last = audit["entries"][-1]
+    assert last["action"] == "dashboard.question_resolve"
+    assert last["role"] == "operator"
+    assert last["cycle"] == 12
+    assert last["details"]["id"] == "Q-001"
+
+
+def test_resolve_notes_required(dashboard_client, tmp_path: Path):
+    _seed_questions(tmp_path)
+    headers = _csrf_header(dashboard_client)
+    r = dashboard_client.post(
+        "/actions/questions/Q-001/resolve",
+        data={"notes": "   ", "reviewed_by": "operator"},
+        headers=headers,
+    )
+    assert r.status_code == 400
+    pool = json.loads((tmp_path / ".agent" / "QUESTIONS_POOL.json").read_text(encoding="utf-8"))
+    assert pool["questions"][0]["status"] == "open"
+
+
+def test_resolve_uses_agent_dir_not_cwd(dashboard_client, tmp_path: Path, monkeypatch):
+    _seed_questions(tmp_path)
+    other = tmp_path / "other-cwd"
+    other.mkdir()
+    monkeypatch.chdir(other)
+    headers = _csrf_header(dashboard_client)
+    r = dashboard_client.post(
+        "/actions/questions/Q-001/resolve",
+        data={"notes": "ok from dashboard", "reviewed_by": "operator"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+    pool = json.loads((tmp_path / ".agent" / "QUESTIONS_POOL.json").read_text(encoding="utf-8"))
+    assert pool["questions"][0]["status"] == "resolved"
+    assert not (other / ".agent").exists()
+
+
+def test_pr_link_success_fragment(dashboard_client, monkeypatch):
+    monkeypatch.setattr(
+        "memory.dashboard.actions._gh_pr_url",
+        lambda workdir: ("https://github.com/org/repo/pull/42", ""),
+    )
+    r = dashboard_client.get("/actions/pr-link")
+    assert r.status_code == 200
+    assert "Open PR #42" in r.text
+    assert 'href="https://github.com/org/repo/pull/42"' in r.text
+    assert 'rel="noopener"' in r.text
+    assert 'target="_blank"' in r.text
+
+
+def test_pr_link_xss_url_rejected(dashboard_client, monkeypatch):
+    monkeypatch.setattr(
+        "memory.dashboard.actions._gh_pr_url",
+        lambda workdir: (None, '<script>x()</script>'),
+    )
+    r = dashboard_client.get("/actions/pr-link")
+    assert r.status_code == 200
+    assert "<script>" not in r.text
+    assert "&lt;script&gt;" in r.text
+
+
+def test_stop_broadcasts_over_ws(dashboard_client, tmp_path: Path):
+    headers = _csrf_header(dashboard_client)
+    with dashboard_client.websocket_connect("ws://127.0.0.1:8112/ws/ui") as ws:
+        assert ws.receive_json()["type"] == "connected"
+        r = dashboard_client.post("/actions/stop", headers=headers)
+        assert r.status_code == 204
+        types = {ws.receive_json()["type"], ws.receive_json()["type"]}
+        assert "stop:set" in types
+        assert "audit:appended" in types
+    assert (tmp_path / ".agent" / "STOP").read_text(encoding="utf-8") == "1"

@@ -4,22 +4,35 @@
 from __future__ import annotations
 
 import asyncio
-import hmac
 import socket
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
+from memory.dashboard.actions import register_actions
 from memory.dashboard.broadcaster import WSBroadcaster
 from memory.dashboard.config import DashboardConfig, bind_host_allowed, load_config
 from memory.dashboard.read_model import DashboardStore
 from memory.dashboard.routes import register_routes
-from memory.dashboard.security import is_loopback_address, is_loopback_host
+from memory.dashboard.security import (
+    MAX_BODY_BYTES,
+    content_length_too_large,
+    csrf_ok,
+    extract_request_token,
+    extract_token,
+    generate_csrf_token,
+    is_loopback_address,
+    is_loopback_host,
+    is_same_origin,
+    origin_tuple,
+    set_csrf_cookie,
+    set_token_cookie,
+    token_ok,
+)
 from memory.dashboard.watcher import Watcher
 
 # Пауза между heartbeat; тесты подменяют константу, не ждут 25 с.
@@ -51,17 +64,6 @@ def _raise_if_addr_in_use(host: str, port: int) -> None:
     raise BindError(f"порт {host}:{port} занят{hint}")
 
 
-def _origin_tuple(url: str) -> Optional[tuple[str, str, int]]:
-    try:
-        p = urlparse(url)
-    except Exception:
-        return None
-    if not p.scheme or not p.hostname:
-        return None
-    port = p.port or (443 if p.scheme == "https" else 80)
-    return (p.scheme.lower(), p.hostname.lower(), int(port))
-
-
 def _ws_page_origin(websocket: WebSocket) -> Optional[tuple[str, str, int]]:
     """ws:// → http://, чтобы Origin страницы совпал с апгрейдом."""
     raw = str(websocket.base_url)
@@ -69,7 +71,7 @@ def _ws_page_origin(websocket: WebSocket) -> Optional[tuple[str, str, int]]:
         raw = "http://" + raw[5:]
     elif raw.startswith("wss://"):
         raw = "https://" + raw[6:]
-    return _origin_tuple(raw)
+    return origin_tuple(raw)
 
 
 def ws_origin_ok(websocket: WebSocket) -> bool:
@@ -77,7 +79,7 @@ def ws_origin_ok(websocket: WebSocket) -> bool:
     origin = websocket.headers.get("origin")
     if origin is None or origin == "":
         return True
-    got = _origin_tuple(origin)
+    got = origin_tuple(origin)
     if got is None:
         return False
     scheme, hostname, _port = got
@@ -93,29 +95,7 @@ def ws_origin_ok(websocket: WebSocket) -> bool:
 
 def extract_ws_token(websocket: WebSocket) -> Optional[str]:
     """X-API-Token → Bearer → cookie agentix_token → ?token=."""
-    headers = websocket.headers
-    x = headers.get("x-api-token")
-    if x:
-        return str(x).strip()
-    auth = headers.get("authorization") or ""
-    if isinstance(auth, str) and auth.lower().startswith("bearer "):
-        return auth[7:].strip()
-    cookie = websocket.cookies.get("agentix_token")
-    if cookie:
-        return str(cookie).strip()
-    q = websocket.query_params.get("token")
-    if q:
-        return str(q).strip()
-    return None
-
-
-def token_ok(expected: str, provided: Optional[str]) -> bool:
-    exp = (expected or "").strip()
-    if not exp:
-        return True
-    if not provided:
-        return False
-    return hmac.compare_digest(provided, exp)
+    return extract_token(websocket.headers, websocket.cookies, websocket.query_params)
 
 
 def create_app(workdir: Optional[Path] = None) -> FastAPI:
@@ -142,6 +122,7 @@ def create_app(workdir: Optional[Path] = None) -> FastAPI:
     app.state.store = DashboardStore(cfg.workdir)
     app.state.broadcaster = WSBroadcaster()
     app.state.watcher = Watcher(cfg.workdir, app.state.broadcaster)
+    app.state.csrf_token = generate_csrf_token()
 
     @app.middleware("http")
     async def _loopback_only(request: Request, call_next):
@@ -153,7 +134,26 @@ def create_app(workdir: Optional[Path] = None) -> FastAPI:
                 {"detail": "dashboard is loopback-only"},
                 status_code=403,
             )
-        return await call_next(request)
+        cfg_now: DashboardConfig = request.app.state.config
+        provided = extract_request_token(request)
+        if not token_ok(cfg_now.token, provided):
+            resp = JSONResponse({"detail": "unauthorized"}, status_code=401)
+            _stamp_cookies(request, resp, provided)
+            return resp
+        if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            if content_length_too_large(request.headers, MAX_BODY_BYTES):
+                return JSONResponse({"detail": "payload too large"}, status_code=413)
+            body = await request.body()
+            if len(body) > MAX_BODY_BYTES:
+                return JSONResponse({"detail": "payload too large"}, status_code=413)
+            if not is_same_origin(request):
+                return JSONResponse({"detail": "cross-origin rejected"}, status_code=403)
+            expected_csrf = str(getattr(request.app.state, "csrf_token", "") or "")
+            if not csrf_ok(request, expected_csrf):
+                return JSONResponse({"detail": "csrf rejected"}, status_code=403)
+        response = await call_next(request)
+        _stamp_cookies(request, response, provided)
+        return response
 
     @app.get("/health")
     async def health() -> dict:
@@ -202,7 +202,18 @@ def create_app(workdir: Optional[Path] = None) -> FastAPI:
             await bc.disconnect(websocket)
 
     register_routes(app)
+    register_actions(app)
     return app
+
+
+def _stamp_cookies(request: Request, response, provided) -> None:
+    csrf = str(getattr(request.app.state, "csrf_token", "") or "")
+    if csrf:
+        set_csrf_cookie(response, csrf)
+    cfg_now: DashboardConfig = request.app.state.config
+    expected = (cfg_now.token or "").strip()
+    if expected and token_ok(expected, provided):
+        set_token_cookie(response, expected)
 
 
 def serve(

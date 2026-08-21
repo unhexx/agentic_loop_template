@@ -18,35 +18,49 @@ AUDIT_JSON = Path(".agent/AUDIT_LOG.json")
 AUDIT_MD = Path(".agent/AUDIT_LOG.md")
 
 
+def _audit_json(agent_dir: Optional[Path] = None) -> Path:
+    """Явный agent_dir (дашборд) или модульный путь (CLI / тесты с патчем глобалей)."""
+    return Path(agent_dir) / "AUDIT_LOG.json" if agent_dir is not None else AUDIT_JSON
+
+
+def _audit_md(agent_dir: Optional[Path] = None) -> Path:
+    return Path(agent_dir) / "AUDIT_LOG.md" if agent_dir is not None else AUDIT_MD
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _ensure_dir() -> None:
-    AUDIT_JSON.parent.mkdir(parents=True, exist_ok=True)
+def _ensure_dir(agent_dir: Optional[Path] = None) -> None:
+    _audit_json(agent_dir).parent.mkdir(parents=True, exist_ok=True)
 
 
-def _load() -> Dict[str, Any]:
-    _ensure_dir()
-    if not AUDIT_JSON.exists():
+def _load(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
+    _ensure_dir(agent_dir)
+    path = _audit_json(agent_dir)
+    if not path.exists():
         return {"entries": [], "updated_at": _now_iso()}
     try:
-        return json.loads(AUDIT_JSON.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
         return {"entries": [], "updated_at": _now_iso()}
 
 
-def _save(data: Dict[str, Any]) -> None:
+def _save(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
     data["updated_at"] = _now_iso()
-    AUDIT_JSON.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    _write_md(data)
+    path = _audit_json(agent_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    _write_md(data, agent_dir=agent_dir)
 
 
-def _write_md(data: Dict[str, Any]) -> None:
+def _write_md(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
     lines = ["# AUDIT_LOG.md — Enterprise Audit Trail", "", f"**Updated:** {data.get('updated_at')}", ""]
     for e in data.get("entries", [])[-20:]:
         lines.append(f"- [{e.get('ts')}] {e.get('action')} | role={e.get('role')} | cycle={e.get('cycle')} | sig={e.get('signature', '')[:12]}")
-    AUDIT_MD.write_text("\n".join(lines), encoding="utf-8")
+    md = _audit_md(agent_dir)
+    md.parent.mkdir(parents=True, exist_ok=True)
+    md.write_text("\n".join(lines), encoding="utf-8")
 
 
 def _sign(payload: Dict[str, Any]) -> str:
@@ -61,9 +75,14 @@ def append_entry(
     details: Optional[Dict[str, Any]] = None,
     approval_required: bool = False,
     approved: Optional[bool] = None,
+    agent_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
-    """Добавляет запись в audit trail."""
-    data = _load()
+    """Добавляет запись в audit trail.
+
+    agent_dir=None — пути модуля (CLI и старые тесты с подменой AUDIT_JSON).
+    Дашборд передаёт workdir/.agent, чтобы не зависеть от cwd.
+    """
+    data = _load(agent_dir=agent_dir)
     entry = {
         "id": f"A-{len(data['entries']) + 1:04d}",
         "ts": _now_iso(),
@@ -76,12 +95,12 @@ def append_entry(
     }
     entry["signature"] = _sign(entry)
     data.setdefault("entries", []).append(entry)
-    _save(data)
+    _save(data, agent_dir=agent_dir)
     return entry
 
 
-def list_entries(limit: int = 20) -> List[Dict[str, Any]]:
-    data = _load()
+def list_entries(limit: int = 20, agent_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+    data = _load(agent_dir=agent_dir)
     return data.get("entries", [])[-limit:]
 
 

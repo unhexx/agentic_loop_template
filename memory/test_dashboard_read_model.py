@@ -926,3 +926,37 @@ def test_workspace_id_cached(tmp_path: Path, monkeypatch, cwd_guard):
     assert store.workspace_id() == "wid-cached"
     assert len(calls) == 1
     assert Path.cwd() == cwd_guard
+
+
+def test_write_and_clear_stop_explicit_path(tmp_path: Path, cwd_guard):
+    store = DashboardStore(tmp_path)
+    path = store.write_stop()
+    assert path == tmp_path / ".agent" / "STOP"
+    assert path.read_text(encoding="utf-8") == "1"
+    assert store.stop_present() is True
+    assert store.clear_stop() is True
+    assert store.stop_present() is False
+    assert store.clear_stop() is False
+    assert Path.cwd() == cwd_guard
+
+
+def test_open_questions_and_cadence(tmp_path: Path, cwd_guard):
+    _write_json(
+        tmp_path / ".agent" / "QUESTIONS_POOL.json",
+        {
+            "questions": [
+                {"id": "Q-001", "question": "open one", "status": "open"},
+                {"id": "Q-002", "question": "done", "status": "resolved"},
+            ],
+            "last_escalated_cycle": 0,
+        },
+    )
+    _write_json(tmp_path / ".agent" / "LOOP_STATE.json", _loop_payload(cycle_number=12))
+    store = DashboardStore(tmp_path)
+    open_qs = store.open_questions()
+    assert [q["id"] for q in open_qs] == ["Q-001"]
+    cad = store.questions_cadence()
+    assert cad["open_count"] == 1
+    assert "frequency" in cad
+    assert "escalate" in cad
+    assert Path.cwd() == cwd_guard
