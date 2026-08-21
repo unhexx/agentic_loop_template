@@ -6,8 +6,9 @@ Agentix is frontend-agnostic. The loop discipline (roles, handoffs, memory) work
 
 | Frontend | Setup | Notes |
 |----------|-------|-------|
-| **Blackbox + VS Code** | `Agent-Init.ps1` or `.sh` | Primary target. MiniMax 2.5 recommended. |
-| **Cursor** | Copy `prompts/short_orchestrator_prompt.md` as first message | Use Agent mode. Point custom rules to `SYSTEM_PROMPT.md`. |
+| **Grok CLI** | `source .venv/bin/activate` so `GROK_CLI_CHAT_PROXY_BASE_URL` points at `:8110/v1` | Default live path. Host pxpipe is the imager. See [proxy.md](proxy.md). |
+| **Blackbox + VS Code** | `Agent-Init.ps1` or `.sh` | Does not honor the Grok chat-proxy env. pxpipe warp is optional, not auto. |
+| **Cursor** | Copy `prompts/short_orchestrator_prompt.md` as first message | Use Agent mode. Point custom rules to `SYSTEM_PROMPT.md`. Same: no auto warp. |
 | **Claude Code** | Same short prompts + `AGENT_ROLES.md` blocks | Append role block per handoff. Temperature per role table in `AGENTIC_LOOP_README.md`. |
 
 ## Cursor Adapter

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-08-21
+
 ### Added (request proxy policy — wrap host pxpipe)
 - `memory/proxy`: config + policy + health (stdlib). `python -m memory.proxy health|install-venv|install-host`
 - Fail-closed `proxy.mode=required` for live adapters (`grok` / HTTP). Mock and CI stay proxy-free.
@@ -30,6 +32,15 @@
 - Gateway extracts SHA/UUID/workspace ids into a native-text `FIDELITY` sidecar before pxpipe imaging. Compressor still does not rewrite source files.
 - `memory.knowledge query` uses FTS5 MATCH with LIKE fallback. `sqlite-vec` remains disabled.
 - Tests: golden SHA/UUID survive distill.
+
+### Added (token stats, SLOs, consumer path)
+- `python -m memory.proxy stats` merges pxpipe `stats --json`, project JSONL, last compressor report.
+- CI runs `python -m memory.test_proxy`. Docs: `docs/proxy.md`. VERSION **3.7.0**.
+- Optional handoff `proxy_stats`. Raw-token % remains **unslod** until pxpipe `count_tokens` probes > 0 (`measured_saved_pct` is null on this host).
+
+### Changed
+- `VERSION` → 3.7.0
+- README / ROADMAP / consumer-starter: default live path is gateway `:8110` → pxpipe `:8100`.
 
 ## [3.6.0] - 2026-08-20
 

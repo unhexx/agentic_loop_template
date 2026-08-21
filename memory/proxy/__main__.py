@@ -43,7 +43,10 @@ def cli(argv: Optional[Sequence[str]] = None) -> int:
     ps.add_argument("--port", type=int, default=8110)
     ps.add_argument("--upstream", default=None, help="База pxpipe, по умолчанию из конфига")
     ps.add_argument("--workdir", type=Path, default=None)
-    sub.add_parser("stats", help="Сводка токенов (появится позже)")
+    pst = sub.add_parser("stats", help="Сводка токенов (pxpipe + JSONL + компрессор)")
+    pst.add_argument("--json", action="store_true")
+    pst.add_argument("--cycle", type=int, default=None)
+    pst.add_argument("--workdir", type=Path, default=None)
 
     args = parser.parse_args(list(argv) if argv is not None else None)
 
@@ -92,8 +95,13 @@ def cli(argv: Optional[Sequence[str]] = None) -> int:
         return 0
 
     if args.cmd == "stats":
-        print("python -m memory.proxy stats появится вместе со сводкой токенов", file=sys.stderr)
-        return 2
+        from memory.proxy.stats import collect_stats
+
+        report = collect_stats(args.workdir)
+        if args.cycle is not None:
+            report["cycle"] = args.cycle
+        _print(report)
+        return 0
 
     return 2
 

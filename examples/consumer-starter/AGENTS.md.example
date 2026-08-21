@@ -44,6 +44,8 @@ This is the **lite** adoption tier: enough for a coding agent without copying th
 
 ## Preferred Development Loop
 
+If you use **Grok CLI**, run inside the project venv so `GROK_CLI_CHAT_PROXY_BASE_URL` points at the Agentix gateway (`http://127.0.0.1:8110/v1`). Do not send completions straight to the public chat-proxy. Opt out: `export AGENTIX_PROXY=0`. No systemd required for lite PRs.
+
 1. Read this file + the spec / domain doc named in `{{SPEC_FILE}}`
 2. Smallest vertical slice that meets the next acceptance criterion
 3. Write or update tests first when behavior changes

@@ -30,6 +30,16 @@
     "context_delta": { "type": "string" },
     "distillation_performed": { "type": "boolean" },
     "memory_updated": { "type": "boolean" },
+    "proxy_stats": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string" },
+        "compressed_pct": { "type": ["number", "null"] },
+        "cache": { "type": "string" },
+        "pxpipe_ok": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
     "patterns_merged": { "type": "integer" },
     "context_updates": { "type": "array", "items": { "type": "string" } },
     "artifacts": { "type": "array", "items": { "type": "string" } },

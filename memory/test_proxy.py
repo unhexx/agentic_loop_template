@@ -444,6 +444,39 @@ def test_gateway_required_no_public_fallback() -> None:
                 gw.shutdown()
 
 
+def test_stats_unprobed_savings_stay_null() -> None:
+    from memory.proxy.stats import collect_stats, summarize_pxpipe
+
+    fake = {
+        "total": 10,
+        "compressed": 6,
+        "ok2xx": 8,
+        "baselineMeasuredEvents": 0,
+        "savedTokensTotal": 0,
+        "baselineTokensTotal": 0,
+        "cacheReadTokensTotal": 0,
+        "inputTokensTotal": 100,
+    }
+    s = summarize_pxpipe(fake)
+    assert s["requests"] == 10
+    assert s["compressed_pct"] == 60.0
+    assert s["measured_saved_pct"] is None
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / ".agent").mkdir()
+        with _env(AGENTIX_PROJECT_ROOT=str(root), AGENTIX_PROXY="0"):
+            report = collect_stats(root)
+        assert report["proxy_mode"] == "off"
+        assert "measured_raw_token_saved_pct" in report["slo"]
+        assert "unslod" in report["slo"]["measured_raw_token_saved_pct"]
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            rc = cli(["stats", "--json", "--workdir", str(root)])
+        assert rc == 0
+        payload = json.loads(buf.getvalue())
+        assert payload["pxpipe"]["measured_saved_pct"] is None
+
+
 def test_fidelity_golden_ids_survive_distill() -> None:
     from memory.proxy.middleware import process_request
 
@@ -534,6 +567,7 @@ def _run_all() -> None:
         test_bind_rejects_non_loopback,
         test_gateway_healthz_sse_roundtrip_and_redaction,
         test_gateway_required_no_public_fallback,
+        test_stats_unprobed_savings_stay_null,
         test_fidelity_golden_ids_survive_distill,
         test_grok_adapter_calls_assert_ready,
     ]

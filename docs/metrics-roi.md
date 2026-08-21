@@ -32,6 +32,14 @@ cat .agent/PERFORMANCE_LEDGER.md
 
 Include the `performance` object in every high-quality DONE handoff per `HANDOFF_SCHEMA.md`.
 
+## Request-proxy stats (v3.7)
+
+```bash
+python -m memory.proxy stats --json
+```
+
+Reviewer may copy a subset into `performance_ledger` details and optional handoff `proxy_stats`. **Measured raw-token savings** (`count_tokens` probes) are **unprobed** on this host (`measured_saved_pct` is `null`). Do not claim a raw-token % we have not measured. File-side compressor reports and pxpipe `compressed` / system-prompt reuse remain the honest instruments. See [proxy.md](proxy.md).
+
 ## Business Claims
 
 Replace generic productivity claims with ledger-backed numbers:

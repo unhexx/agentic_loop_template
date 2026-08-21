@@ -1,6 +1,6 @@
 # Agentic Loop Memory System
 
-[![Version](https://img.shields.io/badge/version-3.6.0-blue?style=flat-square)](../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.7.0-blue?style=flat-square)](../CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue)](../README.md)
 [![Architecture](https://img.shields.io/badge/docs-architecture-green)](../docs/architecture.md)
 
@@ -31,6 +31,18 @@ Example for this repo:
 - Different remotes (forks, different orgs) get separate memory files — correct isolation.
 
 Run `python -m agentic_loop_template.memory info` (or the PS1) to see the ID and paths for the current workspace.
+
+## Request proxy (`memory.proxy`, v3.7)
+
+Live Grok CLI calls go through the in-template gateway (`127.0.0.1:8110`) which fronts host pxpipe. Mock is exempt.
+
+```bash
+python -m memory.proxy health --json
+python -m memory.proxy serve --host 127.0.0.1 --port 8110
+python -m memory.proxy stats --json
+```
+
+See `docs/proxy.md`. Opt out: `AGENTIX_PROXY=0`.
 
 ## Local knowledge store (`memory.knowledge`, v3.6)
 

@@ -35,6 +35,7 @@ Each role: **PLAN → ACT (≤3 tool calls) → REFLECT → handoff JSON**.
 | Hub | `.agent/HUB_INDEX.json` | Exportable discovery index |
 | Audit | `memory/audit_log.py` | Enterprise trail (P5) |
 | Resume | `memory/resume.py` | Crash recovery (P7) |
+| Request proxy | `memory/proxy/` | Loopback `:8110` gateway → host pxpipe `:8100` ([docs/proxy.md](proxy.md)) |
 
 ---
 

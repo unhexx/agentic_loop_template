@@ -35,6 +35,13 @@
 
   "memory_updated": false,
   // Set to true if the Reviewer extracted and merged patterns into the Workspace-Scoped Structured Memory (see DEVELOPMENT_STANDARDS.md §9).
+  "proxy_stats": {
+    "mode": "required",
+    "compressed_pct": 73.4,
+    "cache": "miss",
+    "pxpipe_ok": true
+  },
+  // Optional. Reviewer copies a subset of `python -m memory.proxy stats` on DONE. Missing field is valid.
   "patterns_merged": 0,
   // Number of new/updated patterns written to memory in this cycle (0 is valid).
 

@@ -1,4 +1,4 @@
-# Short Orchestrator Prompt — Universal Agentic Loop (v3.6.0)
+# Short Orchestrator Prompt — Universal Agentic Loop (v3.7.0)
 
 **Role:** ORCHESTRATOR / PLANNER  
 **Recommended Temperature:** 0.0  

@@ -96,6 +96,8 @@ def append_cycle(**kwargs):
         "meta_applied": kwargs.get("meta_applied", 0),
         "success_patterns": kwargs.get("success_patterns", []),
         "notes": kwargs.get("notes", ""),
+        "proxy_stats": kwargs.get("proxy_stats"),
+        "details": kwargs.get("details"),
     }
     ledger["cycles"].append(record)
     ledger["summary"]["total_cycles"] = len(ledger["cycles"])
