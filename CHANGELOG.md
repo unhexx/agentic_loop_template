@@ -41,6 +41,7 @@
 ### Changed
 - `VERSION` → 3.7.0
 - README / ROADMAP / consumer-starter: default live path is gateway `:8110` → pxpipe `:8100`.
+- CI: `test_grok_adapter_calls_assert_ready` stubs `shutil.which` / `subprocess.run` so GitHub runners without `grok` on PATH stay green.
 
 ### Added (continual-learning export)
 - `python -m memory.meta_harvester export-sft` writes `.agent/sft/train.jsonl` (gitignored, no GPU).

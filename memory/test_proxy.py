@@ -712,18 +712,30 @@ def test_preferred_https_fallback_local_tls() -> None:
 
 
 def test_grok_adapter_calls_assert_ready(monkeypatch=None) -> None:
-    """GrokAdapter.run_role_turn должен упасть на политике до subprocess."""
+    """GrokAdapter.run_role_turn должен упасть на политике до subprocess.
+
+    which/subprocess подменяем: в CI нет grok в PATH, а живой бинарь
+    нам и не нужен — проверяем только порядок вызовов.
+    """
     import memory.adapters.grok as grok_mod
     from memory.adapters.grok import GrokAdapter
 
-    called = {"n": 0}
+    called = {"n": 0, "subproc": 0}
 
     def _boom(*_a, **_k):
         called["n"] += 1
         raise ProxyNotReady("blocked in test")
 
+    def _no_spawn(*_a, **_k):
+        called["subproc"] += 1
+        raise AssertionError("subprocess.run не должен вызываться до assert_ready")
+
     orig = grok_mod.assert_ready
+    orig_which = grok_mod.shutil.which
+    orig_run = grok_mod.subprocess.run
     grok_mod.assert_ready = _boom  # type: ignore[assignment]
+    grok_mod.shutil.which = lambda _cmd: "/usr/bin/grok"  # type: ignore[assignment]
+    grok_mod.subprocess.run = _no_spawn  # type: ignore[assignment]
     try:
         ad = GrokAdapter({"command": "grok"})
         with tempfile.TemporaryDirectory() as tmp:
@@ -738,10 +750,13 @@ def test_grok_adapter_calls_assert_ready(monkeypatch=None) -> None:
                 )
             except ProxyNotReady:
                 raised = True
-            assert raised
+            assert raised, "ожидали ProxyNotReady до subprocess"
             assert called["n"] == 1
+            assert called["subproc"] == 0
     finally:
         grok_mod.assert_ready = orig
+        grok_mod.shutil.which = orig_which
+        grok_mod.subprocess.run = orig_run
 
 
 def _run_all() -> None:
