@@ -4,15 +4,15 @@
 from __future__ import annotations
 
 import socket
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import JSONResponse
 
 from memory.dashboard.config import DashboardConfig, bind_host_allowed, load_config
-from memory.dashboard.render import render_page
+from memory.dashboard.read_model import DashboardStore
+from memory.dashboard.routes import register_routes
 from memory.dashboard.security import is_loopback_address, is_loopback_host
 
 
@@ -40,6 +40,8 @@ def create_app(workdir: Optional[Path] = None) -> FastAPI:
     app = FastAPI(title="Agentix Control")
     app.state.config = cfg
     app.state.workdir = cfg.workdir
+    # явные пути в store, не chdir — TestClient живёт в том же процессе, что и соседние тесты
+    app.state.store = DashboardStore(cfg.workdir)
 
     @app.middleware("http")
     async def _loopback_only(request: Request, call_next):
@@ -57,20 +59,7 @@ def create_app(workdir: Optional[Path] = None) -> FastAPI:
     async def health() -> dict:
         return {"ok": True}
 
-    @app.get("/")
-    async def loop_page() -> HTMLResponse:
-        wd: Path = app.state.workdir
-        html = render_page(
-            "loop.html",
-            title="Loop",
-            csrf="",
-            year=str(datetime.now(timezone.utc).year),
-            conn_dot="WS: polling",
-            workdir_name=wd.name,
-            workdir_path=str(wd),
-        )
-        return HTMLResponse(html)
-
+    register_routes(app)
     return app
 
 

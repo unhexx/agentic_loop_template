@@ -1,0 +1,15 @@
+<div class="bg-zinc-900 border border-zinc-800 rounded p-3 text-sm">
+  <div class="flex flex-wrap justify-between gap-2 text-xs text-zinc-400 mb-2">
+    <div>
+      Last handoff
+      (role {{last_handoff_role}} → {{last_handoff_to}})
+    </div>
+    <div>conf {{confidence}}</div>
+  </div>
+  <div class="text-zinc-100">{{last_handoff_summary}}</div>
+  <div class="mt-2 text-xs text-zinc-400 flex flex-wrap gap-x-4 gap-y-1">
+    <div>handoff.status: {{last_handoff_status}}</div>
+    <div>git_sync_status.verified={{git_sync_verified}}</div>
+    <div>tests {{tests_total}}/{{tests_failed}}</div>
+  </div>
+</div>

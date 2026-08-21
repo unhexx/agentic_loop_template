@@ -1,0 +1,36 @@
+<div data-stale="{{stale}}">
+  <div class="text-amber-400 text-xs mb-2">{{stale_label}}</div>
+  <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+    <div class="bg-zinc-900 border border-zinc-800 rounded p-2">
+      <div class="text-[10px] text-zinc-400">loop.status</div>
+      <div class="font-semibold"><span class="px-1.5 py-0.5 rounded {{loop_status_class}}">{{loop_status}}</span></div>
+      <div class="text-[10px] text-amber-400 mt-1">{{loop_status_note}}</div>
+    </div>
+    <div class="bg-zinc-900 border border-zinc-800 rounded p-2">
+      <div class="text-[10px] text-zinc-400">role</div>
+      <div class="font-semibold">{{active_role}}</div>
+    </div>
+    <div class="bg-zinc-900 border border-zinc-800 rounded p-2">
+      <div class="text-[10px] text-zinc-400">cycle</div>
+      <div class="font-semibold">{{cycle_number}}</div>
+    </div>
+    <div class="bg-zinc-900 border border-zinc-800 rounded p-2">
+      <div class="text-[10px] text-zinc-400">branch</div>
+      <div class="font-semibold truncate" title="{{branch}}">{{branch}}</div>
+    </div>
+    <div class="bg-zinc-900 border border-zinc-800 rounded p-2">
+      <div class="text-[10px] text-zinc-400">git_sync.verified</div>
+      <div class="font-semibold">{{git_sync_verified}}</div>
+    </div>
+  </div>
+  <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-400">
+    <div>handoff.status: <span class="px-1.5 py-0.5 rounded {{handoff_status_class}}">{{handoff_status}}</span></div>
+    <div>supervisor: {{heartbeat_label}}</div>
+    <div>STOP: {{stop_label}}</div>
+    <div>updated_at: {{updated_at}}</div>
+  </div>
+  <div class="mt-2 text-xs">
+    <span class="text-zinc-400">notes:</span>
+    <span class="text-zinc-200">{{notes}}</span>
+  </div>
+</div>
