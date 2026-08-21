@@ -63,30 +63,41 @@ def _looks_like_tool(msg: Any) -> bool:
     return False
 
 
+def _distill_text_keep_sidecar(text: str) -> str:
+    """Сжимаем полезную нагрузку, sidecar не выкидываем и не считаем «нельзя трогать весь ход»."""
+    try:
+        from memory.proxy.fidelity import is_fidelity_only, split_sidecar
+    except Exception:
+        return _distill_string(text)
+    if is_fidelity_only(text):
+        return text
+    sidecar, rest = split_sidecar(text)
+    if not rest:
+        return sidecar or text
+    return sidecar + _distill_string(rest)
+
+
 def _distill_message(msg: Any) -> Any:
     if _looks_like_tool(msg) or not isinstance(msg, dict):
-        return msg
-    try:
-        from memory.proxy.fidelity import is_fidelity_block
-    except Exception:
-        is_fidelity_block = lambda _t: False  # noqa: E731
-    content_preview = msg.get("content")
-    if isinstance(content_preview, str) and is_fidelity_block(content_preview):
         return msg
     out = dict(msg)
     content = out.get("content")
     if isinstance(content, str):
-        out["content"] = _distill_string(content)
+        out["content"] = _distill_text_keep_sidecar(content)
     elif isinstance(content, list):
         parts = []
         for part in content:
             if isinstance(part, dict) and isinstance(part.get("text"), str):
                 p = dict(part)
-                p["text"] = _distill_string(part["text"])
+                p["text"] = _distill_text_keep_sidecar(part["text"])
                 parts.append(p)
+            elif isinstance(part, str):
+                parts.append(_distill_text_keep_sidecar(part))
             else:
                 parts.append(part)
         out["content"] = parts
+    elif isinstance(out.get("text"), str):
+        out["text"] = _distill_text_keep_sidecar(out["text"])
     return out
 
 
@@ -151,6 +162,8 @@ def process_request(
 
     stream = bool(obj.get("stream"))
     has_tools = bool(obj.get("tools"))
+    meta["stream"] = stream
+    meta["has_tools"] = has_tools
     key = cache_mod.canonical_key(obj)
     meta["cache_key"] = key
     if (
@@ -168,16 +181,22 @@ def process_request(
             meta["cached_body"] = hit[2]
             return body, meta
 
-    # fidelity — подключается в следующем срезе, здесь fail-open
+    # Сначала вытаскиваем id, потом жмём ходы, sidecar клеим после —
+    # иначе первый ход с префиксом FIDELITY целиком обходил distill.
+    fidelity_block = None
     if cfg.get("fidelity", True):
         try:
-            from memory.proxy.fidelity import apply as fidelity_apply
+            from memory.proxy.fidelity import extract_ids, format_block
 
-            obj, fmeta = fidelity_apply(obj, project_root)
-            meta["fidelity"] = True
-            meta.update(fmeta or {})
+            blob = json.dumps(obj, ensure_ascii=False)
+            ids = extract_ids(blob, project_root)
+            if ids:
+                fidelity_block = format_block(ids)
+                meta["fidelity"] = True
+                meta["fidelity_ids"] = len(ids)
+                meta["fidelity_tokens"] = _estimate(fidelity_block)
         except Exception:
-            pass
+            fidelity_block = None
 
     try:
         obj, action = distill_old_turns(
@@ -188,6 +207,14 @@ def process_request(
         meta["distill"] = action
     except Exception:
         meta["distill"] = "error"
+
+    if fidelity_block:
+        try:
+            from memory.proxy.fidelity import prepend_block
+
+            obj = prepend_block(obj, fidelity_block)
+        except Exception:
+            pass
 
     try:
         new_body = json.dumps(obj, ensure_ascii=False).encode("utf-8")
@@ -210,6 +237,8 @@ def maybe_store_cache(
     if not cfg.get("exact_cache", True):
         return
     if meta.get("cache_hit") or meta.get("parse_error") or request_obj_stream:
+        return
+    if meta.get("has_tools") or meta.get("stream"):
         return
     key = meta.get("cache_key")
     if not key or project_root is None:

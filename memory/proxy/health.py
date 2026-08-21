@@ -83,17 +83,15 @@ def health_report(
     strict: bool = False,
     frontend: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Сводка для CLI и Init. gateway_ok в PR1 информативный (шлюза ещё нет)."""
+    """Сводка для CLI и Init: pxpipe + шлюз + режим."""
     from memory.proxy.config import effective_mode, supervisor_adapter
-    from memory.proxy.policy import adapter_requires_proxy
+    from memory.proxy.policy import adapter_requires_proxy, normalize_frontend
 
     cfg = load_proxy_config(workdir)
     px = probe_pxpipe(cfg)
     gw = probe_gateway(cfg)
     mode = effective_mode(cfg)
-    adapter = (frontend or supervisor_adapter(workdir) or "mock").strip().lower()
-    if adapter in {"1", "grok"}:
-        adapter = "grok"
+    adapter = normalize_frontend(frontend or supervisor_adapter(workdir) or "mock")
     exempt = not adapter_requires_proxy(adapter)
     ok = bool(px.get("ok")) or mode == "off" or exempt
     if strict and mode != "off":

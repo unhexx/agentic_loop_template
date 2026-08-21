@@ -8,7 +8,6 @@ SHA/UUID до сжатия и кладём их в нативный тексто
 from __future__ import annotations
 
 import re
-import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
@@ -28,6 +27,23 @@ def is_fidelity_block(text: str) -> bool:
     return (text or "").lstrip().startswith(_BLOCK_START)
 
 
+def split_sidecar(text: str) -> tuple[str, str]:
+    """Отделяем sidecar от полезной нагрузки, чтобы дистилляция её не пропускала."""
+    s = text or ""
+    stripped = s.lstrip()
+    if not stripped.startswith(_BLOCK_START):
+        return "", s
+    if _BLOCK_END not in stripped:
+        return stripped, ""
+    head, rest = stripped.split(_BLOCK_END, 1)
+    return head + _BLOCK_END + "\n", rest.lstrip("\n")
+
+
+def is_fidelity_only(text: str) -> bool:
+    sidecar, rest = split_sidecar(text)
+    return bool(sidecar) and not rest.strip()
+
+
 def _estimate(text: str) -> int:
     try:
         from memory.context_budget import estimate_tokens
@@ -37,31 +53,8 @@ def _estimate(text: str) -> int:
         return max(1, len(text) // 4)
 
 
-def _git_prefixes(root: Optional[Path]) -> Set[str]:
-    if root is None:
-        return set()
-    out: Set[str] = set()
-    try:
-        r = subprocess.run(
-            ["git", "log", "-20", "--format=%H%n%h"],
-            cwd=str(root),
-            capture_output=True,
-            text=True,
-            timeout=3,
-            check=False,
-        )
-        if r.returncode == 0:
-            for line in (r.stdout or "").splitlines():
-                s = line.strip().lower()
-                if s:
-                    out.add(s)
-    except Exception:
-        pass
-    return out
-
-
 def extract_ids(text: str, project_root: Optional[Path] = None) -> List[str]:
-    """Уникальные идентификаторы в порядке появления."""
+    """Уникальные идентификаторы из текста запроса (не из git log)."""
     if not text:
         return []
     seen: Set[str] = set()
@@ -77,20 +70,12 @@ def extract_ids(text: str, project_root: Optional[Path] = None) -> List[str]:
     for m in _SHA256.finditer(text):
         _add(m.group(0).lower())
 
-    prefixes = _git_prefixes(project_root)
+    # Короткий hex оставляем, если есть цифра — иначе вылезают слова вроде defaced.
+    # project_root не фильтрует: идентификатор уже в теле запроса.
     for m in _SHA.finditer(text):
-        raw = m.group(0)
-        low = raw.lower()
-        if not any(ch.isdigit() for ch in low):
-            continue
-        if len(low) >= 12:
+        low = m.group(0).lower()
+        if any(ch.isdigit() for ch in low):
             _add(low)
-            continue
-        if prefixes:
-            if any(p.startswith(low) or low.startswith(p[: len(low)]) for p in prefixes):
-                _add(low)
-            continue
-        _add(low)
 
     for m in _WID.finditer(text):
         _add(m.group(0))

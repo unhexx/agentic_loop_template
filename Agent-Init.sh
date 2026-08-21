@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Agent-Init.sh — cross-platform Agentix bootstrap (3.6.x)
+# Agent-Init.sh — cross-platform Agentix bootstrap (3.7.x)
 # Usage: bash Agent-Init.sh [--wizard] [--quiet] [--output-file PATH]
 set -euo pipefail
 
@@ -97,7 +97,7 @@ INIT_FE=""
 if [[ "$WIZARD" == true ]]; then
   case "${FRONTEND_CHOICE:-1}" in
     2) INIT_FE="cursor" ;;
-    3) INIT_FE="cursor" ;;
+    3) INIT_FE="claude" ;;
     4) INIT_FE="blackbox" ;;
     *) INIT_FE="grok" ;;
   esac

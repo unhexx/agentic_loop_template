@@ -161,7 +161,7 @@ def load_proxy_config(workdir: Optional[Path] = None) -> Dict[str, Any]:
 
 
 def split_host_port(url_or_listen: str, default_port: int) -> tuple[str, int]:
-    """host, port из URL или из 'host:port'."""
+    """host, port из URL. https без порта → 443, иначе default_port."""
     raw = (url_or_listen or "").strip()
     if not raw:
         return PXPIPE_HOST, default_port
@@ -169,8 +169,20 @@ def split_host_port(url_or_listen: str, default_port: int) -> tuple[str, int]:
         raw = "http://" + raw
     parsed = urlparse(raw)
     host = parsed.hostname or PXPIPE_HOST
-    port = parsed.port or default_port
-    return host, int(port)
+    if parsed.port:
+        return host, int(parsed.port)
+    if parsed.scheme == "https":
+        return host, 443
+    return host, int(default_port)
+
+
+def host_header(host: str, port: int, scheme: str) -> str:
+    """Host без стандартного порта (80/443)."""
+    if scheme == "https" and int(port) == 443:
+        return host
+    if scheme == "http" and int(port) == 80:
+        return host
+    return f"{host}:{int(port)}"
 
 
 def supervisor_adapter(workdir: Optional[Path] = None) -> str:

@@ -9,7 +9,7 @@ stdlib ThreadingHTTPServer. Тело стрима копируем чанкам�
 from __future__ import annotations
 
 import json
-import socket
+import ssl
 import time
 from http.client import HTTPConnection, HTTPSConnection
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -23,6 +23,7 @@ from memory.proxy.config import (
     DEFAULT_PXPIPE_BASE,
     GATEWAY_HOST,
     GATEWAY_PORT,
+    host_header,
     load_proxy_config,
     split_host_port,
 )
@@ -61,20 +62,27 @@ def resolve_project_root(
     if not raw:
         return None
     p = Path(raw)
-    return p if p.exists() else p
+    return p if p.exists() else None
 
 
-def _open_upstream(url: str, idle_timeout: float) -> HTTPConnection:
+def _open_upstream(
+    url: str,
+    idle_timeout: float,
+    ssl_context: Optional[ssl.SSLContext] = None,
+) -> HTTPConnection:
     parsed = urlparse(url if "://" in url else "http://" + url)
-    host = parsed.hostname or "127.0.0.1"
-    port = parsed.port or (443 if parsed.scheme == "https" else 80)
-    sock = socket.create_connection((host, port), timeout=CONNECT_TIMEOUT)
-    sock.settimeout(idle_timeout)
-    if parsed.scheme == "https":
-        conn: HTTPConnection = HTTPSConnection(host, port, timeout=idle_timeout)
+    scheme = parsed.scheme or "http"
+    host, port = split_host_port(url, 443 if scheme == "https" else 80)
+    if scheme == "https":
+        ctx = ssl_context or ssl.create_default_context()
+        conn: HTTPConnection = HTTPSConnection(
+            host, port, timeout=CONNECT_TIMEOUT, context=ctx
+        )
     else:
-        conn = HTTPConnection(host, port, timeout=idle_timeout)
-    conn.sock = sock
+        conn = HTTPConnection(host, port, timeout=CONNECT_TIMEOUT)
+    conn.connect()
+    if conn.sock is not None:
+        conn.sock.settimeout(idle_timeout)
     return conn
 
 
@@ -84,8 +92,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
     def log_message(self, fmt: str, *args: Any) -> None:
         # без Authorization в access-логе
-        sys_stderr_write = getattr(self, "_quiet", False)
-        if sys_stderr_write:
+        if getattr(self.server, "agentix_quiet", False):
             return
         BaseHTTPRequestHandler.log_message(self, fmt, *args)
 
@@ -325,8 +332,8 @@ class GatewayHandler(BaseHTTPRequestHandler):
         idle_timeout: float,
     ) -> Tuple[int, str, Optional[bytes]]:
         parsed = urlparse(upstream if "://" in upstream else "http://" + upstream)
-        host = parsed.hostname or "127.0.0.1"
-        port = parsed.port or 80
+        scheme = parsed.scheme or "http"
+        host, port = split_host_port(upstream, 443 if scheme == "https" else 80)
         fwd: Dict[str, str] = {}
         for k, v in headers.items():
             if k.lower() in HOP_BY_HOP:
@@ -334,11 +341,12 @@ class GatewayHandler(BaseHTTPRequestHandler):
             if k.lower() == "host":
                 continue
             fwd[k] = v
-        fwd["Host"] = f"{host}:{port}"
+        fwd["Host"] = host_header(host, port, scheme)
         fwd["Connection"] = "close"
         if body:
             fwd["Content-Length"] = str(len(body))
-        conn = _open_upstream(upstream, idle_timeout)
+        ssl_ctx = getattr(self.server, "agentix_ssl_context", None)
+        conn = _open_upstream(upstream, idle_timeout, ssl_context=ssl_ctx)
         try:
             url_path = self.path
             conn.request(self.command, url_path, body=body or None, headers=fwd)
@@ -387,11 +395,14 @@ class AgentixServer(ThreadingHTTPServer):
         upstream: str,
         env_root: Optional[str] = None,
         quiet: bool = False,
+        ssl_context: Optional[ssl.SSLContext] = None,
     ) -> None:
         super().__init__(addr, GatewayHandler)
         self.agentix_cfg = cfg
         self.agentix_upstream = upstream
         self.agentix_env_root = env_root
+        self.agentix_quiet = bool(quiet)
+        self.agentix_ssl_context = ssl_context
 
 
 def bind_host_allowed(host: str) -> bool:
@@ -406,16 +417,21 @@ def make_server(
     upstream: Optional[str] = None,
     workdir: Optional[Path] = None,
     quiet: bool = False,
+    ssl_context: Optional[ssl.SSLContext] = None,
 ) -> AgentixServer:
     if not bind_host_allowed(host):
         raise BindError(f"шлюз только loopback, отказ: {host}")
     cfg = load_proxy_config(workdir)
     up = (upstream or cfg.get("pxpipe_base") or DEFAULT_PXPIPE_BASE).rstrip("/")
     env_root = str(workdir) if workdir is not None else None
-    httpd = AgentixServer((host, int(port)), cfg, up, env_root=env_root, quiet=quiet)
-    if quiet:
-        GatewayHandler._quiet = True  # type: ignore[attr-defined]
-    return httpd
+    return AgentixServer(
+        (host, int(port)),
+        cfg,
+        up,
+        env_root=env_root,
+        quiet=quiet,
+        ssl_context=ssl_context,
+    )
 
 
 def serve(

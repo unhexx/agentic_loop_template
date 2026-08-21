@@ -14,8 +14,23 @@ from typing import FrozenSet, Optional
 from memory.proxy.config import effective_mode, load_proxy_config, supervisor_adapter
 from memory.proxy.health import probe_pxpipe, start_instructions
 
-# Адаптеры, которым живой прокси не нужен (CI, офлайн-цикл).
-PROXY_EXEMPT_ADAPTERS: FrozenSet[str] = frozenset({"mock"})
+# Прокси нужен только тем, кто реально ходит в GROK_CLI_CHAT_PROXY_BASE_URL.
+PROXY_EXEMPT_ADAPTERS: FrozenSet[str] = frozenset(
+    {"mock", "cursor", "claude", "claude-code", "blackbox"}
+)
+
+
+def normalize_frontend(name: Optional[str]) -> str:
+    raw = (name or "mock").strip().lower()
+    if raw in {"1", "grok"}:
+        return "grok"
+    if raw in {"2", "cursor"}:
+        return "cursor"
+    if raw in {"3", "claude", "claude-code"}:
+        return "claude"
+    if raw in {"4", "blackbox"}:
+        return "blackbox"
+    return raw or "mock"
 
 
 class ProxyNotReady(RuntimeError):
@@ -40,7 +55,7 @@ def assert_ready(
     ProxyNotReady. preferred — только если совсем нет запасного URL,
     иначе пропускаем (предупреждение печатает health CLI).
     """
-    name = (adapter_name or supervisor_adapter(workdir) or "mock").strip().lower()
+    name = normalize_frontend(adapter_name or supervisor_adapter(workdir) or "mock")
     if not adapter_requires_proxy(name):
         return
     cfg = load_proxy_config(workdir)
@@ -60,18 +75,10 @@ def init_should_fail(
     frontend: Optional[str] = None,
 ) -> bool:
     """
-    Init падает только если выбран живой фронтенд, mode=required
-    и pxpipe молчит. Mock / Blackbox / AGENTIX_PROXY=0 — нет.
+    Init падает только если выбран grok, mode=required и pxpipe молчит.
+    Mock / Cursor / Claude / Blackbox / AGENTIX_PROXY=0 — нет.
     """
-    name = (frontend or supervisor_adapter(workdir) or "mock").strip().lower()
-    if name in {"1", "grok"}:
-        name = "grok"
-    elif name in {"2", "cursor"}:
-        name = "cursor"
-    elif name in {"3", "claude", "claude-code"}:
-        name = "cursor"
-    elif name in {"4", "blackbox"}:
-        name = "blackbox"
+    name = normalize_frontend(frontend or supervisor_adapter(workdir) or "mock")
     if not adapter_requires_proxy(name):
         return False
     cfg = load_proxy_config(workdir)

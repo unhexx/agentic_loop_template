@@ -13,6 +13,8 @@ import io
 import json
 import os
 import socket
+import ssl
+import subprocess
 import tempfile
 import threading
 import urllib.error
@@ -204,6 +206,35 @@ def test_required_grok_ok_with_fake_listener() -> None:
                 assert init_should_fail(root, frontend="grok") is False
     finally:
         srv.close()
+
+
+def test_init_foreign_frontends_skip_pxpipe() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _write_cfg(
+            root,
+            {
+                "proxy": {"mode": "required", "pxpipe_base": "http://127.0.0.1:1"},
+                "supervisor": {"adapter": "mock"},
+            },
+        )
+        with _env(
+            AGENTIX_PROXY=None,
+            AGENTIX_PROXY_MODE=None,
+            AGENTIX_PXPIPE_URL="http://127.0.0.1:1",
+            AGENTIX_PROJECT_ROOT=str(root),
+        ):
+            assert adapter_requires_proxy("blackbox") is False
+            assert adapter_requires_proxy("cursor") is False
+            assert adapter_requires_proxy("claude") is False
+            assert adapter_requires_proxy("claude-code") is False
+            assert adapter_requires_proxy("grok") is True
+            assert init_should_fail(root, frontend="blackbox") is False
+            assert init_should_fail(root, frontend="cursor") is False
+            assert init_should_fail(root, frontend="claude") is False
+            assert init_should_fail(root, frontend="3") is False
+            assert init_should_fail(root, frontend="4") is False
+            assert init_should_fail(root, frontend="grok") is True
 
 
 def test_preferred_does_not_raise_when_down() -> None:
@@ -445,6 +476,7 @@ def test_gateway_required_no_public_fallback() -> None:
 
 
 def test_stats_unprobed_savings_stay_null() -> None:
+    import memory.proxy.stats as stats_mod
     from memory.proxy.stats import collect_stats, summarize_pxpipe
 
     fake = {
@@ -461,20 +493,76 @@ def test_stats_unprobed_savings_stay_null() -> None:
     assert s["requests"] == 10
     assert s["compressed_pct"] == 60.0
     assert s["measured_saved_pct"] is None
+    orig = stats_mod._pxpipe_raw
+    stats_mod._pxpipe_raw = lambda: None  # type: ignore[assignment]
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".agent").mkdir()
+            with _env(AGENTIX_PROJECT_ROOT=str(root), AGENTIX_PROXY="0"):
+                report = collect_stats(root)
+            assert report["proxy_mode"] == "off"
+            assert report["pxpipe"]["measured_saved_pct"] is None
+            assert "measured_raw_token_saved_pct" in report["slo"]
+            assert "unslod" in report["slo"]["measured_raw_token_saved_pct"]
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                rc = cli(["stats", "--json", "--workdir", str(root)])
+            assert rc == 0
+            payload = json.loads(buf.getvalue())
+            assert payload["pxpipe"]["measured_saved_pct"] is None
+    finally:
+        stats_mod._pxpipe_raw = orig
+
+
+def test_cache_tools_do_not_collide_with_plain() -> None:
+    from memory.proxy.cache import canonical_key
+    from memory.proxy.middleware import maybe_store_cache, process_request
+
+    messages = [{"role": "user", "content": "hello cache"}]
+    plain = {"model": "grok", "input": messages}
+    tooled = {
+        "model": "grok",
+        "input": messages,
+        "tools": [{"type": "function", "function": {"name": "x"}}],
+    }
+    hot = {"model": "grok", "input": messages, "temperature": 0.2}
+    cold = {"model": "grok", "input": messages, "temperature": 0.9}
+    assert canonical_key(plain) != canonical_key(tooled)
+    assert canonical_key(hot) != canonical_key(cold)
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / ".agent").mkdir()
-        with _env(AGENTIX_PROJECT_ROOT=str(root), AGENTIX_PROXY="0"):
-            report = collect_stats(root)
-        assert report["proxy_mode"] == "off"
-        assert "measured_raw_token_saved_pct" in report["slo"]
-        assert "unslod" in report["slo"]["measured_raw_token_saved_pct"]
-        buf = io.StringIO()
-        with redirect_stdout(buf):
-            rc = cli(["stats", "--json", "--workdir", str(root)])
-        assert rc == 0
-        payload = json.loads(buf.getvalue())
-        assert payload["pxpipe"]["measured_saved_pct"] is None
+        cfg = {
+            "compress_body": True,
+            "body_budget_tokens": 24000,
+            "keep_recent_turns": 2,
+            "exact_cache": True,
+            "fidelity": False,
+        }
+        _, meta_t = process_request(
+            json.dumps(tooled).encode("utf-8"),
+            path="/v1/responses",
+            headers={},
+            cfg=cfg,
+            project_root=root,
+        )
+        maybe_store_cache(
+            project_root=root,
+            cfg=cfg,
+            meta=meta_t,
+            status=200,
+            content_type="application/json",
+            response_body=b'{"tool":true}',
+        )
+        _, meta_p = process_request(
+            json.dumps(plain).encode("utf-8"),
+            path="/v1/responses",
+            headers={},
+            cfg=cfg,
+            project_root=root,
+        )
+        assert meta_p.get("cache_hit") is False
 
 
 def test_fidelity_golden_ids_survive_distill() -> None:
@@ -518,6 +606,109 @@ def test_fidelity_golden_ids_survive_distill() -> None:
     assert uuid in sidecar
     assert digest in sidecar
     assert meta.get("fidelity") is True
+    parsed = json.loads(text)
+    first = parsed["input"][0]["content"]
+    rest = first.split("--- END FIDELITY ---", 1)[-1]
+    assert len(rest) < len(filler)
+
+
+def test_fidelity_keeps_short_sha_without_git_log() -> None:
+    from memory.proxy.fidelity import extract_ids
+
+    sha = "b107f1e"
+    blob = f"see commit {sha} in the other clone"
+    repo = Path(__file__).resolve().parents[1]
+    ids = extract_ids(blob, project_root=repo)
+    assert sha in ids
+
+
+def _selfsigned_cert(dir_path: Path) -> tuple[Path, Path]:
+    cert = dir_path / "cert.pem"
+    key = dir_path / "key.pem"
+    subprocess.run(
+        [
+            "openssl",
+            "req",
+            "-x509",
+            "-newkey",
+            "rsa:2048",
+            "-keyout",
+            str(key),
+            "-out",
+            str(cert),
+            "-days",
+            "1",
+            "-nodes",
+            "-subj",
+            "/CN=127.0.0.1",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return cert, key
+
+
+def test_preferred_https_fallback_local_tls() -> None:
+    from memory.proxy.config import split_host_port
+    from memory.proxy.gateway import make_server
+
+    host, port = split_host_port("https://cli-chat-proxy.grok.com", 8100)
+    assert host == "cli-chat-proxy.grok.com"
+    assert port == 443
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / ".agent").mkdir()
+        cert, key = _selfsigned_cert(root)
+        up = ThreadingHTTPServer(("127.0.0.1", 0), _FakeUpstream)
+        ctx_srv = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ctx_srv.load_cert_chain(str(cert), str(key))
+        up.socket = ctx_srv.wrap_socket(up.socket, server_side=True)
+        _start_httpd(up)
+        tls_port = up.server_address[1]
+        client_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        client_ctx.check_hostname = False
+        client_ctx.verify_mode = ssl.CERT_NONE
+        try:
+            _write_cfg(
+                root,
+                {
+                    "proxy": {
+                        "mode": "preferred",
+                        "pxpipe_base": "http://127.0.0.1:1",
+                        "upstream_fallback": f"https://127.0.0.1:{tls_port}",
+                    }
+                },
+            )
+            with _env(AGENTIX_PROJECT_ROOT=str(root), AGENTIX_PROXY_MODE="preferred"):
+                gw = make_server(
+                    "127.0.0.1",
+                    0,
+                    upstream="http://127.0.0.1:1",
+                    workdir=root,
+                    quiet=True,
+                    ssl_context=client_ctx,
+                )
+                _start_httpd(gw)
+                gport = gw.server_address[1]
+                try:
+                    req = urllib.request.Request(
+                        f"http://127.0.0.1:{gport}/v1/responses",
+                        data=json.dumps(
+                            {"model": "grok", "input": [{"role": "user", "content": "hi"}]}
+                        ).encode("utf-8"),
+                        headers={"Content-Type": "application/json"},
+                        method="POST",
+                    )
+                    with urllib.request.urlopen(req, timeout=4) as resp:
+                        body = resp.read()
+                    assert resp.status == 200
+                    assert b"data:" in body
+                finally:
+                    gw.shutdown()
+        finally:
+            up.shutdown()
 
 
 def test_grok_adapter_calls_assert_ready(monkeypatch=None) -> None:
@@ -559,6 +750,7 @@ def _run_all() -> None:
         test_mode_matrix_env_beats_file,
         test_missing_proxy_section_defaults_to_required,
         test_mock_skips_assert_ready_even_if_port_closed,
+        test_init_foreign_frontends_skip_pxpipe,
         test_required_grok_raises_when_pxpipe_down,
         test_required_grok_ok_with_fake_listener,
         test_preferred_does_not_raise_when_down,
@@ -568,7 +760,10 @@ def _run_all() -> None:
         test_gateway_healthz_sse_roundtrip_and_redaction,
         test_gateway_required_no_public_fallback,
         test_stats_unprobed_savings_stay_null,
+        test_cache_tools_do_not_collide_with_plain,
         test_fidelity_golden_ids_survive_distill,
+        test_fidelity_keeps_short_sha_without_git_log,
+        test_preferred_https_fallback_local_tls,
         test_grok_adapter_calls_assert_ready,
     ]
     for fn in tests:

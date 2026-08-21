@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-CLI: python -m memory.proxy {health|install-venv|install-host|serve|stats}
-
-serve/stats появятся со шлюзом; здесь — заглушки с понятным кодом выхода.
-"""
+"""CLI: python -m memory.proxy {health|install-venv|install-host|serve|stats}."""
 
 from __future__ import annotations
 

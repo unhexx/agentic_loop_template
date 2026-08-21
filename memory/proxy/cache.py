@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Точный кэш ответов: ключ = sha256 канонического JSON {model, input|messages}.
+Точный кэш ответов по каноническому JSON запроса.
 
 Только когда известен корень проекта. TTL 24ч, не больше 1000 строк.
-Семантический кэш и sqlite-vec не подключаем.
+sqlite-vec не в CI — ключ только hash полей, которые меняют ответ модели.
 """
 
 from __future__ import annotations
@@ -38,16 +38,37 @@ def cache_path(project_root: Optional[Path]) -> Optional[Path]:
     return Path(project_root) / ".agent" / CACHE_NAME
 
 
+# Поля, из-за которых ответ модели другой. tools/stream тоже входят,
+# чтобы lookup с tools не попадал в ключ без tools.
+_KEY_FIELDS = (
+    "model",
+    "input",
+    "messages",
+    "tools",
+    "instructions",
+    "temperature",
+    "max_tokens",
+    "max_output_tokens",
+    "max_completion_tokens",
+    "stream",
+    "reasoning",
+    "top_p",
+    "presence_penalty",
+    "frequency_penalty",
+    "system",
+    "stop",
+    "response_format",
+)
+
+
 def canonical_key(obj: Dict[str, Any]) -> Optional[str]:
     if not isinstance(obj, dict):
         return None
-    payload = obj.get("input")
-    if payload is None:
-        payload = obj.get("messages")
-    if payload is None:
+    if obj.get("input") is None and obj.get("messages") is None:
         return None
+    payload = {k: obj[k] for k in _KEY_FIELDS if k in obj}
     blob = json.dumps(
-        {"model": obj.get("model"), "input": payload},
+        payload,
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
