@@ -1,0 +1,7 @@
+<section class="space-y-6">
+  <h1 class="text-2xl font-semibold tracking-tight">{{title}}</h1>
+  <div id="memory-excerpt"
+       hx-get="/partials/memory-excerpt"
+       hx-trigger="load, every 30s, ws-refresh from:body"
+       hx-swap="innerHTML">{{memory_excerpt_html}}</div>
+</section>

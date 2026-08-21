@@ -4,10 +4,13 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
+
+from memory.workspace import get_workspace_id
 
 
 # last_handoff пишется write_text, не tmp+replace — порванный JSON реален.
@@ -20,10 +23,18 @@ _SSOT_JSON = frozenset({"LOOP_STATE.json", "last_handoff.json"})
 HISTORY_TAIL_LINES = 20
 HISTORY_TAIL_MAX_BYTES = 64 * 1024
 LEDGER_CYCLE_CAP = 50
+AUDIT_ENTRY_CAP = 50
+MEMORY_EXCERPT_LINES = 80
+MEMORY_EXCERPT_BYTES = 8 * 1024
+# id в /partials/playbook/{id}: без слэшей, чтобы не выйти из PLAYBOOKS/.
+PLAYBOOK_ID_RE = re.compile(r"^[A-Za-z0-9._:-]+$")
 
 
 class DashboardStore:
-    """Проекция LOOP_STATE / last_handoff / STOP / jsonl / ledger. Не раннер, не chdir."""
+    """Проекция LOOP_STATE / last_handoff / STOP / jsonl / ledger / playbooks / audit.
+
+    PLAN/TODO и выдержка памяти — тоже только чтение. Не раннер, не chdir.
+    """
 
     def __init__(self, workdir: Path) -> None:
         self.workdir = Path(workdir).resolve()
@@ -190,6 +201,160 @@ class DashboardStore:
             "total_meta_applied": meta_out,
         }
 
+    def playbooks(self) -> List[Dict[str, Any]]:
+        """Каталог из PLAYBOOKS.json по явному пути (форма как у CLI list, без вызова)."""
+        data = self._read_json(
+            self.agent / "PLAYBOOKS.json",
+            default={"playbooks": {}},
+        )
+        if not isinstance(data, dict):
+            return []
+        pbs = data.get("playbooks") or {}
+        if not isinstance(pbs, dict):
+            return []
+        items: List[Dict[str, Any]] = []
+        for pid, pb in pbs.items():
+            if not isinstance(pb, dict):
+                continue
+            sid = str(pid)
+            bullets = pb.get("bullets") or []
+            if not isinstance(bullets, list):
+                bullets = []
+            effs: List[float] = []
+            for b in bullets:
+                if not isinstance(b, dict):
+                    continue
+                try:
+                    effs.append(float(b.get("effectiveness", 0.5)))
+                except (TypeError, ValueError):
+                    effs.append(0.5)
+            avg_eff = sum(effs) / len(effs) if effs else 0.0
+            items.append(
+                {
+                    "id": sid,
+                    "scope": pb.get("scope", "") or "",
+                    "name": pb.get("name", sid) or sid,
+                    "bullet_count": len(bullets),
+                    "avg_effectiveness": round(avg_eff, 3),
+                    "last_curated": pb.get("last_curated"),
+                    "install_path": f".agent/PLAYBOOKS/{sid}.md",
+                }
+            )
+        return items
+
+    def hub_index_header(self) -> Optional[Dict[str, Any]]:
+        """Шапка HUB_INDEX.json, если файл уже есть. На загрузке страницы не пишем."""
+        p = self.agent / "HUB_INDEX.json"
+        if not p.is_file():
+            return None
+        data = self._read_json(p, default=None)
+        if not isinstance(data, dict):
+            return None
+        return {
+            "version": data.get("version"),
+            "generated_at": data.get("generated_at"),
+            "item_count": data.get("item_count"),
+        }
+
+    def playbook_detail(self, playbook_id: str) -> Optional[Dict[str, Any]]:
+        """Один playbook по id из allowlist; bullets из JSON, не из соседних файлов."""
+        if not _playbook_id_allowed(self.agent, playbook_id):
+            return None
+        data = self._read_json(
+            self.agent / "PLAYBOOKS.json",
+            default={"playbooks": {}},
+        )
+        if not isinstance(data, dict):
+            return None
+        pbs = data.get("playbooks") or {}
+        if not isinstance(pbs, dict):
+            return None
+        pb = pbs.get(playbook_id)
+        if not isinstance(pb, dict):
+            return None
+        bullets_raw = pb.get("bullets") or []
+        if not isinstance(bullets_raw, list):
+            bullets_raw = []
+        bullets: List[Dict[str, Any]] = []
+        for b in bullets_raw:
+            if isinstance(b, dict):
+                bullets.append(dict(b))
+        return {
+            "id": playbook_id,
+            "scope": pb.get("scope", "") or "",
+            "name": pb.get("name", playbook_id) or playbook_id,
+            "bullets": bullets,
+        }
+
+    def audit_entries(self, limit: int = AUDIT_ENTRY_CAP) -> List[Dict[str, Any]]:
+        """Последние записи AUDIT_LOG.json; подпись обрезана до 12 символов."""
+        data = self._read_json(
+            self.agent / "AUDIT_LOG.json",
+            default={"entries": []},
+        )
+        if not isinstance(data, dict):
+            return []
+        raw = data.get("entries") or []
+        if not isinstance(raw, list):
+            return []
+        out: List[Dict[str, Any]] = []
+        for entry in raw:
+            if not isinstance(entry, dict):
+                continue
+            sig = entry.get("signature")
+            sig_s = str(sig) if sig is not None else ""
+            out.append(
+                {
+                    "id": entry.get("id"),
+                    "ts": entry.get("ts"),
+                    "action": entry.get("action"),
+                    "role": entry.get("role"),
+                    "cycle": entry.get("cycle"),
+                    "approval_required": entry.get("approval_required"),
+                    "approved": entry.get("approved"),
+                    "signature": sig_s[:12],
+                }
+            )
+        if limit <= 0:
+            return []
+        return out[-limit:]
+
+    def plan_text(self) -> Optional[str]:
+        return _read_text_file(self.agent / "PLAN.md")
+
+    def todo_text(self) -> Optional[str]:
+        return _read_text_file(self.agent / "TODO.md")
+
+    def memory_excerpt(self) -> Dict[str, Any]:
+        """Выдержка ~/.grok/agentic-loop-memory/{wid}.md без mkdir и без листинга каталога."""
+        wid = get_workspace_id(cwd=self.workdir)
+        mem_file = _memory_root() / f"{wid}.md"
+        result: Dict[str, Any] = {
+            "workspace_id": wid,
+            "path": str(mem_file),
+            "present": False,
+            "excerpt": "",
+            "truncated": False,
+        }
+        if not mem_file.is_file():
+            return result
+        try:
+            with mem_file.open("rb") as fh:
+                raw = fh.read(MEMORY_EXCERPT_BYTES + 1)
+        except OSError:
+            return result
+        truncated = len(raw) > MEMORY_EXCERPT_BYTES
+        raw = raw[:MEMORY_EXCERPT_BYTES]
+        text = raw.decode("utf-8", errors="replace")
+        lines = text.splitlines()
+        if len(lines) > MEMORY_EXCERPT_LINES:
+            truncated = True
+            lines = lines[:MEMORY_EXCERPT_LINES]
+        result["present"] = True
+        result["excerpt"] = "\n".join(lines)
+        result["truncated"] = truncated
+        return result
+
     def _history_month_paths(self) -> tuple:
         dt = datetime.now(timezone.utc)
         y, m = dt.year, dt.month
@@ -236,6 +401,32 @@ def _copy_default(default: Any) -> Any:
     if isinstance(default, dict):
         return dict(default)
     return default
+
+
+def _memory_root() -> Path:
+    """Каталог институциональной памяти. Существование не гарантируем и не создаём."""
+    return Path.home() / ".grok" / "agentic-loop-memory"
+
+
+def _read_text_file(path: Path) -> Optional[str]:
+    if not path.is_file():
+        return None
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return None
+
+
+def _playbook_id_allowed(agent_dir: Path, playbook_id: str) -> bool:
+    if not playbook_id or not PLAYBOOK_ID_RE.fullmatch(playbook_id):
+        return False
+    base = (agent_dir / "PLAYBOOKS").resolve()
+    candidate = (agent_dir / "PLAYBOOKS" / f"{playbook_id}.md").resolve()
+    try:
+        candidate.relative_to(base)
+    except ValueError:
+        return False
+    return True
 
 
 def _parse_ts(raw: object) -> Optional[datetime]:

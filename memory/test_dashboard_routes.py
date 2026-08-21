@@ -187,6 +187,9 @@ def test_dashboard_sources_do_not_import_runner():
         assert "generate_report" not in text
         assert "get_recent" not in text
         assert "tail_history" not in text
+        assert "list_playbooks" not in text
+        assert "memory_paths" not in text
+        assert "export_hub_index" not in text
 
 
 def _current_ym() -> str:
@@ -398,3 +401,270 @@ def test_handoff_chrome_not_overwritten_by_json_placeholder(
     dl_at = html.find("id=\"handoff-dl\"")
     assert dl_at != -1
     assert "see {{title}}" in html[dl_at:]
+
+
+def _seed_playbooks(tmp_path: Path, content: str = "Always start with git.") -> None:
+    _write_json(
+        tmp_path / ".agent" / "PLAYBOOKS.json",
+        {
+            "playbooks": {
+                "global-dev": {
+                    "scope": "global",
+                    "name": "Global Dev — see {{title}}",
+                    "bullets": [
+                        {"id": "b-0001", "content": content, "effectiveness": 0.95},
+                        {
+                            "id": "b-0002",
+                            "content": "see {{title}}",
+                            "effectiveness": 0.5,
+                        },
+                    ],
+                    "last_curated": "2026-08-21T12:00:00Z",
+                }
+            }
+        },
+    )
+
+
+def _seed_audit(tmp_path: Path, action: str = "git.sync") -> None:
+    _write_json(
+        tmp_path / ".agent" / "AUDIT_LOG.json",
+        {
+            "entries": [
+                {
+                    "id": "A-0001",
+                    "ts": "2026-08-21T12:00:00Z",
+                    "action": action,
+                    "role": "Coder",
+                    "cycle": 12,
+                    "approval_required": True,
+                    "approved": False,
+                    "signature": "abcdef0123456789ffff",
+                },
+                {
+                    "id": "A-0002",
+                    "ts": "2026-08-21T13:00:00Z",
+                    "action": "dashboard.stop",
+                    "role": "operator",
+                    "cycle": 12,
+                    "approval_required": True,
+                    "approved": True,
+                    "signature": "fff111222333444555",
+                },
+            ]
+        },
+    )
+
+
+def test_playbooks_page_and_partial(dashboard_client, tmp_path: Path):
+    _seed_playbooks(tmp_path)
+    _write_json(
+        tmp_path / ".agent" / "HUB_INDEX.json",
+        {
+            "version": "1.0",
+            "generated_at": "2026-08-21T12:00:00Z",
+            "item_count": 1,
+        },
+    )
+    page = dashboard_client.get("/playbooks")
+    assert page.status_code == 200
+    body = page.text
+    assert "<title>Playbooks — Agentix</title>" in body
+    assert 'hx-get="/partials/playbooks-list"' in body
+    assert "load, every 20s, ws-refresh from:body" in body
+    assert 'hx-swap="innerHTML"' in body
+    assert "global-dev" in body
+    assert "Global Dev" in body
+    assert ".agent/PLAYBOOKS/global-dev.md" in body
+    assert "0.725" in body
+    assert "version 1.0" in body
+    assert "item_count 1" in body
+    assert "data-hub-header" in body
+    assert 'hx-get="/partials/playbook/global-dev"' in body
+    assert "hx-post" not in body
+    assert "see {{title}}" in body
+    partial = dashboard_client.get("/partials/playbooks-list")
+    assert partial.status_code == 200
+    assert "<title>" not in partial.text
+    assert "global-dev" in partial.text
+    # фрагмент списка сам по себе не poll'ит outerHTML
+    assert "every 20s" not in partial.text
+
+
+def test_playbooks_empty_no_hub_header(dashboard_client, tmp_path: Path):
+    r = dashboard_client.get("/playbooks")
+    assert r.status_code == 200
+    assert "No playbooks." in r.text
+    assert "data-hub-header" not in r.text
+    assert dashboard_client.get("/partials/playbooks-list").status_code == 200
+
+
+def test_playbook_expand_escapes_and_literal_title(dashboard_client, tmp_path: Path):
+    _seed_playbooks(tmp_path, content="<script>alert(1)</script>")
+    r = dashboard_client.get("/partials/playbook/global-dev")
+    assert r.status_code == 200
+    assert "<script>alert(1)</script>" not in r.text
+    assert "&lt;script&gt;" in r.text
+    assert "see {{title}}" in r.text
+    assert "<title>" not in r.text
+    page = dashboard_client.get("/playbooks")
+    assert page.status_code == 200
+    assert "<title>Playbooks — Agentix</title>" in page.text
+    title_end = page.text.find("</title>")
+    assert "see {{title}}" in page.text[title_end:]
+
+
+def test_playbook_unknown_and_traversal_404(dashboard_client, tmp_path: Path):
+    _seed_playbooks(tmp_path)
+    assert dashboard_client.get("/partials/playbook/missing-id").status_code == 404
+    assert dashboard_client.get("/partials/playbook/%2e%2e%2fetc%2fpasswd").status_code == 404
+    assert dashboard_client.get("/partials/playbook/%2e%2e").status_code == 404
+    nested = dashboard_client.get("/partials/playbook/foo/bar")
+    assert nested.status_code == 404
+
+
+def test_audit_page_and_partial(dashboard_client, tmp_path: Path):
+    _seed_audit(tmp_path)
+    page = dashboard_client.get("/audit")
+    assert page.status_code == 200
+    body = page.text
+    assert "<title>Audit — Agentix</title>" in body
+    assert 'hx-get="/partials/audit-rows"' in body
+    assert "load, every 15s, ws-refresh from:body" in body
+    assert 'hx-swap="innerHTML"' in body
+    assert "A-0001" in body
+    assert "A-0002" in body
+    assert "git.sync" in body
+    assert "dashboard.stop" in body
+    assert "abcdef012345" in body
+    assert "abcdef0123456789ffff" not in body
+    assert "approval_required" in body
+    # новее сверху
+    assert body.find("A-0002") < body.find("A-0001")
+    partial = dashboard_client.get("/partials/audit-rows")
+    assert partial.status_code == 200
+    assert "<title>" not in partial.text
+    assert "every 15s" not in partial.text
+
+
+def test_audit_empty_and_xss(dashboard_client, tmp_path: Path):
+    empty = dashboard_client.get("/audit")
+    assert empty.status_code == 200
+    assert "No audit entries." in empty.text
+    _seed_audit(tmp_path, action="<script>audit()</script>")
+    r = dashboard_client.get("/audit")
+    assert "<script>audit()</script>" not in r.text
+    assert "&lt;script&gt;" in r.text
+
+
+def test_plan_page_missing_and_present(dashboard_client, tmp_path: Path):
+    missing = dashboard_client.get("/plan")
+    assert missing.status_code == 200
+    assert "<title>Plan — Agentix</title>" in missing.text
+    assert missing.text.count("not present in this workdir.") == 2
+    assert 'hx-get="/partials/plan-body"' in missing.text
+    assert "load, every 20s, ws-refresh from:body" in missing.text
+    agent = tmp_path / ".agent"
+    agent.mkdir(parents=True, exist_ok=True)
+    (agent / "PLAN.md").write_text("Do {{title}}\n<script>x</script>\n", encoding="utf-8")
+    (agent / "TODO.md").write_text("- ship it\n", encoding="utf-8")
+    page = dashboard_client.get("/plan")
+    assert page.status_code == 200
+    html = page.text
+    assert "<title>Plan — Agentix</title>" in html
+    title_end = html.find("</title>")
+    assert "Do {{title}}" in html[title_end:]
+    assert "<script>x</script>" not in html
+    assert "&lt;script&gt;" in html
+    assert "- ship it" in html
+    assert "<pre" in html
+    assert "whitespace-pre-wrap" in html
+    partial = dashboard_client.get("/partials/plan-body")
+    assert partial.status_code == 200
+    assert "Do {{title}}" in partial.text
+    assert "<title>" not in partial.text
+
+
+def test_memory_page_missing_and_excerpt(dashboard_client, tmp_path: Path, monkeypatch):
+    from memory.dashboard import read_model
+    from memory.workspace import get_workspace_id
+
+    root = tmp_path / "memroot"
+    monkeypatch.setattr(read_model, "_memory_root", lambda: root)
+    missing = dashboard_client.get("/memory")
+    assert missing.status_code == 200
+    assert "<title>Memory — Agentix</title>" in missing.text
+    assert "no institutional memory file yet" in missing.text
+    assert "Institutional memory is off-workdir" in missing.text
+    assert "shared across worktrees" in missing.text
+    assert 'hx-get="/partials/memory-excerpt"' in missing.text
+    assert "load, every 30s, ws-refresh from:body" in missing.text
+    assert not root.exists()
+    root.mkdir()
+    wid = get_workspace_id(cwd=tmp_path)
+    (root / f"{wid}.md").write_text(
+        "hello {{title}}\n<script>mem()</script>\n", encoding="utf-8"
+    )
+    (root / "other-project.md").write_text("SECRET-OTHER", encoding="utf-8")
+    page = dashboard_client.get("/memory")
+    assert page.status_code == 200
+    html = page.text
+    title_end = html.find("</title>")
+    assert "hello {{title}}" in html[title_end:]
+    assert "<script>mem()</script>" not in html
+    assert "&lt;script&gt;" in html
+    assert "SECRET-OTHER" not in html
+    assert not any(p.name.endswith(".lock") for p in root.iterdir())
+    partial = dashboard_client.get("/partials/memory-excerpt")
+    assert partial.status_code == 200
+    assert "hello {{title}}" in partial.text
+    assert "<title>" not in partial.text
+
+
+def test_playbooks_audit_plan_memory_are_read_only(dashboard_client, tmp_path: Path, monkeypatch):
+    from memory.dashboard import read_model
+    from memory.workspace import get_workspace_id
+
+    _seed_playbooks(tmp_path)
+    _seed_audit(tmp_path)
+    agent = tmp_path / ".agent"
+    (agent / "PLAN.md").write_text("plan", encoding="utf-8")
+    (agent / "TODO.md").write_text("todo", encoding="utf-8")
+    _write_json(
+        agent / "HUB_INDEX.json",
+        {"version": "1.0", "generated_at": "t", "item_count": 1},
+    )
+    root = tmp_path / "memroot"
+    root.mkdir()
+    wid = get_workspace_id(cwd=tmp_path)
+    (root / f"{wid}.md").write_text("mem", encoding="utf-8")
+    monkeypatch.setattr(read_model, "_memory_root", lambda: root)
+    files = [p for p in tmp_path.rglob("*") if p.is_file()]
+    mtimes = {p: p.stat().st_mtime_ns for p in files}
+    snapshot = {p: p.read_bytes() for p in files}
+    for path in (
+        "/playbooks",
+        "/partials/playbooks-list",
+        "/partials/playbook/global-dev",
+        "/audit",
+        "/partials/audit-rows",
+        "/plan",
+        "/partials/plan-body",
+        "/memory",
+        "/partials/memory-excerpt",
+    ):
+        assert dashboard_client.get(path).status_code == 200
+    after = [p for p in tmp_path.rglob("*") if p.is_file()]
+    assert set(after) == set(files)
+    for p in files:
+        assert p.stat().st_mtime_ns == mtimes[p]
+        assert p.read_bytes() == snapshot[p]
+    assert not (tmp_path / ".agent" / "STOP").exists()
+
+
+def test_playbooks_does_not_export_hub(dashboard_client, tmp_path: Path):
+    _seed_playbooks(tmp_path)
+    hub = tmp_path / ".agent" / "HUB_INDEX.json"
+    assert not hub.exists()
+    assert dashboard_client.get("/playbooks").status_code == 200
+    assert not hub.exists()

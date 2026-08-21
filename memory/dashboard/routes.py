@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
-from memory.dashboard.read_model import DashboardStore
+from memory.dashboard.read_model import PLAYBOOK_ID_RE, DashboardStore
 from memory.dashboard.render import render_page, render_partial
 
 
@@ -126,6 +126,74 @@ def register_routes(app: FastAPI) -> None:
     async def ledger_rows(request: Request) -> HTMLResponse:
         store: DashboardStore = request.app.state.store
         return HTMLResponse(render_ledger_rows(store))
+
+    @app.get("/playbooks")
+    async def playbooks_page(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        html = render_page(
+            "playbooks.html",
+            **_chrome(request.app, title="Playbooks"),
+            playbooks_list_html=render_playbooks_list(store),
+        )
+        return HTMLResponse(html)
+
+    @app.get("/partials/playbooks-list")
+    async def playbooks_list(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        return HTMLResponse(render_playbooks_list(store))
+
+    @app.get("/partials/playbook/{playbook_id}")
+    async def playbook_one(request: Request, playbook_id: str) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        detail = store.playbook_detail(playbook_id)
+        if detail is None:
+            return HTMLResponse("not found", status_code=404)
+        return HTMLResponse(render_playbook_detail(detail))
+
+    @app.get("/audit")
+    async def audit_page(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        html = render_page(
+            "audit.html",
+            **_chrome(request.app, title="Audit"),
+            audit_rows_html=render_audit_rows(store),
+        )
+        return HTMLResponse(html)
+
+    @app.get("/partials/audit-rows")
+    async def audit_rows(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        return HTMLResponse(render_audit_rows(store))
+
+    @app.get("/plan")
+    async def plan_page(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        html = render_page(
+            "plan.html",
+            **_chrome(request.app, title="Plan"),
+            plan_body_html=render_plan_body(store),
+        )
+        return HTMLResponse(html)
+
+    @app.get("/partials/plan-body")
+    async def plan_body(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        return HTMLResponse(render_plan_body(store))
+
+    @app.get("/memory")
+    async def memory_page(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        html = render_page(
+            "memory.html",
+            **_chrome(request.app, title="Memory"),
+            memory_excerpt_html=render_memory_excerpt(store),
+        )
+        return HTMLResponse(html)
+
+    @app.get("/partials/memory-excerpt")
+    async def memory_excerpt(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        return HTMLResponse(render_memory_excerpt(store))
 
 
 def _chrome(app: FastAPI, title: str = "Loop") -> Dict[str, str]:
@@ -361,4 +429,176 @@ def render_ledger_rows(store: DashboardStore) -> str:
         avg_confidence=_str(summary.get("avg_confidence")),
         total_meta_applied=_str(summary.get("total_meta_applied")),
         rows_html=rows_html,
+    )
+
+
+_PLAYBOOK_COLS = (
+    "id",
+    "scope",
+    "name",
+    "bullet_count",
+    "avg_effectiveness",
+    "last_curated",
+    "install_path",
+)
+
+_AUDIT_COLS = (
+    "id",
+    "ts",
+    "action",
+    "role",
+    "cycle",
+    "approval_required",
+    "approved",
+    "signature",
+)
+
+
+def render_playbooks_list(store: DashboardStore) -> str:
+    items = store.playbooks()
+    hub = store.hub_index_header()
+    if hub:
+        hub_header_html = (
+            '<div class="text-xs text-zinc-400 mb-3" data-hub-header>'
+            f"version {escape(_str(hub.get('version')), quote=True)} · "
+            f"generated_at {escape(_str(hub.get('generated_at')), quote=True)} · "
+            f"item_count {escape(_str(hub.get('item_count')), quote=True)}"
+            "</div>"
+        )
+    else:
+        hub_header_html = ""
+    if not items:
+        rows_html = (
+            '<tr><td colspan="8" class="py-3 text-zinc-500">'
+            "No playbooks.</td></tr>"
+        )
+    else:
+        parts = []
+        for item in items:
+            cells = []
+            for col in _PLAYBOOK_COLS:
+                cells.append(
+                    f'<td class="py-1 pr-3 whitespace-nowrap">'
+                    f"{escape(_str(item.get(col)), quote=True)}</td>"
+                )
+            pid = _str(item.get("id"))
+            if PLAYBOOK_ID_RE.fullmatch(pid):
+                expand = (
+                    f'<button type="button" class="text-emerald-400 underline text-xs" '
+                    f'hx-get="/partials/playbook/{pid}" '
+                    f'hx-target="#pb-{pid}" hx-swap="innerHTML">expand</button>'
+                    f'<div id="pb-{pid}"></div>'
+                )
+            else:
+                expand = ""
+            cells.append(f'<td class="py-1 pr-3">{expand}</td>')
+            parts.append(
+                '<tr class="border-b border-zinc-800/80 align-top">'
+                + "".join(cells)
+                + "</tr>"
+            )
+        rows_html = "".join(parts)
+    return render_partial(
+        "playbooks_list.html",
+        hub_header_html=hub_header_html,
+        rows_html=rows_html,
+    )
+
+
+def render_playbook_detail(detail: Dict[str, Any]) -> str:
+    bullets = detail.get("bullets") or []
+    parts = []
+    for b in bullets:
+        if not isinstance(b, dict):
+            continue
+        bid = _str(b.get("id"))
+        content = _str(b.get("content"))
+        eff = b.get("effectiveness")
+        eff_s = _str(eff) if eff is not None else ""
+        parts.append(
+            "<li>"
+            f'<span class="text-zinc-500">{escape(bid, quote=True)}</span> '
+            f'<span class="text-zinc-400">({escape(eff_s, quote=True)})</span> '
+            f"{escape(content, quote=True)}"
+            "</li>"
+        )
+    bullets_html = (
+        "".join(parts) if parts else '<li class="text-zinc-500">No bullets.</li>'
+    )
+    return render_partial(
+        "playbook.html",
+        playbook_id=_str(detail.get("id")),
+        playbook_name=_str(detail.get("name")),
+        playbook_scope=_str(detail.get("scope")),
+        bullets_html=bullets_html,
+    )
+
+
+def render_audit_rows(store: DashboardStore) -> str:
+    entries = store.audit_entries()
+    if not entries:
+        rows_html = (
+            '<tr><td colspan="8" class="py-3 text-zinc-500">'
+            "No audit entries.</td></tr>"
+        )
+    else:
+        parts = []
+        for entry in reversed(entries):
+            cells = []
+            for col in _AUDIT_COLS:
+                val = entry.get(col)
+                if col in ("approval_required", "approved"):
+                    cell = _bool_label(val)
+                else:
+                    cell = _str(val) if val is not None else ""
+                cells.append(
+                    f'<td class="py-1 pr-3 whitespace-nowrap">'
+                    f"{escape(cell, quote=True)}</td>"
+                )
+            parts.append(
+                '<tr class="border-b border-zinc-800/80">' + "".join(cells) + "</tr>"
+            )
+        rows_html = "".join(parts)
+    return render_partial("audit_rows.html", rows_html=rows_html)
+
+
+def _md_block(title: str, text: Optional[str]) -> str:
+    heading = f'<h2 class="text-sm font-medium mb-2">{escape(title, quote=True)}</h2>'
+    if text is None:
+        body = (
+            '<p class="text-zinc-500 text-sm">not present in this workdir.</p>'
+        )
+    else:
+        body = (
+            '<pre class="whitespace-pre-wrap text-xs bg-zinc-900 border '
+            'border-zinc-800 rounded p-3 overflow-x-auto">'
+            f"{escape(text, quote=True)}</pre>"
+        )
+    return f'<div class="space-y-2">{heading}{body}</div>'
+
+
+def render_plan_body(store: DashboardStore) -> str:
+    return render_partial(
+        "plan_body.html",
+        plan_html=_md_block("PLAN.md", store.plan_text()),
+        todo_html=_md_block("TODO.md", store.todo_text()),
+    )
+
+
+def render_memory_excerpt(store: DashboardStore) -> str:
+    info = store.memory_excerpt()
+    if info.get("present"):
+        body_html = (
+            '<pre class="whitespace-pre-wrap text-xs bg-zinc-900 border '
+            'border-zinc-800 rounded p-3 overflow-x-auto">'
+            f"{escape(_str(info.get('excerpt')), quote=True)}</pre>"
+        )
+    else:
+        body_html = (
+            '<p class="text-zinc-500 text-sm">no institutional memory file yet</p>'
+        )
+    return render_partial(
+        "memory_excerpt.html",
+        workspace_id=_str(info.get("workspace_id")),
+        body_html=body_html,
     )

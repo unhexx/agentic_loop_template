@@ -1,0 +1,7 @@
+<section class="space-y-6">
+  <h1 class="text-2xl font-semibold tracking-tight">{{title}}</h1>
+  <div id="audit-rows"
+       hx-get="/partials/audit-rows"
+       hx-trigger="load, every 15s, ws-refresh from:body"
+       hx-swap="innerHTML">{{audit_rows_html}}</div>
+</section>

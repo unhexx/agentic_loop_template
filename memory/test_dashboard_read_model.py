@@ -594,3 +594,298 @@ def test_ledger_does_not_write(tmp_path: Path, cwd_guard):
     assert p.read_bytes() == before
     assert p.stat().st_mtime_ns == mtime
     assert not (tmp_path / ".agent" / "STOP").exists()
+
+
+def _seed_playbooks(tmp_path: Path, extra_bullet: str = "Always start with git.") -> None:
+    _write_json(
+        tmp_path / ".agent" / "PLAYBOOKS.json",
+        {
+            "playbooks": {
+                "global-dev": {
+                    "scope": "global",
+                    "name": "Global Dev",
+                    "bullets": [
+                        {
+                            "id": "b-0001",
+                            "content": extra_bullet,
+                            "effectiveness": 0.95,
+                        },
+                        {
+                            "id": "b-0002",
+                            "content": "see {{title}}",
+                            "effectiveness": 0.5,
+                        },
+                    ],
+                    "last_curated": "2026-08-21T12:00:00Z",
+                }
+            }
+        },
+    )
+
+
+def test_playbooks_shape_and_no_list_call(tmp_path: Path, monkeypatch, cwd_guard):
+    import memory.playbooks as pb
+
+    monkeypatch.setattr(
+        pb,
+        "list_playbooks",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("list_playbooks")),
+    )
+    monkeypatch.setattr(
+        pb,
+        "export_hub_index",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("export")),
+    )
+    _seed_playbooks(tmp_path)
+    items = DashboardStore(tmp_path).playbooks()
+    assert len(items) == 1
+    item = items[0]
+    assert item["id"] == "global-dev"
+    assert item["scope"] == "global"
+    assert item["name"] == "Global Dev"
+    assert item["bullet_count"] == 2
+    assert item["avg_effectiveness"] == 0.725
+    assert item["last_curated"] == "2026-08-21T12:00:00Z"
+    assert item["install_path"] == ".agent/PLAYBOOKS/global-dev.md"
+    assert Path.cwd() == cwd_guard
+
+
+def test_playbooks_explicit_paths_and_no_mkdir(tmp_path: Path, monkeypatch, cwd_guard):
+    cwd_wd = tmp_path / "cwd"
+    real_wd = tmp_path / "real"
+    _seed_playbooks(cwd_wd)
+    _write_json(
+        real_wd / ".agent" / "PLAYBOOKS.json",
+        {
+            "playbooks": {
+                "tool-git": {
+                    "scope": "tool:git",
+                    "name": "Git",
+                    "bullets": [{"id": "b-1", "effectiveness": 1.0}],
+                    "last_curated": "t",
+                }
+            }
+        },
+    )
+    monkeypatch.chdir(cwd_wd)
+    items = DashboardStore(real_wd).playbooks()
+    assert [i["id"] for i in items] == ["tool-git"]
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert DashboardStore(empty).playbooks() == []
+    assert DashboardStore(empty).hub_index_header() is None
+    assert not (empty / ".agent").exists()
+    assert Path.cwd() == cwd_wd
+
+
+def test_hub_index_header_reads_file_does_not_export(tmp_path: Path, cwd_guard):
+    _seed_playbooks(tmp_path)
+    store = DashboardStore(tmp_path)
+    assert store.hub_index_header() is None
+    hub = tmp_path / ".agent" / "HUB_INDEX.json"
+    _write_json(
+        hub,
+        {
+            "version": "1.0",
+            "generated_at": "2026-08-21T12:00:00Z",
+            "item_count": 4,
+        },
+    )
+    before = hub.read_bytes()
+    mtime = hub.stat().st_mtime_ns
+    header = store.hub_index_header()
+    assert header == {
+        "version": "1.0",
+        "generated_at": "2026-08-21T12:00:00Z",
+        "item_count": 4,
+    }
+    assert hub.read_bytes() == before
+    assert hub.stat().st_mtime_ns == mtime
+
+
+def test_playbook_detail_allowlist(tmp_path: Path, cwd_guard):
+    _seed_playbooks(tmp_path)
+    store = DashboardStore(tmp_path)
+    ok = store.playbook_detail("global-dev")
+    assert ok is not None
+    assert ok["id"] == "global-dev"
+    assert len(ok["bullets"]) == 2
+    assert ok["bullets"][1]["content"] == "see {{title}}"
+    assert store.playbook_detail("missing-id") is None
+    assert store.playbook_detail("../etc/passwd") is None
+    assert store.playbook_detail("foo/bar") is None
+    assert store.playbook_detail("") is None
+    assert store.playbook_detail("global-dev.md") is None
+
+
+def test_playbooks_torn_uses_last_good(tmp_path: Path, monkeypatch, cwd_guard):
+    monkeypatch.setattr(read_model, "TORN_RETRY_S", 0)
+    _seed_playbooks(tmp_path)
+    store = DashboardStore(tmp_path)
+    assert store.playbooks()[0]["id"] == "global-dev"
+    (tmp_path / ".agent" / "PLAYBOOKS.json").write_text("{", encoding="utf-8")
+    assert store.playbooks()[0]["id"] == "global-dev"
+    assert store.playbook_detail("global-dev")["id"] == "global-dev"
+
+
+def test_audit_entries_last_50_signature_cut(tmp_path: Path, cwd_guard):
+    entries = []
+    for i in range(55):
+        entries.append(
+            {
+                "id": f"A-{i:04d}",
+                "ts": f"2026-08-21T12:00:{i:02d}Z",
+                "action": "git.sync",
+                "role": "Coder",
+                "cycle": i,
+                "approval_required": False,
+                "approved": True,
+                "signature": "abcdef0123456789ffff",
+            }
+        )
+    _write_json(tmp_path / ".agent" / "AUDIT_LOG.json", {"entries": entries})
+    got = DashboardStore(tmp_path).audit_entries()
+    assert len(got) == 50
+    assert got[0]["id"] == "A-0005"
+    assert got[-1]["id"] == "A-0054"
+    assert got[0]["signature"] == "abcdef012345"
+    assert len(got[0]["signature"]) == 12
+    assert Path.cwd() == cwd_guard
+
+
+def test_audit_explicit_paths_empty_no_mkdir(tmp_path: Path, monkeypatch, cwd_guard):
+    cwd_wd = tmp_path / "cwd"
+    real_wd = tmp_path / "real"
+    _write_json(
+        cwd_wd / ".agent" / "AUDIT_LOG.json",
+        {"entries": [{"id": "A-cwd", "signature": "x" * 20}]},
+    )
+    _write_json(
+        real_wd / ".agent" / "AUDIT_LOG.json",
+        {"entries": [{"id": "A-real", "signature": "y" * 20}]},
+    )
+    monkeypatch.chdir(cwd_wd)
+    got = DashboardStore(real_wd).audit_entries()
+    assert [e["id"] for e in got] == ["A-real"]
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert DashboardStore(empty).audit_entries() == []
+    assert not (empty / ".agent").exists()
+    assert Path.cwd() == cwd_wd
+
+
+def test_audit_torn_uses_last_good(tmp_path: Path, monkeypatch, cwd_guard):
+    monkeypatch.setattr(read_model, "TORN_RETRY_S", 0)
+    _write_json(
+        tmp_path / ".agent" / "AUDIT_LOG.json",
+        {"entries": [{"id": "A-0001", "action": "stop", "signature": "sigsigsigsigxx"}]},
+    )
+    store = DashboardStore(tmp_path)
+    assert store.audit_entries()[0]["id"] == "A-0001"
+    (tmp_path / ".agent" / "AUDIT_LOG.json").write_text("{", encoding="utf-8")
+    got = store.audit_entries()
+    assert got[0]["id"] == "A-0001"
+    assert got[0]["signature"] == "sigsigsigsig"
+
+
+def test_plan_and_todo_read_or_missing(tmp_path: Path, cwd_guard):
+    store = DashboardStore(tmp_path)
+    assert store.plan_text() is None
+    assert store.todo_text() is None
+    assert not (tmp_path / ".agent").exists()
+    agent = tmp_path / ".agent"
+    agent.mkdir()
+    (agent / "PLAN.md").write_text("Do {{title}}\n", encoding="utf-8")
+    (agent / "TODO.md").write_text("- task\n", encoding="utf-8")
+    assert "Do {{title}}" in store.plan_text()
+    assert store.todo_text() == "- task\n"
+    assert Path.cwd() == cwd_guard
+
+
+def test_plan_explicit_paths(tmp_path: Path, monkeypatch, cwd_guard):
+    cwd_wd = tmp_path / "cwd"
+    real_wd = tmp_path / "real"
+    (cwd_wd / ".agent").mkdir(parents=True)
+    (real_wd / ".agent").mkdir(parents=True)
+    (cwd_wd / ".agent" / "PLAN.md").write_text("cwd-plan", encoding="utf-8")
+    (real_wd / ".agent" / "PLAN.md").write_text("real-plan", encoding="utf-8")
+    monkeypatch.chdir(cwd_wd)
+    assert DashboardStore(real_wd).plan_text() == "real-plan"
+    assert Path.cwd() == cwd_wd
+
+
+def test_memory_excerpt_missing_does_not_mkdir(tmp_path: Path, monkeypatch, cwd_guard):
+    import memory.workspace as ws
+
+    root = tmp_path / "memroot"
+    monkeypatch.setattr(read_model, "_memory_root", lambda: root)
+    monkeypatch.setattr(
+        ws,
+        "memory_paths",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("memory_paths")),
+    )
+    info = DashboardStore(tmp_path).memory_excerpt()
+    assert info["present"] is False
+    assert info["excerpt"] == ""
+    assert info["workspace_id"]
+    assert not root.exists()
+    assert Path.cwd() == cwd_guard
+
+
+def test_memory_excerpt_caps_and_skips_siblings(tmp_path: Path, monkeypatch, cwd_guard):
+    from memory.workspace import get_workspace_id
+
+    root = tmp_path / "memroot"
+    root.mkdir()
+    wid = get_workspace_id(cwd=tmp_path)
+    lines = [f"line-{i} see {{{{title}}}}" for i in range(100)]
+    (root / f"{wid}.md").write_text("\n".join(lines), encoding="utf-8")
+    (root / "other-project.md").write_text("SECRET-OTHER", encoding="utf-8")
+    monkeypatch.setattr(read_model, "_memory_root", lambda: root)
+    info = DashboardStore(tmp_path).memory_excerpt()
+    assert info["present"] is True
+    assert info["truncated"] is True
+    got_lines = info["excerpt"].splitlines()
+    assert len(got_lines) == 80
+    assert got_lines[0].startswith("line-0")
+    assert got_lines[-1].startswith("line-79")
+    assert "see {{title}}" in info["excerpt"]
+    assert "SECRET-OTHER" not in info["excerpt"]
+    assert "line-80" not in info["excerpt"]
+
+
+def test_memory_excerpt_8kib_cap(tmp_path: Path, monkeypatch, cwd_guard):
+    from memory.workspace import get_workspace_id
+
+    root = tmp_path / "memroot"
+    root.mkdir()
+    wid = get_workspace_id(cwd=tmp_path)
+    payload = "H" * 9000
+    (root / f"{wid}.md").write_text(payload, encoding="utf-8")
+    monkeypatch.setattr(read_model, "_memory_root", lambda: root)
+    info = DashboardStore(tmp_path).memory_excerpt()
+    assert info["present"] is True
+    assert info["truncated"] is True
+    assert len(info["excerpt"].encode("utf-8")) <= read_model.MEMORY_EXCERPT_BYTES
+    assert info["excerpt"] == "H" * read_model.MEMORY_EXCERPT_BYTES
+
+
+def test_memory_does_not_list_parent(tmp_path: Path, monkeypatch, cwd_guard):
+    from memory.workspace import get_workspace_id
+
+    root = tmp_path / "memroot"
+    root.mkdir()
+    wid = get_workspace_id(cwd=tmp_path)
+    (root / f"{wid}.md").write_text("mine", encoding="utf-8")
+    monkeypatch.setattr(read_model, "_memory_root", lambda: root)
+    real_iterdir = Path.iterdir
+
+    def guarded(self):
+        if Path(self).resolve() == root.resolve():
+            raise AssertionError("must not list memory parent")
+        return real_iterdir(self)
+
+    monkeypatch.setattr(Path, "iterdir", guarded)
+    info = DashboardStore(tmp_path).memory_excerpt()
+    assert info["excerpt"] == "mine"
+    assert Path.cwd() == cwd_guard

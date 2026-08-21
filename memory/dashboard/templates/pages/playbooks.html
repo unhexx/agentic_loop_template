@@ -1,0 +1,7 @@
+<section class="space-y-6">
+  <h1 class="text-2xl font-semibold tracking-tight">{{title}}</h1>
+  <div id="playbooks-list"
+       hx-get="/partials/playbooks-list"
+       hx-trigger="load, every 20s, ws-refresh from:body"
+       hx-swap="innerHTML">{{playbooks_list_html}}</div>
+</section>

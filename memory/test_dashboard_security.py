@@ -86,3 +86,15 @@ def test_serve_rejects_non_loopback_bind(tmp_path: Path):
         assert "0.0.0.0" in msg
         return
     raise AssertionError("expected BindError")
+
+
+def test_playbook_partial_rejects_traversal(dashboard_client):
+    for path in (
+        "/partials/playbook/%2e%2e%2fetc%2fpasswd",
+        "/partials/playbook/%2e%2e%2fPLAYBOOKS",
+        "/partials/playbook/..%2fLOOP_STATE.json",
+        "/partials/playbook/%3Cscript%3E",
+    ):
+        r = dashboard_client.get(path)
+        assert r.status_code == 404
+        assert "<script>" not in r.text
