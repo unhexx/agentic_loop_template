@@ -20,6 +20,10 @@ python -m memory.questions_collector list
 
 # Meta harvest after high-quality DONE
 python -m memory.meta_harvester harvest --handoff .agent/last_handoff.json --cycle N --outcome DONE
+
+# Request proxy (live adapters; mock skips)
+python -m memory.proxy health
+python -m memory.proxy stats --json
 ```
 
 When nested as `agentic_loop_template/` in a product repo:

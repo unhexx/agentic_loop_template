@@ -43,7 +43,7 @@ source .venv/bin/activate
 # paste ../agentic_loop_template/prompts/short_orchestrator_prompt.md
 ```
 
-`Agent-Init.consumer.sh` will `ln -s ../agentic_loop_template` and export `PYTHONPATH` so `python -m memory` comes from SSOT.
+`Agent-Init.consumer.sh` will `ln -s ../agentic_loop_template` and export `PYTHONPATH` so `python -m memory` comes from SSOT. Live Grok CLI traffic goes through the Agentix gateway (`http://127.0.0.1:8110/v1`) which fronts host pxpipe. Mock stays proxy-free. Opt out: `AGENTIX_PROXY=0`. See [docs/proxy.md](../../docs/proxy.md).
 
 ---
 

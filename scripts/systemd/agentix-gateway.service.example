@@ -1,0 +1,20 @@
+[Unit]
+Description=Agentix request gateway (loopback :8110 → host pxpipe :8100)
+Documentation=https://github.com/unhexx/agentic_loop_template
+After=network-online.target pxpipe.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# %h — домашний каталог. Подставьте путь к клону шаблона.
+WorkingDirectory=%h/work/agentic_loop_template
+ExecStart=%h/work/agentic_loop_template/.venv/bin/python -m memory.proxy serve --host 127.0.0.1 --port 8110
+Restart=on-failure
+RestartSec=2
+Environment=HOST=127.0.0.1
+Environment=PYTHONUNBUFFERED=1
+# Корень проекта не задаём: кэш остаётся выключенным у host-wide юнита.
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

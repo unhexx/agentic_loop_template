@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Agent-Init.sh — cross-platform Agentix bootstrap (3.6.x)
+# Agent-Init.sh — cross-platform Agentix bootstrap (3.7.x)
 # Usage: bash Agent-Init.sh [--wizard] [--quiet] [--output-file PATH]
 set -euo pipefail
 
@@ -37,6 +37,10 @@ python -m pip install -q pyyaml pytest jsonschema 2>/dev/null || true
 
 export PYTHONPATH="${ROOT}${PYTHONPATH:+:$PYTHONPATH}"
 
+python -m memory.proxy install-venv >/dev/null 2>&1 || python -m memory.proxy install-venv || true
+# shellcheck disable=SC1091
+source .venv/bin/activate
+
 mkdir -p .agent
 if [[ ! -f .agent/project_config.json && -f .agent/project_config.example.json ]]; then
   cp .agent/project_config.example.json .agent/project_config.json
@@ -46,6 +50,7 @@ fi
 python -m memory state init 2>/dev/null || true
 python -m memory state compact >/dev/null 2>&1 || true
 python -m memory.experience_harvester seed-defaults --apply >/dev/null 2>&1 || true
+python -m memory.knowledge ingest-if-empty --root docs --budget 800 >/dev/null 2>&1 || true
 
 chmod +x tools/select.py scripts/*.sh Agent-Init.sh 2>/dev/null || true
 
@@ -88,14 +93,35 @@ else
   log "Tip: bash Agent-Init.sh --wizard for interactive setup"
 fi
 
+INIT_FE=""
+if [[ "$WIZARD" == true ]]; then
+  case "${FRONTEND_CHOICE:-1}" in
+    2) INIT_FE="cursor" ;;
+    3) INIT_FE="claude" ;;
+    4) INIT_FE="blackbox" ;;
+    *) INIT_FE="grok" ;;
+  esac
+fi
+if [[ -n "$INIT_FE" ]]; then
+  if ! python -m memory.proxy health --init --frontend "$INIT_FE"; then
+    echo "AGENT_INIT: pxpipe required for frontend=$INIT_FE (or export AGENTIX_PROXY=0)" >&2
+    echo "  systemctl --user enable --now pxpipe.service" >&2
+    echo "  template: scripts/systemd/pxpipe.service.example" >&2
+    exit 1
+  fi
+else
+  python -m memory.proxy health --init >/dev/null 2>&1 || true
+fi
+
 PROMPT_PATH="${OUT_PROMPT:-$ROOT/.agent/starter_prompt_grok.txt}"
 cat > "$PROMPT_PATH" <<EOP
 You are running the Agentic Development Loop (template $VERSION).
 
-Cold-start (first, max 3 tool calls):
-1. \`python -m memory state snapshot --window 3\`
-2. \`python -m memory query --top 5 --category "Common Failure Patterns"\`
-3. \`python tools/select.py --intent bootstrap\` (or git|test|memory|state)
+Cold-start (first, max 4 tool calls):
+1. \`python -m memory.proxy health\`
+2. \`python -m memory state snapshot --window 3\`
+3. \`python -m memory query --top 5 --category "Common Failure Patterns"\`
+4. \`python -m memory.knowledge query --q "cycle" --top 3\` (or \`python tools/select.py --intent bootstrap\`)
 
 Then act as **Orchestrator**:
 - prompts/short_orchestrator_prompt.md; .agent/PLAN.md + TODO if present
@@ -110,7 +136,7 @@ EOP
 
 log "starter_prompt=$PROMPT_PATH"
 log "template_version=$VERSION workspace_id=$WID"
-python -m memory.context_budget cold-start --budget 16000 2>/dev/null || true
+python -m memory.context_budget cold-start --budget 16000 --compress 2>/dev/null || true
 
 log "Use: python -m memory.playbooks select ... | python -m memory state snapshot"
 log "Git: scripts/preflight_git.sh; multi-repo §11 when STRICT_MULTI_REPO=1"

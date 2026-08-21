@@ -607,6 +607,62 @@ def dedupe(patterns: List[Dict[str, str]]) -> List[Dict[str, str]]:
     return out
 
 
+def looks_like_project_parent(parent: Path) -> bool:
+    """Родитель похож на _PROJECT: шаблон + хотя бы один соседний продукт."""
+    parent = Path(parent)
+    if not parent.is_dir():
+        return False
+    if parent.name == "_PROJECT":
+        return True
+    try:
+        children = [
+            p for p in parent.iterdir() if p.is_dir() and not p.name.startswith(".")
+        ]
+    except OSError:
+        return False
+    if len(children) < 2:
+        return False
+    names = {p.name for p in children}
+    has_template = "agentic_loop_template" in names or any(
+        (p / "memory" / "supervisor.py").is_file() for p in children
+    )
+    has_product = any(
+        (p / "AGENTS.md").is_file() or (p / "TASK_SPECIFICATION.md").is_file()
+        for p in children
+        if p.name != "agentic_loop_template"
+    )
+    return bool(has_template and has_product)
+
+
+def maybe_cycle_on_done(workdir: Path, apply: bool = False) -> Optional[Dict[str, Any]]:
+    """
+    После DONE ревьюера: dry-run cycle по родителю, если рядом sibling-layout.
+    apply=False по умолчанию — не пишем память из авто-хука.
+    """
+    workdir = Path(workdir).resolve()
+    parent = workdir.parent
+    if not looks_like_project_parent(parent):
+        return None
+    scanned = scan_parent(parent)
+    report = audit_parent(parent)
+    rows = dedupe(scanned + patterns_from_audit(report))
+    payload: Dict[str, Any] = {
+        "parent": str(parent),
+        "dry_run": not apply,
+        "pattern_count": len(rows),
+        "issue_count": report.get("issue_count"),
+        "projects": [
+            {"project": p["project"], "tier": p["tier"]}
+            for p in report.get("projects", [])
+        ],
+    }
+    if apply:
+        payload["applied"] = apply_patterns(rows)
+    else:
+        payload["sample"] = rows[:10]
+    return payload
+
+
 def apply_patterns(patterns: List[Dict[str, str]]) -> Dict[str, Any]:
     clean = dedupe(patterns)
     if not clean:

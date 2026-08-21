@@ -37,6 +37,10 @@ def _cli() -> None:
         from .knowledge import cli as knowledge_cli
 
         raise SystemExit(knowledge_cli(sys.argv[2:]))
+    if len(sys.argv) > 1 and sys.argv[1] == "proxy":
+        from .proxy.__main__ import cli as proxy_cli
+
+        raise SystemExit(proxy_cli(sys.argv[2:]))
 
     parser = argparse.ArgumentParser(description="Agentic Loop structured memory")
     sub = parser.add_subparsers(dest="cmd", required=True)

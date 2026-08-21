@@ -1,6 +1,6 @@
 # Agentix
 
-[![Version](https://img.shields.io/badge/version-3.6.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.7.0-blue?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](docs/getting-started.md)
 [![Platform](https://img.shields.io/badge/platform-Linux_%7C_macOS_%7C_Windows-lightgrey?style=flat-square)](docs/cross-platform.md)
@@ -243,6 +243,8 @@ python -m memory.playbooks export --format hub
 | `python -m memory.context_budget check --files … --compress` | Token budget gate; compress if over (no rewrite) |
 | `python -m memory.compressor files --budget 12000 …` | Rule-based distillation (priority drop + head/tail) |
 | `python -m memory.knowledge query --q "…" --category playbook` | Local SQLite knowledge (ingest-docs / upsert / stats) |
+| `python -m memory.proxy health\|serve\|stats` | Request proxy: pxpipe front, gateway `:8110`, token stats |
+| `python -m memory.meta_harvester export-sft` | Local SFT JSONL from golden DONE trajectories (no GPU) |
 
 Supervisor drives O→C→T→R turns, validates handoffs, and on `PR_READY` opens a PR via `gh pr create` (never merges to `main`). Use `--no-pr` for local/CI dry runs. Config lives under `supervisor` in `.agent/project_config.json` (see `project_config.example.json`).
 
@@ -256,7 +258,7 @@ Full memory layer docs: [`memory/README.md`](memory/README.md).
 |----------|------------|
 | **Loop discipline** | 5 roles, JSON handoffs, INVEST tasks, git §11 sync |
 | **Self-improvement** | Playbooks (ACE scoring), meta-harvester, performance ledger, [skills](skills/README.md) |
-| **Context** | Bounded LOOP_STATE, `context_budget` gate, rule-based compressor, local SQLite knowledge |
+| **Context** | Bounded LOOP_STATE, `context_budget` gate, rule-based compressor, local SQLite knowledge, [request proxy](docs/proxy.md) (pxpipe + Agentix gateway) |
 | **Cross-platform** | `Agent-Init.ps1` + `Agent-Init.sh`, platform-adaptive prompts |
 | **Multi-frontend** | Grok (default), Cursor, Claude Code, Blackbox adapters |
 | **Experience harvest** | Scan sibling `AGENTS.md` / playbooks; `audit` + `cycle` self-improve |
@@ -275,6 +277,7 @@ Full memory layer docs: [`memory/README.md`](memory/README.md).
 | [docs/architecture.md](docs/architecture.md) | Roles, handoffs, memory |
 | [docs/multi-frontend.md](docs/multi-frontend.md) | Cursor / Claude / Blackbox |
 | [docs/metrics-roi.md](docs/metrics-roi.md) | Proof from 50+ dogfood cycles |
+| [docs/proxy.md](docs/proxy.md) | Default request proxy, SLOs, opt-out |
 | [docs/hub/README.md](docs/hub/README.md) | Playbook marketplace |
 | [docs/enterprise-governance.md](docs/enterprise-governance.md) | Policy + audit |
 | [docs/case-study.md](docs/case-study.md) | Dogfood case study |

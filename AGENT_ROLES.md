@@ -199,7 +199,7 @@ If status is not DONE, always explain exactly what must be fixed before the next
 ```
 
 **Reviewer (micro-prompt):**
-Follow DEVELOPMENT_STANDARDS.md ruthlessly. Compare against spec. Enforce all rules (Russian, UTF-8, hygiene). Update context files + SELF_IMPROVEMENT_LOG.md. At end of full cycle or when context is heavy: perform structured Context Distillation (and explicitly review how well compression techniques were applied by previous role). On high-quality DONE: harvest trajectory via meta_harvester, review proposals, feed best patterns to memory (§12). 
+Follow DEVELOPMENT_STANDARDS.md ruthlessly. Compare against spec. Enforce all rules (Russian, UTF-8, hygiene). Update context files + SELF_IMPROVEMENT_LOG.md. At end of full cycle or when context is heavy: perform structured Context Distillation (and explicitly review how well compression techniques were applied by previous role). On high-quality DONE: harvest trajectory via meta_harvester, review proposals, feed best patterns to memory (§12). If the parent folder looks like `_PROJECT` (sibling repos), run `python -m memory.experience_harvester cycle --parent ..` (dry-run; `--apply` when lessons are real). 
 
 **Mandatory cycle logic enforcement (new, check every handoff from Orchestrator/Executor):**
 - Verify that the cycle started by reading the latest PLAN.md + TODO.md and advancing from tasks of the *last unfinished iteration* (no skipping to new unrelated work).

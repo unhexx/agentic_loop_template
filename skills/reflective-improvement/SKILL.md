@@ -51,7 +51,8 @@ version: 1.1.0
 
 5. **Close the loop**
    - On DONE: Reviewer MUST run this skill (or equivalent meta_harvester harvest + reflect).
-   - If the session spanned `../_PROJECT/*`, apply `experience_harvester cycle --parent ..` and record `memory_updated`.
+   - If the session spanned `../_PROJECT/*`, apply `experience_harvester cycle --parent ..` and record `memory_updated`. Supervisor also calls `maybe_cycle_on_done` (dry-run) after Reviewer DONE.
+   - High-quality DONE: `python -m memory.meta_harvester export-sft` → `.agent/sft/train.jsonl` (gitignored, export only, no GPU).
    - Suggest decomposition into `.agent/TODO.md` / PLAN.
 
 ## Trigger Phrases

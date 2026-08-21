@@ -1,10 +1,10 @@
 # Agentix Public Roadmap
 
-[![Version](https://img.shields.io/badge/version-3.6.0-blue?style=flat-square)](CHANGELOG.md)
-[![Main README](https://img.shields.io/badge/Main-README-blue)](README.md)
-[![Docs](https://img.shields.io/badge/docs-available-brightgreen)](docs/README.md)
+[![Version](https://img.shields.io/badge/version-3.7.0-blue?style=flat-square)](CHANGELOG.md)
+[![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](README.md)
+[![Docs](https://img.shields.io/badge/docs-available-brightgreen?style=flat-square)](docs/README.md)
 
-**Status Date:** 2026-08-20 · **Initiative:** Business Efficiency — **COMPLETE** · **v3.6 harvest cycle**
+**Status Date:** 2026-08-21 · **Initiative:** Business Efficiency — **COMPLETE** · **v3.7 request proxy**
 
 ---
 
@@ -34,6 +34,7 @@
 
 | Version | Highlight |
 |---------|-----------|
+| **v3.7.0** | Default request proxy (Agentix gateway `:8110` fronts host pxpipe), fidelity sidecar, FTS5, honest token SLOs |
 | **v3.6.0** | Skills + rule compressor + knowledge store + cross-project experience harvest (`audit`/`cycle`) |
 | **v3.5.0** | Supervisor CLI, multi-frontend adapters, mock CI cycle |
 | **v3.4.0** | P5–P7 complete, initiative closed |

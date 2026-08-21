@@ -2,6 +2,51 @@
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-08-21
+
+### Added (request proxy policy — wrap host pxpipe)
+- `memory/proxy`: config + policy + health (stdlib). `python -m memory.proxy health|install-venv|install-host`
+- Fail-closed `proxy.mode=required` for live adapters (`grok` / HTTP). Mock and CI stay proxy-free.
+- Explicit opt-out: `AGENTIX_PROXY=0` or `proxy.mode=off`. `preferred` is an escape hatch, not the example-config default.
+- `GrokAdapter` probes pxpipe (`127.0.0.1:8100`) before `grok -p`; unhealthy + required → BLOCKED, no silent public upstream.
+- Init writes `GROK_CLI_CHAT_PROXY_BASE_URL` into `.venv/bin/activate` (marker `# agentix-proxy`). Does **not** rewrite `~/.grok/config.toml` (opt-in `install-host`).
+- Example config `proxy` section; systemd unit template `scripts/systemd/pxpipe.service.example`.
+- Tests: `python -m memory.test_proxy` (mode matrix, mock skip, fake TCP). No live pxpipe required.
+
+### Changed
+- Existing clones without a `proxy` key are treated as `mode=required` once this code ships; mock adapter still skips the probe. Set `AGENTIX_PROXY=0` if a Grok clone has no pxpipe yet.
+
+### Added (default distillation / knowledge rituals)
+- Supervisor `build_role_prompt` injects a bounded knowledge block (top 3, ≤800 tokens) when the SQLite store is seeded; over-budget prompts run the rule compressor (`compress_when_over`).
+- Init: `knowledge ingest-if-empty` + `context_budget cold-start --compress`. Reviewer DONE harvest when parent looks like `_PROJECT` is the documented default path.
+- Tests: knowledge block when DB seeded; `ingest_if_empty` helper.
+
+### Added (Agentix gateway fronts pxpipe)
+- stdlib reverse proxy `python -m memory.proxy serve` on `127.0.0.1:8110` → pxpipe `:8100`. Streaming copy, JSONL audit, exact-hash cache when `AGENTIX_PROJECT_ROOT` / `X-Agentix-Root` is set.
+- Fail-closed if pxpipe is down and `mode=required` — no silent public upstream.
+- Init venv export now `GROK_CLI_CHAT_PROXY_BASE_URL=http://127.0.0.1:8110/v1`.
+- `scripts/agentix-proxy.sh`, `scripts/systemd/agentix-gateway.service.example`.
+- Tests: chunked SSE fake upstream, `/v1/responses` round-trip, `/healthz`, header redaction.
+
+### Added (identifier fidelity + knowledge FTS5)
+- Gateway extracts SHA/UUID/workspace ids into a native-text `FIDELITY` sidecar before pxpipe imaging. Compressor still does not rewrite source files.
+- `memory.knowledge query` uses FTS5 MATCH with LIKE fallback. `sqlite-vec` remains disabled.
+- Tests: golden SHA/UUID survive distill.
+
+### Added (token stats, SLOs, consumer path)
+- `python -m memory.proxy stats` merges pxpipe `stats --json`, project JSONL, last compressor report.
+- CI runs `python -m memory.test_proxy`. Docs: `docs/proxy.md`. VERSION **3.7.0**.
+- Optional handoff `proxy_stats`. Raw-token % remains **unslod** until pxpipe `count_tokens` probes > 0 (`measured_saved_pct` is null on this host).
+
+### Changed
+- `VERSION` → 3.7.0
+- README / ROADMAP / consumer-starter: default live path is gateway `:8110` → pxpipe `:8100`.
+- CI: `test_grok_adapter_calls_assert_ready` stubs `shutil.which` / `subprocess.run` so GitHub runners without `grok` on PATH stay green.
+
+### Added (continual-learning export)
+- `python -m memory.meta_harvester export-sft` writes `.agent/sft/train.jsonl` (gitignored, no GPU).
+- `experience_harvester.maybe_cycle_on_done` runs a dry-run parent harvest after Reviewer DONE when `../` looks like `_PROJECT`.
+
 ## [3.6.0] - 2026-08-20
 
 ### Added (cross-project experience harvest — 2026-08-20 self-improve)

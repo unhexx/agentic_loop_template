@@ -1,7 +1,7 @@
 # Agentix Documentation
 
-[![Version](https://img.shields.io/badge/version-3.4.0-blue.svg)](../CHANGELOG.md)
-[![Main README](https://img.shields.io/badge/Main-README-blue)](../README.md)
+[![Version](https://img.shields.io/badge/version-3.7.0-blue?style=flat-square)](../CHANGELOG.md)
+[![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](../README.md)
 
 Canonical documentation for the Agentix agentic development loop template.
 
@@ -44,6 +44,7 @@ Canonical documentation for the Agentix agentic development loop template.
 | [Multi-Frontend](multi-frontend.md) | Agent UI adapters |
 | [Architecture](architecture.md) | Loop, memory, handoffs |
 | [Metrics & ROI](metrics-roi.md) | Performance ledger proof |
+| [Request proxy](proxy.md) | Default pxpipe gateway, SLOs, opt-out |
 | [Hub](hub/README.md) | Marketplace foundation |
 | [Hub Discovery](hub/discovery.md) | Install playbooks |
 | [Hub API Schema](hub/api-schema.json) | Web-ready JSON schema |

@@ -52,6 +52,40 @@ def test_fsm_blocked():
 from memory.supervisor import build_role_prompt, load_config, load_last_handoff, save_handoff
 
 
+def test_build_role_prompt_includes_knowledge_when_db_seeded(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "prompts").mkdir()
+    (tmp_path / "prompts" / "short_coder_prompt.md").write_text(
+        "# Coder\nDo code.\n", encoding="utf-8"
+    )
+    (tmp_path / ".agent").mkdir()
+    from memory.knowledge import db_path, upsert
+
+    db = db_path(cwd=tmp_path)
+    upsert(
+        source="docs/git.md",
+        title="Git preflight",
+        content="Always run preflight_git.sh before worktree sync.",
+        category="playbook",
+        db=db,
+        provenance="test",
+    )
+    prompt = build_role_prompt(
+        "Coder",
+        handoff_in={"summary": "git preflight before sync"},
+        workdir=tmp_path,
+    )
+    assert "Local knowledge" in prompt
+    assert "Git preflight" in prompt
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    (empty / "prompts").mkdir()
+    (empty / "prompts" / "short_coder_prompt.md").write_text("# Coder\n", encoding="utf-8")
+    (empty / ".agent").mkdir()
+    bare = build_role_prompt("Coder", handoff_in=None, workdir=empty)
+    assert "Local knowledge" not in bare
+
+
 def test_build_role_prompt_mentions_role_and_snapshot(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "prompts").mkdir()
