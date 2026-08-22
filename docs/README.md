@@ -73,4 +73,4 @@ Canonical documentation for the Agentix agentic development loop template.
 
 ## Version
 
-Aligned with **Agentix 3.8.0** (2026-08-22). Business Efficiency Initiative (P0–P7) complete.
+Aligned with **Agentix 3.8.0** (2026-08-22). Business Efficiency Initiative (P0–P7) complete. Control Plane (`memory.dashboard`) ships as operator HTMX UI on loopback `:8112`.
