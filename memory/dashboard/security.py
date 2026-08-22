@@ -5,7 +5,8 @@ Host и peer только loopback: 127/8 и ::1 через ipaddress.
 Prefix 127. не используем — иначе 127.0.0.1.nip.io прошёл бы как свой.
 
 CSRF — синхронизатор: cookie HttpOnly + тот же токен в hx-headers.
-DASHBOARD_TOKEN: заголовок / Bearer / cookie / ?token=, пустой — проверка выключена.
+DASHBOARD_TOKEN: заголовок / Bearer / ?token= / cookie; пустой — проверка выключена.
+Явная презентация (?token=, заголовок, Bearer) бьёт протухший cookie.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from __future__ import annotations
 import hmac
 import ipaddress
 import secrets
-from typing import Any, Mapping, Optional
+from typing import Any, AsyncIterator, Mapping, Optional
 from urllib.parse import urlparse
 
 
@@ -103,7 +104,11 @@ def extract_token(
     cookies: Optional[Mapping[str, str]] = None,
     query_params: Optional[Mapping[str, str]] = None,
 ) -> Optional[str]:
-    """X-API-Token → Bearer → cookie agentix_token → ?token=."""
+    """X-API-Token → Bearer → ?token= → cookie agentix_token.
+
+    Заголовок, Bearer и query важнее cookie: ``/?token=new`` перебивает
+    протухший ``agentix_token`` после ротации.
+    """
     x = headers.get("x-api-token") if headers is not None else None
     if x:
         s = str(x).strip()
@@ -114,16 +119,16 @@ def extract_token(
         s = auth[7:].strip()
         if s:
             return s
-    if cookies is not None:
-        cookie = cookies.get(TOKEN_COOKIE)
-        if cookie:
-            s = str(cookie).strip()
-            if s:
-                return s
     if query_params is not None:
         q = query_params.get("token")
         if q:
             s = str(q).strip()
+            if s:
+                return s
+    if cookies is not None:
+        cookie = cookies.get(TOKEN_COOKIE)
+        if cookie:
+            s = str(cookie).strip()
             if s:
                 return s
     return None
@@ -171,3 +176,20 @@ def content_length_too_large(headers: Mapping[str, str], limit: int = MAX_BODY_B
         return int(raw) > limit
     except (TypeError, ValueError):
         return False
+
+
+async def consume_capped(
+    stream: AsyncIterator[bytes],
+    limit: int = MAX_BODY_BYTES,
+) -> Optional[bytes]:
+    """Читает поток чанками. None — сумма превысила limit (не больше limit+хвост чанка в RAM)."""
+    chunks: list[bytes] = []
+    n = 0
+    async for chunk in stream:
+        if not chunk:
+            continue
+        if n + len(chunk) > limit:
+            return None
+        n += len(chunk)
+        chunks.append(chunk)
+    return b"".join(chunks)

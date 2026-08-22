@@ -212,6 +212,16 @@ def register_routes(app: FastAPI) -> None:
         store: DashboardStore = request.app.state.store
         return HTMLResponse(render_questions_table(store))
 
+    @app.get("/partials/question-resolve/{qid}")
+    async def question_resolve(request: Request, qid: str) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        if not QUESTION_ID_RE.fullmatch(qid or ""):
+            return HTMLResponse("not found", status_code=404)
+        match = next((q for q in store.open_questions() if _str(q.get("id")) == qid), None)
+        if match is None:
+            return HTMLResponse("not found", status_code=404)
+        return HTMLResponse(render_question_resolve(qid, _str(match.get("question"))))
+
     @app.get("/partials/stop-banner")
     async def stop_banner(request: Request) -> HTMLResponse:
         store: DashboardStore = request.app.state.store
@@ -699,21 +709,16 @@ def render_questions_table(store: DashboardStore) -> str:
             qid = _str(item.get("id"))
             if QUESTION_ID_RE.fullmatch(qid):
                 qid_attr = escape(qid, quote=True)
-                form = (
-                    f'<form class="flex flex-col gap-1 min-w-[10rem]" '
-                    f'hx-post="/actions/questions/{qid_attr}/resolve" '
-                    f'hx-target="#questions-table" hx-swap="innerHTML">'
-                    f'<input type="text" name="notes" required placeholder="notes" '
-                    f'class="bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-xs">'
-                    f'<input type="text" name="reviewed_by" value="operator" '
-                    f'class="bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-xs">'
-                    f'<button type="submit" class="bg-zinc-800 hover:bg-zinc-700 '
-                    f'px-2 py-0.5 rounded border border-zinc-700 text-xs">Resolve</button>'
-                    f"</form>"
+                # форма живёт в #question-resolve, не внутри poll innerHTML
+                open_btn = (
+                    f'<button type="button" class="text-emerald-400 underline text-xs" '
+                    f'data-q-id="{qid_attr}" '
+                    f'hx-get="/partials/question-resolve/{qid_attr}" '
+                    f'hx-target="#question-resolve" hx-swap="innerHTML">resolve</button>'
                 )
             else:
-                form = ""
-            cells.append(f'<td class="py-1 pr-3 align-top">{form}</td>')
+                open_btn = ""
+            cells.append(f'<td class="py-1 pr-3 align-top">{open_btn}</td>')
             parts.append(
                 '<tr class="border-b border-zinc-800/80 align-top">'
                 + "".join(cells)
@@ -724,4 +729,12 @@ def render_questions_table(store: DashboardStore) -> str:
         "questions_table.html",
         cadence_html=cadence_html,
         rows_html=rows_html,
+    )
+
+
+def render_question_resolve(qid: str, question: str = "") -> str:
+    return render_partial(
+        "question_resolve.html",
+        qid=qid,
+        question=question,
     )

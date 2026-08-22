@@ -181,6 +181,8 @@ def test_dashboard_sources_do_not_import_runner():
         assert "run_loop" not in text, p
         assert "get_adapter" not in text, p
         assert "gh pr merge" not in text, p
+    actions = (dash / "actions.py").read_text(encoding="utf-8")
+    assert "asyncio.to_thread" in actions
     for rel in (
         "memory/dashboard/read_model.py",
         "memory/dashboard/routes.py",
@@ -817,27 +819,48 @@ def test_questions_page_and_partial(dashboard_client, tmp_path: Path):
     assert "Need Ubuntu version?" in body
     assert "Reviewer" in body
     assert "product_owner" in body
-    assert 'name="notes"' in body
-    assert 'name="reviewed_by"' in body
-    assert 'value="operator"' in body
-    assert 'hx-post="/actions/questions/Q-001/resolve"' in body
     assert "data-cadence" in body
+    assert "нет открытых" not in body
+    list_at = body.find('id="questions-table"')
+    detail_at = body.find('id="question-resolve"')
+    assert list_at != -1 and detail_at != -1
+    assert detail_at > list_at
+    assert 'hx-get="/partials/question-resolve/Q-001"' in body
+    assert 'hx-target="#question-resolve"' in body
+    assert 'hx-post="/actions/questions/Q-001/resolve"' not in body
     partial = dashboard_client.get("/partials/questions-table")
     assert partial.status_code == 200
     assert "<title>" not in partial.text
     assert "every 15s" not in partial.text
     assert "Q-001" in partial.text
+    assert 'name="notes"' not in partial.text
+    assert 'hx-post=' not in partial.text
+    assert 'id="question-resolve"' not in partial.text
+    form = dashboard_client.get("/partials/question-resolve/Q-001")
+    assert form.status_code == 200
+    assert 'name="notes"' in form.text
+    assert 'name="reviewed_by"' in form.text
+    assert 'value="operator"' in form.text
+    assert 'hx-post="/actions/questions/Q-001/resolve"' in form.text
+    assert 'hx-target="#questions-table"' in form.text
+    assert "Need Ubuntu version?" in form.text
 
 
 def test_questions_empty_and_xss(dashboard_client, tmp_path: Path):
     empty = dashboard_client.get("/questions")
     assert empty.status_code == 200
     assert "No open questions." in empty.text
+    assert "no open questions" in empty.text
+    assert "нет открытых" not in empty.text
     _seed_questions(tmp_path, question="<script>alert(1)</script>")
     r = dashboard_client.get("/questions")
     assert "<script>alert(1)</script>" not in r.text
     assert "&lt;script&gt;" in r.text
     assert r.status_code == 200
+    form = dashboard_client.get("/partials/question-resolve/Q-001")
+    assert form.status_code == 200
+    assert "<script>alert(1)</script>" not in form.text
+    assert "&lt;script&gt;" in form.text
 
 
 def test_questions_get_does_not_mkdir(dashboard_client, tmp_path: Path):
@@ -872,6 +895,50 @@ def test_resolve_question_operator_audit(dashboard_client, tmp_path: Path):
     assert last["role"] == "operator"
     assert last["cycle"] == 12
     assert last["details"]["id"] == "Q-001"
+
+
+def test_resolve_missing_id_no_audit(dashboard_client, tmp_path: Path):
+    _seed_questions(tmp_path)
+    headers = _csrf_header(dashboard_client)
+    before = (tmp_path / ".agent" / "QUESTIONS_POOL.json").read_text(encoding="utf-8")
+    r = dashboard_client.post(
+        "/actions/questions/Q-999/resolve",
+        data={"notes": "ghost", "reviewed_by": "operator"},
+        headers=headers,
+    )
+    assert r.status_code == 404
+    assert (tmp_path / ".agent" / "QUESTIONS_POOL.json").read_text(encoding="utf-8") == before
+    assert not (tmp_path / ".agent" / "AUDIT_LOG.json").exists()
+
+
+def test_resolve_already_resolved_no_audit(dashboard_client, tmp_path: Path):
+    _write_json(
+        tmp_path / ".agent" / "QUESTIONS_POOL.json",
+        {
+            "questions": [
+                {
+                    "id": "Q-001",
+                    "question": "done already",
+                    "status": "resolved",
+                    "resolution": "old",
+                    "resolved_by": "operator",
+                }
+            ],
+            "last_escalated_cycle": 0,
+        },
+    )
+    headers = _csrf_header(dashboard_client)
+    r = dashboard_client.post(
+        "/actions/questions/Q-001/resolve",
+        data={"notes": "again", "reviewed_by": "operator"},
+        headers=headers,
+    )
+    assert r.status_code == 404
+    pool = json.loads((tmp_path / ".agent" / "QUESTIONS_POOL.json").read_text(encoding="utf-8"))
+    assert pool["questions"][0]["resolution"] == "old"
+    assert not (tmp_path / ".agent" / "AUDIT_LOG.json").exists()
+    form = dashboard_client.get("/partials/question-resolve/Q-001")
+    assert form.status_code == 404
 
 
 def test_resolve_notes_required(dashboard_client, tmp_path: Path):

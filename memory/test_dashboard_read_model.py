@@ -959,4 +959,6 @@ def test_open_questions_and_cadence(tmp_path: Path, cwd_guard):
     assert cad["open_count"] == 1
     assert "frequency" in cad
     assert "escalate" in cad
+    assert cad["reason"] == "every_N_cycles"
+    assert "нет" not in cad["reason"]
     assert Path.cwd() == cwd_guard

@@ -1,0 +1,15 @@
+<div data-question-resolve="{{qid}}">
+  <div class="text-xs text-zinc-400 mb-1">Resolve {{qid}}</div>
+  <p class="text-xs text-zinc-300 mb-2 whitespace-pre-wrap">{{question}}</p>
+  <form class="flex flex-col gap-1 min-w-[10rem] max-w-md"
+        hx-post="/actions/questions/{{qid}}/resolve"
+        hx-target="#questions-table"
+        hx-swap="innerHTML">
+    <input type="text" name="notes" required placeholder="notes"
+           class="bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-xs">
+    <input type="text" name="reviewed_by" value="operator"
+           class="bg-zinc-800 border border-zinc-700 rounded px-1.5 py-0.5 text-xs">
+    <button type="submit"
+            class="bg-zinc-800 hover:bg-zinc-700 px-2 py-0.5 rounded border border-zinc-700 text-xs">Resolve</button>
+  </form>
+</div>

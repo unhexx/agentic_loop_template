@@ -20,6 +20,7 @@ from memory.dashboard.read_model import DashboardStore
 from memory.dashboard.routes import register_routes
 from memory.dashboard.security import (
     MAX_BODY_BYTES,
+    consume_capped,
     content_length_too_large,
     csrf_ok,
     extract_request_token,
@@ -143,9 +144,10 @@ def create_app(workdir: Optional[Path] = None) -> FastAPI:
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             if content_length_too_large(request.headers, MAX_BODY_BYTES):
                 return JSONResponse({"detail": "payload too large"}, status_code=413)
-            body = await request.body()
-            if len(body) > MAX_BODY_BYTES:
+            body = await consume_capped(request.stream(), MAX_BODY_BYTES)
+            if body is None:
                 return JSONResponse({"detail": "payload too large"}, status_code=413)
+            request._body = body  # noqa: SLF001 — кэш для последующего request.body()
             if not is_same_origin(request):
                 return JSONResponse({"detail": "cross-origin rejected"}, status_code=403)
             expected_csrf = str(getattr(request.app.state, "csrf_token", "") or "")

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import shutil
@@ -60,12 +61,14 @@ def register_actions(app: FastAPI) -> None:
             return JSONResponse({"detail": "notes required"}, status_code=400)
         reviewed_by = (await _form_str(request, "reviewed_by")).strip() or "operator"
         store: DashboardStore = request.app.state.store
-        mark_reviewed(
+        updated = mark_reviewed(
             [qid],
             notes,
             reviewed_by,
             agent_dir=store.agent,
         )
+        if updated == 0:
+            return JSONResponse({"detail": "not found"}, status_code=404)
         await _after_write(
             request,
             action="dashboard.question_resolve",
@@ -80,7 +83,7 @@ def register_actions(app: FastAPI) -> None:
     @app.get("/actions/pr-link")
     async def action_pr_link(request: Request) -> HTMLResponse:
         store: DashboardStore = request.app.state.store
-        url, reason = _gh_pr_url(store.workdir)
+        url, reason = await asyncio.to_thread(_gh_pr_url, store.workdir)
         return HTMLResponse(render_partial("pr_link.html", link_html=_pr_link_html(url, reason)))
 
 

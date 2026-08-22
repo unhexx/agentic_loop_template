@@ -224,6 +224,10 @@ def test_partials_are_fragments_triggers_live_on_wrappers():
         assert "hx-trigger" not in text
         assert "hx-get" not in text
         assert "hx-swap" not in text
+    qtable = (
+        root / "memory/dashboard/templates/partials" / "questions_table.html"
+    ).read_text(encoding="utf-8")
+    assert "hx-post" not in qtable
     loop = (root / "memory/dashboard/templates/pages/loop.html").read_text(
         encoding="utf-8"
     )

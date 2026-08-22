@@ -105,13 +105,14 @@ class DashboardStore:
             cycle = int(st.get("cycle_number") or 0)
         except (TypeError, ValueError):
             cycle = 0
-        need, reason = should_escalate(current_cycle=cycle, agent_dir=self.agent)
+        need, _cli_reason = should_escalate(current_cycle=cycle, agent_dir=self.agent)
+        open_count = len(self.open_questions())
         return {
             "frequency": cfg.get("frequency"),
             "N": cfg.get("N"),
             "escalate": bool(need),
-            "reason": reason,
-            "open_count": len(self.open_questions()),
+            "reason": _cadence_reason_en(cfg, open_count),
+            "open_count": open_count,
             "processors": list(cfg.get("processors") or []),
         }
 
@@ -455,6 +456,20 @@ class DashboardStore:
             return dict(self._cache[key])
         self._stale.add(key)
         return _copy_default(default)
+
+
+def _cadence_reason_en(cfg: Dict[str, Any], open_count: int) -> str:
+    """Короткий английский баннер. CLI-строки коллектора не показываем."""
+    if open_count <= 0:
+        return "no open questions"
+    freq = str(cfg.get("frequency") or "")
+    if freq == "manual":
+        return "manual"
+    if freq == "end_of_sprint":
+        return "end_of_sprint"
+    if freq == "end_of_phase":
+        return "end_of_phase"
+    return "every_N_cycles"
 
 
 def _copy_default(default: Any) -> Any:

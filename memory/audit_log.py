@@ -10,12 +10,15 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 AUDIT_JSON = Path(".agent/AUDIT_LOG.json")
 AUDIT_MD = Path(".agent/AUDIT_LOG.md")
+TORN_RETRIES = 3
+TORN_RETRY_S = 0.020
 
 
 def _audit_json(agent_dir: Optional[Path] = None) -> Path:
@@ -35,15 +38,36 @@ def _ensure_dir(agent_dir: Optional[Path] = None) -> None:
     _audit_json(agent_dir).parent.mkdir(parents=True, exist_ok=True)
 
 
-def _load(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
+def _read_json_retry(path: Path) -> Optional[Dict[str, Any]]:
+    """JSON с 3×20мс на обрыв. None — файл не читается, не затираем."""
+    attempts = TORN_RETRIES + 1
+    for attempt in range(attempts):
+        try:
+            text = path.read_text(encoding="utf-8")
+            if not text.strip():
+                raise json.JSONDecodeError("empty", text, 0)
+            data = json.loads(text)
+            if not isinstance(data, dict):
+                raise json.JSONDecodeError("not object", text, 0)
+            return data
+        except (json.JSONDecodeError, OSError, UnicodeError):
+            if attempt + 1 < attempts:
+                time.sleep(TORN_RETRY_S)
+    return None
+
+
+def _load(agent_dir: Optional[Path] = None) -> Optional[Dict[str, Any]]:
     _ensure_dir(agent_dir)
     path = _audit_json(agent_dir)
     if not path.exists():
         return {"entries": [], "updated_at": _now_iso()}
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return {"entries": [], "updated_at": _now_iso()}
+    data = _read_json_retry(path)
+    if data is None:
+        return None
+    entries = data.get("entries")
+    if not isinstance(entries, list):
+        data["entries"] = []
+    return data
 
 
 def _save(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
@@ -83,8 +107,26 @@ def append_entry(
     Дашборд передаёт workdir/.agent, чтобы не зависеть от cwd.
     """
     data = _load(agent_dir=agent_dir)
+    if data is None:
+        # порванный журнал не затираем однострочной записью
+        entry = {
+            "id": "A-0000",
+            "ts": _now_iso(),
+            "action": action,
+            "role": role,
+            "cycle": cycle,
+            "details": details or {},
+            "approval_required": approval_required,
+            "approved": approved,
+        }
+        entry["signature"] = _sign(entry)
+        return entry
+    entries = data.setdefault("entries", [])
+    if not isinstance(entries, list):
+        entries = []
+        data["entries"] = entries
     entry = {
-        "id": f"A-{len(data['entries']) + 1:04d}",
+        "id": f"A-{len(entries) + 1:04d}",
         "ts": _now_iso(),
         "action": action,
         "role": role,
@@ -94,13 +136,15 @@ def append_entry(
         "approved": approved,
     }
     entry["signature"] = _sign(entry)
-    data.setdefault("entries", []).append(entry)
+    entries.append(entry)
     _save(data, agent_dir=agent_dir)
     return entry
 
 
 def list_entries(limit: int = 20, agent_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
     data = _load(agent_dir=agent_dir)
+    if data is None:
+        return []
     return data.get("entries", [])[-limit:]
 
 

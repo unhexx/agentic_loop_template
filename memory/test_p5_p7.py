@@ -72,6 +72,78 @@ class TestQuestionsAgentDir(unittest.TestCase):
         self.assertEqual(data["questions"][0]["resolution"], "done")
 
 
+    def test_torn_pool_not_bak(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        agent = Path(tmp.name) / "agent"
+        agent.mkdir()
+        pool = agent / "QUESTIONS_POOL.json"
+        pool.write_text("{", encoding="utf-8")
+        questions_collector.TORN_RETRY_S = 0
+        self.addCleanup(lambda: setattr(questions_collector, "TORN_RETRY_S", 0.020))
+        n = questions_collector.mark_reviewed(
+            ["Q-001"], "x", "operator", agent_dir=agent
+        )
+        self.assertEqual(n, 0)
+        self.assertTrue(pool.exists())
+        self.assertFalse(pool.with_suffix(".json.bak").exists())
+        self.assertEqual(pool.read_text(encoding="utf-8"), "{")
+
+    def test_torn_pool_retry_then_ok(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        agent = Path(tmp.name) / "agent"
+        agent.mkdir()
+        pool = agent / "QUESTIONS_POOL.json"
+        pool.write_text("{", encoding="utf-8")
+        valid = json.dumps(
+            {
+                "questions": [{"id": "Q-001", "question": "x", "status": "open"}],
+                "last_escalated_cycle": 0,
+            }
+        )
+
+        def repair(_s):
+            pool.write_text(valid, encoding="utf-8")
+
+        from unittest import mock
+
+        with mock.patch("memory.questions_collector.time.sleep", repair):
+            n = questions_collector.mark_reviewed(
+                ["Q-001"], "fixed", "operator", agent_dir=agent
+            )
+        self.assertEqual(n, 1)
+        data = json.loads(pool.read_text(encoding="utf-8"))
+        self.assertEqual(data["questions"][0]["status"], "resolved")
+
+
+class TestAuditTorn(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        audit_log.AUDIT_JSON = Path(self.tmp.name) / "AUDIT_LOG.json"
+        audit_log.AUDIT_MD = Path(self.tmp.name) / "AUDIT_LOG.md"
+        audit_log.TORN_RETRY_S = 0
+
+    def tearDown(self):
+        audit_log.TORN_RETRY_S = 0.020
+        self.tmp.cleanup()
+
+    def test_torn_audit_not_wiped(self):
+        audit_log.AUDIT_JSON.write_text("{", encoding="utf-8")
+        audit_log.append_entry("dashboard.stop", "operator", 1)
+        self.assertEqual(audit_log.AUDIT_JSON.read_text(encoding="utf-8"), "{")
+
+    def test_append_without_entries_key(self):
+        audit_log.AUDIT_JSON.write_text(
+            json.dumps({"updated_at": "t"}), encoding="utf-8"
+        )
+        e = audit_log.append_entry("dashboard.stop", "operator", 1)
+        self.assertTrue(e["id"].startswith("A-"))
+        data = json.loads(audit_log.AUDIT_JSON.read_text(encoding="utf-8"))
+        self.assertEqual(len(data["entries"]), 1)
+        self.assertEqual(data["entries"][0]["action"], "dashboard.stop")
+
+
 class TestResume(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -41,6 +42,9 @@ DEFAULT_N = 3
 POOL_JSON = Path(".agent/QUESTIONS_POOL.json")
 POOL_MD = Path(".agent/QUESTIONS_POOL.md")
 PROJECT_CONFIG = Path(".agent/project_config.json")
+# как DashboardStore: порванный write_text, не bak с первого decode.
+TORN_RETRIES = 3
+TORN_RETRY_S = 0.020
 
 
 def _pool_json(agent_dir: Optional[Path] = None) -> Path:
@@ -124,20 +128,35 @@ def load_config(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
     return cfg
 
 
+def _read_json_retry(path: Path) -> Optional[Dict[str, Any]]:
+    """JSON с 3×20мс на обрыв. None — так и не разобрали, файл не трогаем."""
+    attempts = TORN_RETRIES + 1
+    for attempt in range(attempts):
+        try:
+            text = path.read_text(encoding="utf-8")
+            if not text.strip():
+                raise json.JSONDecodeError("empty", text, 0)
+            data = json.loads(text)
+            if not isinstance(data, dict):
+                raise json.JSONDecodeError("not object", text, 0)
+            return data
+        except (json.JSONDecodeError, OSError, UnicodeError):
+            if attempt + 1 < attempts:
+                time.sleep(TORN_RETRY_S)
+    return None
+
+
 def _load_pool_raw(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
     """Внутренняя загрузка json пула. Каталог не создаём — только чтение."""
     path = _pool_json(agent_dir)
     if not path.exists():
         return {"questions": [], "last_escalated_cycle": 0, "updated_at": _now_iso()}
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        # Повреждённый файл — начинаем заново, старое сохраняем как .bak
-        try:
-            path.rename(path.with_suffix(".json.bak"))
-        except Exception:
-            pass
+    data = _read_json_retry(path)
+    if data is None:
+        # не bak и не затираем: клик resolve на обрыве не прячет пул
         return {"questions": [], "last_escalated_cycle": 0, "updated_at": _now_iso()}
+    data.setdefault("questions", [])
+    return data
 
 
 def _save_pool_raw(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:

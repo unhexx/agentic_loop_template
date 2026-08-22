@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -226,6 +227,44 @@ def test_body_cap_413(dashboard_client, tmp_path: Path):
     assert not (tmp_path / ".agent" / "STOP").exists()
 
 
+def test_body_cap_chunked_when_content_length_understated(
+    dashboard_client, tmp_path: Path, monkeypatch
+):
+    monkeypatch.setattr(
+        "memory.dashboard.server.content_length_too_large",
+        lambda headers, limit=64 * 1024: False,
+    )
+    headers = _csrf_header(dashboard_client)
+    r = dashboard_client.post(
+        "/actions/stop",
+        content=b"x" * (64 * 1024 + 1),
+        headers=headers,
+    )
+    assert r.status_code == 413
+    assert not (tmp_path / ".agent" / "STOP").exists()
+
+
+def test_consume_capped_missing_content_length():
+    from memory.dashboard.security import MAX_BODY_BYTES, consume_capped
+
+    async def over():
+        async def stream():
+            yield b"x" * (MAX_BODY_BYTES // 2)
+            yield b"y" * (MAX_BODY_BYTES // 2 + 2)
+
+        return await consume_capped(stream(), MAX_BODY_BYTES)
+
+    async def under():
+        async def stream():
+            yield b"ok"
+            yield b"-body"
+
+        return await consume_capped(stream(), MAX_BODY_BYTES)
+
+    assert asyncio.run(over()) is None
+    assert asyncio.run(under()) == b"ok-body"
+
+
 def test_pr_link_get_skips_csrf(dashboard_client, monkeypatch):
     monkeypatch.setattr(
         "memory.dashboard.actions._gh_pr_url",
@@ -273,6 +312,49 @@ def test_dashboard_token_header_ok(tmp_path: Path, monkeypatch):
         assert r.status_code == 200
         r2 = client.get("/health", headers={"Authorization": "Bearer s3cret"})
         assert r2.status_code == 200
+
+
+def test_query_token_overrides_stale_cookie(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("DASHBOARD_TOKEN", "new")
+    with _token_client(tmp_path) as client:
+        r = client.get("/health?token=new", headers={"Cookie": "agentix_token=old"})
+        assert r.status_code == 200
+        raw = r.headers.get("set-cookie") or ""
+        cookies = r.headers.get_list("set-cookie") if hasattr(r.headers, "get_list") else [raw]
+        if hasattr(r.headers, "getlist"):
+            cookies = r.headers.getlist("set-cookie")
+        blob = "\n".join(cookies)
+        assert "agentix_token=new" in blob
+
+
+def test_extract_token_query_beats_cookie():
+    from memory.dashboard.security import extract_token
+
+    assert (
+        extract_token(
+            {},
+            cookies={"agentix_token": "old"},
+            query_params={"token": "new"},
+        )
+        == "new"
+    )
+    assert (
+        extract_token(
+            {"x-api-token": "hdr"},
+            cookies={"agentix_token": "old"},
+            query_params={"token": "new"},
+        )
+        == "hdr"
+    )
+    assert (
+        extract_token(
+            {"authorization": "Bearer brr"},
+            cookies={"agentix_token": "old"},
+            query_params={"token": "new"},
+        )
+        == "brr"
+    )
+    assert extract_token({}, cookies={"agentix_token": "cook"}) == "cook"
 
 
 def test_empty_dashboard_token_disables_check(tmp_path: Path, monkeypatch):
