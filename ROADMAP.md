@@ -1,10 +1,10 @@
 # Agentix Public Roadmap
 
-[![Version](https://img.shields.io/badge/version-3.7.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.8.0-blue?style=flat-square)](CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](README.md)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen?style=flat-square)](docs/README.md)
 
-**Status Date:** 2026-08-22 · **Initiative:** Business Efficiency — **COMPLETE** · **Next:** P8 Harness Hardening
+**Status Date:** 2026-08-22 · **Initiative:** Business Efficiency — **COMPLETE** · **v3.8 Control Plane** · **Next:** P8 Harness Hardening
 
 ---
 
@@ -68,7 +68,7 @@
 - Init.ps1 и Init.sh дают эквивалентный cold-start (proxy, knowledge, playbooks).
 - CI зелёный на полном mock-цикле supervisor.
 
-Целевая версия после закрытия блока: **v3.8.0**.
+Целевая версия после закрытия блока: **v3.9.0** (v3.8.0 занята Control Plane).
 
 ---
 
@@ -84,7 +84,8 @@
 
 | Version | Highlight |
 |---------|-----------|
-| **v3.8.0** (plan) | P8 Harness Hardening — packaging, observability, extraction/validation, platform parity |
+| **v3.9.0** (plan) | P8 Harness Hardening — packaging, observability, extraction/validation, platform parity |
+| **v3.8.0** | Operator Control Plane (`memory.dashboard` HTMX sidecar on `:8112`), not the runner |
 | **v3.7.0** | Default request proxy (Agentix gateway `:8110` fronts host pxpipe), fidelity sidecar, FTS5, honest token SLOs |
 | **v3.6.0** | Skills + rule compressor + knowledge store + cross-project experience harvest (`audit`/`cycle`) |
 | **v3.5.0** | Supervisor CLI, multi-frontend adapters, mock CI cycle |

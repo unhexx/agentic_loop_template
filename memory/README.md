@@ -1,8 +1,8 @@
 # Agentic Loop Memory System
 
-[![Version](https://img.shields.io/badge/version-3.7.0-blue?style=flat-square)](../CHANGELOG.md)
-[![Main README](https://img.shields.io/badge/Main-README-blue)](../README.md)
-[![Architecture](https://img.shields.io/badge/docs-architecture-green)](../docs/architecture.md)
+[![Version](https://img.shields.io/badge/version-3.8.0-blue?style=flat-square)](../CHANGELOG.md)
+[![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](../README.md)
+[![Architecture](https://img.shields.io/badge/docs-architecture-green?style=flat-square)](../docs/architecture.md)
 
 **Workspace-scoped structured memory with counters, automatic deduplication and compaction.**
 
@@ -43,6 +43,17 @@ python -m memory.proxy stats --json
 ```
 
 See `docs/proxy.md`. Opt out: `AGENTIX_PROXY=0`.
+
+## Operator dashboard (`memory.dashboard`, v3.8)
+
+Sidecar Control Plane: observes `workdir/.agent/*`, does **not** run the supervisor.
+
+```bash
+python -m memory.dashboard serve --workdir PATH
+scripts/agentix-dashboard serve --workdir PATH
+```
+
+Loopback `http://127.0.0.1:8112` (not pxpipe `:8100`, not the gateway `:8110`). Optional `DASHBOARD_TOKEN` — empty is local trust; **set a token before SSH `-L` / funnel**. See [README Dashboard security](../README.md#dashboard-security) and [docs/architecture.md](../docs/architecture.md).
 
 ## Local knowledge store (`memory.knowledge`, v3.6)
 
@@ -266,6 +277,7 @@ When first enabling the memory system on an existing project that has a rich `SE
 - `__main__.py` / `__init__.py` — CLI and public Python API
 - `questions_collector.py` — Clarification Questions Pool (неблокирующий сбор внешних вопросов)
 - `meta_harvester.py` — Meta-Optimizer & Trajectory Harvesting (v3.x: сбор успешных траекторий и генерация предложений по улучшению самого harness'а)
+- `dashboard/` — Operator Control Plane (HTMX sidecar on `:8112`; not the runner)
 
 All changes to the memory format or behaviour must be reflected here and in `DEVELOPMENT_STANDARDS.md` §9 (and the new §12 for meta).
 

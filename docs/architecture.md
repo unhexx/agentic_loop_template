@@ -1,7 +1,7 @@
 # Architecture
 
-[![Main README](https://img.shields.io/badge/Main-README-blue)](../README.md)
-[![Handoff Schema](https://img.shields.io/badge/spec-handoff%20schema-lightgrey)](../HANDOFF_SCHEMA.md)
+[![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](../README.md)
+[![Handoff Schema](https://img.shields.io/badge/spec-handoff%20schema-lightgrey?style=flat-square)](../HANDOFF_SCHEMA.md)
 
 How the Agentix loop is structured: roles, state transfer, and self-improvement layers.
 
@@ -36,6 +36,7 @@ Each role: **PLAN → ACT (≤3 tool calls) → REFLECT → handoff JSON**.
 | Audit | `memory/audit_log.py` | Enterprise trail (P5) |
 | Resume | `memory/resume.py` | Crash recovery (P7) |
 | Request proxy | `memory/proxy/` | Loopback `:8110` gateway → host pxpipe `:8100` ([docs/proxy.md](proxy.md)) |
+| Control Plane | `memory.dashboard` | operator HTMX UI, not the runner |
 
 ---
 
@@ -91,3 +92,4 @@ flowchart TD
 - [Metrics & ROI](metrics-roi.md) — measured cycle gains
 - [Hub](hub/README.md) — playbook marketplace
 - [memory/README.md](../memory/README.md) — memory layer API
+- [Agents Dashboard design](superpowers/specs/2026-08-21-agents-dashboard-design.md) — Control Plane spec (shipped `:8112` / 3.8.0)

@@ -1,6 +1,6 @@
 # Agentix
 
-[![Version](https://img.shields.io/badge/version-3.7.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.8.0-blue?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](docs/getting-started.md)
 [![Platform](https://img.shields.io/badge/platform-Linux_%7C_macOS_%7C_Windows-lightgrey?style=flat-square)](docs/cross-platform.md)
@@ -233,6 +233,8 @@ python -m memory.playbooks export --format hub
 | `bash scripts/demo-loop.sh` | One-command smoke demo |
 | `python -m memory.supervisor run --adapter mock --max-cycles 1 --no-pr` | Unattended role loop (mock CI path); adapters: mock/grok/cursor/blackbox |
 | `scripts/agentix-supervisor run ...` | Bash shim for the same supervisor CLI |
+| `python -m memory.dashboard serve --workdir PATH` | Operator Control Plane (HTMX UI, not the runner); loopback `:8112` |
+| `scripts/agentix-dashboard serve --workdir PATH` | Bash shim for the same dashboard CLI |
 | `python -m memory.playbooks select --query "..."` | Inject relevant knowledge bullets |
 | `python -m memory.playbooks export --format hub` | Export Hub discovery index |
 | `python -m memory.performance_ledger` | View cycle metrics |
@@ -268,6 +270,7 @@ v1 does **not** listen on a tailnet IP. TeleGrok 0.1.0 does not ship runtime Tai
 | Category | Capability |
 |----------|------------|
 | **Loop discipline** | 5 roles, JSON handoffs, INVEST tasks, git §11 sync |
+| **Control Plane** | Loopback HTMX operator UI (`memory.dashboard` on `:8112`), not the runner |
 | **Self-improvement** | Playbooks (ACE scoring), meta-harvester, performance ledger, [skills](skills/README.md) |
 | **Context** | Bounded LOOP_STATE, `context_budget` gate, rule-based compressor, local SQLite knowledge, [request proxy](docs/proxy.md) (pxpipe + Agentix gateway) |
 | **Cross-platform** | `Agent-Init.ps1` + `Agent-Init.sh`, platform-adaptive prompts |
@@ -310,7 +313,7 @@ agentic_loop_template/
 │   ├── consumer-starter/     # Adoption template
 │   ├── stack-templates/      # Python API, static docs
 │   └── case-study/           # Sanitized trajectory
-├── memory/                   # Ledger, playbooks, meta, audit, resume
+├── memory/                   # Ledger, playbooks, meta, audit, resume, dashboard
 ├── prompts/                  # Short role prompts (start here)
 ├── scripts/demo-loop.sh      # One-command demo
 ├── .agent/                   # PLAN, TODO, ledger, playbooks, hub index
@@ -359,4 +362,4 @@ Source: [`.agent/PERFORMANCE_LEDGER.md`](.agent/PERFORMANCE_LEDGER.md) · [docs/
 
 ## License
 
-[MIT](LICENSE) · **Agentix 3.6.0** · Maintained by **exception.expert**
+[MIT](LICENSE) · **Agentix 3.8.0** · Maintained by **exception.expert**

@@ -1,6 +1,6 @@
 # Agentix Documentation
 
-[![Version](https://img.shields.io/badge/version-3.7.0-blue?style=flat-square)](../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.8.0-blue?style=flat-square)](../CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](../README.md)
 
 Canonical documentation for the Agentix agentic development loop template.

@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## [3.8.0] - 2026-08-22
+
+### Added (Agents Dashboard / Control Plane)
+- Operator HTMX Control Plane sidecar: `python -m memory.dashboard serve --workdir PATH` / `scripts/agentix-dashboard`
+- Loopback **`:8112`** only (gateway owns `:8110`, pxpipe `:8100`). Does **not** call `run_loop` or spawn adapters — observes `.agent/*` SSOT, is not the runner
+- Screens: Loop, Handoff, Ledger, Playbooks, Audit, Questions, Plan, Memory. Server-rendered HTMX partials, Tailwind/HTMX CDN, no-Jinja string substitution, `/ws/ui` + polling fallback
+- Security: loopback peer + Host (`ipaddress` 127/8; `Host: 127.0.0.1.nip.io` is 403), same-origin POST, CSRF, optional `DASHBOARD_TOKEN`. Empty token = local trust. **Set a token before SSH `-L` / funnel**
+- Gated writes: cooperative `.agent/STOP`, clear-stop, resolve questions; PR link is read-only `gh pr view`. Writes are confirmed and audited (`role=operator`)
+- Supervisor liveness file `.agent/supervisor.heartbeat` (20 s daemon tick; dashboard freshness 45 s). `LOOP_STATE` remains SSOT
+- Design spec: [`docs/superpowers/specs/2026-08-21-agents-dashboard-design.md`](docs/superpowers/specs/2026-08-21-agents-dashboard-design.md)
+- Tests: `memory/test_dashboard_*.py` (`pytest.importorskip("fastapi")` so the stdlib `memory/` suite stays green)
+
+### Changed
+- `VERSION` → 3.8.0
+- README CLI table + Dashboard security (`:8112`, token before tunnel)
+- `docs/architecture.md` Control Plane row; `memory/README.md` pointer
+
 ## [3.7.0] - 2026-08-21
 
 ### Added (request proxy policy — wrap host pxpipe)
