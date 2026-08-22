@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import socket
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,6 +19,7 @@ from memory.dashboard.actions import register_actions
 from memory.dashboard.broadcaster import WSBroadcaster
 from memory.dashboard.config import DashboardConfig, bind_host_allowed, load_config
 from memory.dashboard.read_model import DashboardStore
+from memory.dashboard.redact import install_log_redaction, redact_tokens
 from memory.dashboard.routes import register_routes
 from memory.dashboard.security import (
     MAX_BODY_BYTES,
@@ -40,6 +43,7 @@ from memory.dashboard.watcher import Watcher
 HEARTBEAT_S = 25.0
 WS_CLOSE_TOKEN = 4401
 WS_CLOSE_ORIGIN = 4403
+log = logging.getLogger("memory.dashboard")
 
 
 class BindError(RuntimeError):
@@ -95,11 +99,66 @@ def ws_origin_ok(websocket: WebSocket) -> bool:
 
 
 def extract_ws_token(websocket: WebSocket) -> Optional[str]:
-    """X-API-Token → Bearer → cookie agentix_token → ?token=."""
+    """Тот же порядок, что HTTP: заголовок → Bearer → ?token= → cookie."""
     return extract_token(websocket.headers, websocket.cookies, websocket.query_params)
 
 
+def _request_path(request: Request) -> str:
+    path = request.url.path
+    q = request.url.query
+    return f"{path}?{q}" if q else path
+
+
+def _log_request(request: Request, status_code: int, t0: float) -> None:
+    dt_ms = (time.perf_counter() - t0) * 1000.0
+    ws_n = 0
+    bc = getattr(request.app.state, "broadcaster", None)
+    if bc is not None:
+        try:
+            ws_n = int(bc.client_count())
+        except Exception:
+            ws_n = 0
+    log.info(
+        "%s %s %s %.1fms ws=%s",
+        request.method,
+        redact_tokens(_request_path(request)),
+        status_code,
+        dt_ms,
+        ws_n,
+    )
+
+
+def watcher_label(watcher: Watcher) -> str:
+    """Метка для /health: poll-1s при дефолтном интервале."""
+    poll = float(getattr(watcher, "poll_s", 1.0) or 1.0)
+    if abs(poll - 1.0) < 1e-9:
+        return "poll-1s"
+    if poll == int(poll):
+        return f"poll-{int(poll)}s"
+    return f"poll-{poll}s"
+
+
+def health_payload(app: FastAPI) -> dict:
+    """Счётчики WS/watcher + проекция loop — без токена."""
+    store: DashboardStore = app.state.store
+    bc: WSBroadcaster = app.state.broadcaster
+    watcher: Watcher = app.state.watcher
+    cfg_now: DashboardConfig = app.state.config
+    st = store.loop_state()
+    return {
+        "ok": True,
+        "workdir": str(store.workdir),
+        "loop_status": st.get("status"),
+        "role": st.get("active_role"),
+        "stop": bool(store.stop_present()),
+        "ws_clients": int(bc.client_count()),
+        "watcher": watcher_label(watcher),
+        "bind": f"{cfg_now.host}:{int(cfg_now.port)}",
+    }
+
+
 def create_app(workdir: Optional[Path] = None) -> FastAPI:
+    install_log_redaction()
     cfg = load_config(workdir=workdir)
 
     @asynccontextmanager
@@ -128,38 +187,47 @@ def create_app(workdir: Optional[Path] = None) -> FastAPI:
     @app.middleware("http")
     async def _loopback_only(request: Request, call_next):
         # каждый запрос, включая /health: и peer, и Host
+        t0 = time.perf_counter()
         peer = request.client.host if request.client else None
         host = request.headers.get("host", "")
         if not is_loopback_address(peer) or not is_loopback_host(host):
-            return JSONResponse(
+            resp = JSONResponse(
                 {"detail": "dashboard is loopback-only"},
                 status_code=403,
             )
+            _log_request(request, 403, t0)
+            return resp
         cfg_now: DashboardConfig = request.app.state.config
         provided = extract_request_token(request)
         if not token_ok(cfg_now.token, provided):
             resp = JSONResponse({"detail": "unauthorized"}, status_code=401)
             _stamp_cookies(request, resp, provided)
+            _log_request(request, 401, t0)
             return resp
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             if content_length_too_large(request.headers, MAX_BODY_BYTES):
+                _log_request(request, 413, t0)
                 return JSONResponse({"detail": "payload too large"}, status_code=413)
             body = await consume_capped(request.stream(), MAX_BODY_BYTES)
             if body is None:
+                _log_request(request, 413, t0)
                 return JSONResponse({"detail": "payload too large"}, status_code=413)
             request._body = body  # noqa: SLF001 — кэш для последующего request.body()
             if not is_same_origin(request):
+                _log_request(request, 403, t0)
                 return JSONResponse({"detail": "cross-origin rejected"}, status_code=403)
             expected_csrf = str(getattr(request.app.state, "csrf_token", "") or "")
             if not csrf_ok(request, expected_csrf):
+                _log_request(request, 403, t0)
                 return JSONResponse({"detail": "csrf rejected"}, status_code=403)
         response = await call_next(request)
         _stamp_cookies(request, response, provided)
+        _log_request(request, int(response.status_code), t0)
         return response
 
     @app.get("/health")
     async def health() -> dict:
-        return {"ok": True}
+        return health_payload(app)
 
     @app.websocket("/ws/ui")
     async def ws_ui(websocket: WebSocket) -> None:
@@ -230,7 +298,9 @@ def serve(
             f"дашборд только loopback (TeleGrok SR-04), отказ: {cfg.host}"
         )
     _raise_if_addr_in_use(cfg.host, int(cfg.port))
+    install_log_redaction()
     app = create_app(workdir=cfg.workdir)
+    app.state.config = cfg
     import uvicorn
 
     uvicorn.run(
@@ -239,4 +309,6 @@ def serve(
         port=int(cfg.port),
         workers=1,
         reload=False,
+        access_log=False,
+        log_config=None,
     )

@@ -22,6 +22,7 @@ Maintained by [exception.expert](https://exception.expert).
 - [How It Works](#how-it-works)
 - [Example: One Full Cycle](#example-one-full-cycle)
 - [CLI Tools](#cli-tools)
+- [Dashboard security](#dashboard-security)
 - [Features](#features)
 - [Documentation](#documentation)
 - [Project Structure](#project-structure)
@@ -249,6 +250,16 @@ python -m memory.playbooks export --format hub
 Supervisor drives O→C→T→R turns, validates handoffs, and on `PR_READY` opens a PR via `gh pr create` (never merges to `main`). Use `--no-pr` for local/CI dry runs. Config lives under `supervisor` in `.agent/project_config.json` (see `project_config.example.json`).
 
 Full memory layer docs: [`memory/README.md`](memory/README.md).
+
+---
+
+## Dashboard security
+
+The operator Control Plane (`python -m memory.dashboard serve --workdir PATH`, or `scripts/agentix-dashboard`) binds **loopback only** on `http://127.0.0.1:8112` — not pxpipe `:8100` and not the request gateway `:8110`. A non-loopback bind is refused (TeleGrok SR-04). Every route, including `/health` and `/ws/ui`, requires a loopback peer and Host (`ipaddress` 127/8; `Host: 127.0.0.1.nip.io` is 403).
+
+`DASHBOARD_TOKEN` is optional. Empty (the `.env.example` placeholder) disables the check for local use. **Set a token before any SSH tunnel or Tailscale Serve/funnel.** Remote access is `ssh -L 8112:127.0.0.1:8112` (or Tailscale SSH). After the tunnel, open `http://127.0.0.1:8112/?token=…` once; subsequent HTMX partials and the WebSocket use the HttpOnly `agentix_token` cookie. Prefer `X-API-Token` / `Authorization: Bearer` over the query string. A funnel without a token is a security violation.
+
+v1 does **not** listen on a tailnet IP. TeleGrok 0.1.0 does not ship runtime Tailscale or allowlist enforcement — do not document this UI as “protected by Tailscale.” Logs must not echo `DASHBOARD_TOKEN` or `Authorization` headers.
 
 ---
 

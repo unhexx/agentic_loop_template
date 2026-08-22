@@ -409,6 +409,7 @@ def test_dashboard_ws_sources_do_not_import_runner():
         "memory/dashboard/server.py",
         "memory/dashboard/watcher.py",
         "memory/dashboard/broadcaster.py",
+        "memory/dashboard/redact.py",
     ):
         text = (root / rel).read_text(encoding="utf-8")
         assert "run_loop" not in text

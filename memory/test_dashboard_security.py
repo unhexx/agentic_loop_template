@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Host/peer loopback и /health — без записи на диск."""
+"""Host/peer loopback, матрица токена, редактура логов и /health."""
 
 from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -17,7 +18,18 @@ from memory.dashboard.security import is_loopback_address, is_loopback_host
 def test_health_ok(dashboard_client):
     r = dashboard_client.get("/health")
     assert r.status_code == 200
-    assert r.json()["ok"] is True
+    body = r.json()
+    assert body["ok"] is True
+    assert isinstance(body["ws_clients"], int)
+    assert body["ws_clients"] >= 0
+    assert body["watcher"] == "poll-1s"
+    assert "workdir" in body
+    assert "loop_status" in body
+    assert "stop" in body
+    assert body["bind"].endswith(":8112")
+    assert ":8110" not in body["bind"]
+    assert "DASHBOARD_TOKEN" not in r.text
+    assert "Authorization" not in r.text
 
 
 def test_host_evil_dot_com_403(dashboard_client):
@@ -361,3 +373,149 @@ def test_empty_dashboard_token_disables_check(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "")
     with _token_client(tmp_path) as client:
         assert client.get("/health").status_code == 200
+
+
+def test_header_preferred_over_query(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("DASHBOARD_TOKEN", "good-token")
+    with _token_client(tmp_path) as client:
+        bad = client.get("/health?token=good-token", headers={"X-API-Token": "nope"})
+        assert bad.status_code == 401
+        ok = client.get("/health?token=nope", headers={"X-API-Token": "good-token"})
+        assert ok.status_code == 200
+
+
+def test_ws_query_token_works(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
+    with _token_client(tmp_path) as client:
+        with client.websocket_connect("ws://127.0.0.1:8112/ws/ui?token=s3cret") as ws:
+            assert ws.receive_json()["type"] == "connected"
+
+
+def test_health_ws_clients_and_loop_fields(dashboard_client, tmp_path: Path):
+    agent = tmp_path / ".agent"
+    agent.mkdir(exist_ok=True)
+    (agent / "LOOP_STATE.json").write_text(
+        json.dumps(
+            {"status": "IN_PROGRESS", "active_role": "Coder", "cycle_number": 12}
+        ),
+        encoding="utf-8",
+    )
+    (agent / "STOP").write_text("1", encoding="utf-8")
+    before = dashboard_client.get("/health").json()
+    assert before["loop_status"] == "IN_PROGRESS"
+    assert before["role"] == "Coder"
+    assert before["stop"] is True
+    assert before["watcher"] == "poll-1s"
+    n0 = before["ws_clients"]
+    with dashboard_client.websocket_connect("ws://127.0.0.1:8112/ws/ui") as ws:
+        assert ws.receive_json()["type"] == "connected"
+        during = dashboard_client.get("/health").json()
+        assert during["ws_clients"] == n0 + 1
+    after = dashboard_client.get("/health").json()
+    assert after["ws_clients"] == n0
+
+
+def test_redact_tokens_hides_dashboard_token_and_authorization(monkeypatch):
+    from memory.dashboard.redact import redact_headers, redact_tokens
+
+    secret = "s3cret-value-99"
+    monkeypatch.setenv("DASHBOARD_TOKEN", secret)
+    raw = (
+        f"auth {secret} Authorization: Bearer {secret} "
+        f"GET /health?token={secret} Cookie: agentix_token={secret}"
+    )
+    out = redact_tokens(raw)
+    assert secret not in out
+    assert "****" in out
+    headers = redact_headers(
+        {
+            "Authorization": f"Bearer {secret}",
+            "X-API-Token": secret,
+            "Cookie": f"agentix_token={secret}",
+            "Host": "127.0.0.1:8112",
+        }
+    )
+    assert secret not in headers["Authorization"]
+    assert secret not in headers["X-API-Token"]
+    assert secret not in headers["Cookie"]
+    assert headers["Host"] == "127.0.0.1:8112"
+
+
+def test_redact_leaves_ws_js_token_placeholder():
+    from memory.dashboard.redact import redact_tokens
+
+    js = "url += '?token=' + encodeURIComponent(q);"
+    assert redact_tokens(js) == js
+
+
+def test_log_filter_redacts_token_and_authorization(monkeypatch, caplog):
+    from memory.dashboard.redact import RedactFilter, install_log_redaction
+
+    secret = "s3cret-value-99"
+    monkeypatch.setenv("DASHBOARD_TOKEN", secret)
+    install_log_redaction()
+    log = logging.getLogger("memory.dashboard.redact_test")
+    log.addFilter(RedactFilter())
+    log.setLevel(logging.INFO)
+    with caplog.at_level(logging.INFO, logger="memory.dashboard.redact_test"):
+        log.info("GET /health?token=%s Authorization: Bearer %s", secret, secret)
+    assert secret not in caplog.text
+    assert "****" in caplog.text
+
+
+def test_request_log_does_not_echo_query_token(tmp_path: Path, monkeypatch, caplog):
+    secret = "s3cret-value-99"
+    monkeypatch.setenv("DASHBOARD_TOKEN", secret)
+    with _token_client(tmp_path) as client:
+        with caplog.at_level(logging.INFO, logger="memory.dashboard"):
+            r = client.get("/health?token=" + secret)
+            assert r.status_code == 200
+    assert secret not in caplog.text
+
+
+def test_html_does_not_echo_dashboard_token(dashboard_client, tmp_path: Path, monkeypatch):
+    secret = "super-secret-token-99"
+    monkeypatch.setenv("DASHBOARD_TOKEN", secret)
+    agent = tmp_path / ".agent"
+    agent.mkdir(exist_ok=True)
+    (agent / "LOOP_STATE.json").write_text(
+        json.dumps(
+            {
+                "status": "IN_PROGRESS",
+                "active_role": "Coder",
+                "cycle_number": 1,
+                "notes": f"do not leak {secret}",
+            }
+        ),
+        encoding="utf-8",
+    )
+    r = dashboard_client.get("/")
+    assert r.status_code == 200
+    assert secret not in r.text
+    assert "?token=' + encodeURIComponent(q)" in r.text
+
+
+def test_env_example_dashboard_token_empty():
+    root = Path(__file__).resolve().parents[1]
+    text = (root / ".env.example").read_text(encoding="utf-8")
+    assert "DASHBOARD_TOKEN=" in text
+    found = False
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("DASHBOARD_TOKEN="):
+            assert stripped == "DASHBOARD_TOKEN="
+            found = True
+    assert found
+    assert "AGENTIX_DASHBOARD_PORT=8112" in text
+
+
+def test_redact_sources_do_not_import_runner():
+    root = Path(__file__).resolve().parents[1]
+    for rel in (
+        "memory/dashboard/redact.py",
+        "memory/dashboard/security.py",
+        "memory/dashboard/server.py",
+    ):
+        text = (root / rel).read_text(encoding="utf-8")
+        assert "run_loop" not in text
+        assert "get_adapter" not in text

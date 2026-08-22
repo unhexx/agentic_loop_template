@@ -5,8 +5,10 @@ Host и peer только loopback: 127/8 и ::1 через ipaddress.
 Prefix 127. не используем — иначе 127.0.0.1.nip.io прошёл бы как свой.
 
 CSRF — синхронизатор: cookie HttpOnly + тот же токен в hx-headers.
-DASHBOARD_TOKEN: заголовок / Bearer / ?token= / cookie; пустой — проверка выключена.
-Явная презентация (?token=, заголовок, Bearer) бьёт протухший cookie.
+DASHBOARD_TOKEN: пустой — проверка выключена (включая /ws/ui).
+Порядок: X-API-Token → Bearer → ?token= → cookie agentix_token.
+Заголовок важнее query; query нужен WS/первому GET после туннеля и бьёт протухший cookie.
+Значение в логи не пишем — см. redact.py (DASHBOARD_TOKEN, Authorization).
 """
 
 from __future__ import annotations
