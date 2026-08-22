@@ -8,7 +8,7 @@ from html import escape
 from pathlib import Path
 from typing import Dict, Match
 
-from memory.dashboard.redact import redact_tokens
+from memory.dashboard.redact import redact_html
 
 
 TEMPLATES = Path(__file__).parent / "templates"
@@ -41,7 +41,7 @@ def _sub(raw: str, ctx: Dict[str, object]) -> str:
 
 def render_partial(name: str, **ctx: object) -> str:
     raw = (TEMPLATES / "partials" / name).read_text(encoding="utf-8")
-    return redact_tokens(_sub(raw, ctx))
+    return redact_html(_sub(raw, ctx))
 
 
 def render_page(name: str, **ctx: object) -> str:
@@ -51,4 +51,4 @@ def render_page(name: str, **ctx: object) -> str:
     chrome = {k: ctx[k] for k in _CHROME_KEYS if k in ctx}
     chrome["body_html"] = body
     chrome.setdefault("title", ctx.get("title") or "Agentix")
-    return redact_tokens(_sub(base, chrome))
+    return redact_html(_sub(base, chrome))

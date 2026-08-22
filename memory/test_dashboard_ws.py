@@ -32,13 +32,14 @@ def _asgi_loopback(app):
     return asgi
 
 
-def _client(tmp_path: Path):
+def _client(tmp_path: Path, monkeypatch):
     try:
         import httpx2  # noqa: F401
     except ModuleNotFoundError:
         pytest.importorskip("httpx")
     from starlette.testclient import TestClient
 
+    monkeypatch.setenv("AGENTIX_DASHBOARD_PORT", "8112")
     app = create_app(workdir=tmp_path)
     return TestClient(_asgi_loopback(app), base_url="http://127.0.0.1:8112")
 
@@ -126,7 +127,7 @@ def test_ws_origin_nip_io_reject_4403(dashboard_client):
 
 def test_ws_missing_token_4401(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
-    with _client(tmp_path) as client:
+    with _client(tmp_path, monkeypatch) as client:
         with pytest.raises(_ws_disconnect()) as ei:
             with client.websocket_connect(_WS) as ws:
                 ws.receive_json()
@@ -135,7 +136,7 @@ def test_ws_missing_token_4401(tmp_path: Path, monkeypatch):
 
 def test_ws_wrong_token_4401(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
-    with _client(tmp_path) as client:
+    with _client(tmp_path, monkeypatch) as client:
         with pytest.raises(_ws_disconnect()) as ei:
             with client.websocket_connect(_WS + "?token=nope") as ws:
                 ws.receive_json()
@@ -144,7 +145,7 @@ def test_ws_wrong_token_4401(tmp_path: Path, monkeypatch):
 
 def test_ws_wrong_bearer_4401(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
-    with _client(tmp_path) as client:
+    with _client(tmp_path, monkeypatch) as client:
         with pytest.raises(_ws_disconnect()) as ei:
             with client.websocket_connect(
                 _WS, headers={"Authorization": "Bearer nope"}
@@ -155,7 +156,7 @@ def test_ws_wrong_bearer_4401(tmp_path: Path, monkeypatch):
 
 def test_ws_bearer_token_ok(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
-    with _client(tmp_path) as client:
+    with _client(tmp_path, monkeypatch) as client:
         with client.websocket_connect(
             _WS, headers={"Authorization": "Bearer s3cret"}
         ) as ws:
@@ -164,21 +165,21 @@ def test_ws_bearer_token_ok(tmp_path: Path, monkeypatch):
 
 def test_ws_query_token_ok(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
-    with _client(tmp_path) as client:
+    with _client(tmp_path, monkeypatch) as client:
         with client.websocket_connect(_WS + "?token=s3cret") as ws:
             assert ws.receive_json()["type"] == "connected"
 
 
 def test_ws_header_token_ok(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
-    with _client(tmp_path) as client:
+    with _client(tmp_path, monkeypatch) as client:
         with client.websocket_connect(_WS, headers={"X-API-Token": "s3cret"}) as ws:
             assert ws.receive_json()["type"] == "connected"
 
 
 def test_ws_cookie_token_ok(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
-    with _client(tmp_path) as client:
+    with _client(tmp_path, monkeypatch) as client:
         with client.websocket_connect(
             _WS, headers={"Cookie": "agentix_token=s3cret"}
         ) as ws:
@@ -187,7 +188,7 @@ def test_ws_cookie_token_ok(tmp_path: Path, monkeypatch):
 
 def test_ws_empty_token_disables_check(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "")
-    with _client(tmp_path) as client:
+    with _client(tmp_path, monkeypatch) as client:
         with client.websocket_connect(_WS) as ws:
             assert ws.receive_json()["type"] == "connected"
 
@@ -336,6 +337,8 @@ def test_watcher_run_survives_tick_error(tmp_path: Path):
 
 def test_watcher_tick_reaches_ws_client(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("memory.dashboard.watcher.POLL_INTERVAL_S", 60.0)
+    monkeypatch.setenv("DASHBOARD_TOKEN", "")
+    monkeypatch.setenv("AGENTIX_DASHBOARD_PORT", "8112")
     try:
         import httpx2  # noqa: F401
     except ModuleNotFoundError:

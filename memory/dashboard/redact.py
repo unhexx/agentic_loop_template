@@ -34,10 +34,17 @@ _COOKIE_RE = re.compile(r"(agentix_token=)([^;\s\"']+)", re.IGNORECASE)
 
 _MIN_VALUE_LEN = 8
 _PLACEHOLDER = "****"
+_SCRIPT_RE = re.compile(r"(?is)(<script\b[^>]*>)(.*?)(</script>)")
+_FILTER_LOGGERS = (
+    "memory.dashboard",
+    "uvicorn",
+    "uvicorn.access",
+    "uvicorn.error",
+)
 
 
 def mask_secret(value: str) -> str:
-    """Короткий секрет — звёзды целиком; длинный — края."""
+    """Только для логов: края оставляем. HTML идёт через полный ``****``."""
     v = value or ""
     if len(v) <= _MIN_VALUE_LEN:
         return _PLACEHOLDER
@@ -50,20 +57,52 @@ def _env_token(explicit: Optional[str] = None) -> str:
     return (os.environ.get("DASHBOARD_TOKEN") or "").strip()
 
 
-def redact_tokens(text: Optional[str], token: Optional[str] = None) -> str:
-    """Вычищает DASHBOARD_TOKEN, ``?token=``, Bearer и Authorization из строки."""
-    if not text:
-        return text or ""
-    red = str(text)
-    tok = _env_token(token)
-    if tok and len(tok) >= _MIN_VALUE_LEN and tok in red:
-        red = red.replace(tok, mask_secret(tok))
+def _pattern_redact(text: str) -> str:
+    red = text
     red = _TOKEN_QUERY_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, red)
     red = _AUTH_HEADER_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, red)
     red = _BEARER_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, red)
     red = _X_API_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, red)
     red = _COOKIE_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, red)
     return red
+
+
+def redact_tokens(
+    text: Optional[str],
+    token: Optional[str] = None,
+    *,
+    keep_edges: bool = False,
+) -> str:
+    """Вычищает DASHBOARD_TOKEN, ``?token=``, Bearer и Authorization из строки.
+
+    По умолчанию значение токена целиком ``****`` (HTML). ``keep_edges=True`` —
+    только access-логи, не страница.
+    """
+    if not text:
+        return text or ""
+    red = str(text)
+    tok = _env_token(token)
+    if tok and len(tok) >= _MIN_VALUE_LEN and tok in red:
+        red = red.replace(tok, mask_secret(tok) if keep_edges else _PLACEHOLDER)
+    return _pattern_redact(red)
+
+
+def redact_html(html: Optional[str], token: Optional[str] = None) -> str:
+    """HTML: токен → ``****``, ``<script>`` по значению не трогаем (не ломаем wsUrl)."""
+    if not html:
+        return html or ""
+    raw = str(html)
+    tok = _env_token(token)
+    if tok and len(tok) >= _MIN_VALUE_LEN:
+        parts: list[str] = []
+        pos = 0
+        for m in _SCRIPT_RE.finditer(raw):
+            parts.append(raw[pos : m.start()].replace(tok, _PLACEHOLDER))
+            parts.append(m.group(0))
+            pos = m.end()
+        parts.append(raw[pos:].replace(tok, _PLACEHOLDER))
+        raw = "".join(parts)
+    return _pattern_redact(raw)
 
 
 def redact_headers(headers: Mapping[str, Any], token: Optional[str] = None) -> dict[str, str]:
@@ -97,26 +136,36 @@ class RedactFilter(logging.Filter):
             rendered = record.getMessage()
         except Exception:
             rendered = str(record.msg)
-        record.msg = redact_tokens(rendered)
+        record.msg = redact_tokens(rendered, keep_edges=True)
         record.args = ()
         for name in self._ATTRS:
             val = getattr(record, name, None)
             if isinstance(val, str):
-                setattr(record, name, redact_tokens(val))
+                setattr(record, name, redact_tokens(val, keep_edges=True))
         return True
 
 
-def install_log_redaction() -> RedactFilter:
-    """Вешаем фильтр на root и uvicorn.access — access-лог не эхоит ``?token=``."""
+def install_log_redaction(*, ensure_handler: bool = False) -> RedactFilter:
+    """Фильтр только на dashboard/uvicorn — не на root (чужие тесты не мажем).
+
+    ``ensure_handler`` — stderr для ``memory.dashboard``, когда uvicorn ещё
+    не повесил свои хендлеры. Access пишем в ``uvicorn.error``, баннер uvicorn
+    живёт при дефолтном ``log_config``.
+    """
     filt = RedactFilter()
-    targets = (
-        logging.getLogger(),
-        logging.getLogger("uvicorn"),
-        logging.getLogger("uvicorn.access"),
-        logging.getLogger("uvicorn.error"),
-        logging.getLogger("memory.dashboard"),
-    )
-    for lg in targets:
+    for name in _FILTER_LOGGERS:
+        lg = logging.getLogger(name)
         if not any(isinstance(f, RedactFilter) for f in lg.filters):
             lg.addFilter(filt)
+    if ensure_handler:
+        dash = logging.getLogger("memory.dashboard")
+        if not dash.handlers:
+            handler = logging.StreamHandler()
+            handler.setLevel(logging.INFO)
+            handler.setFormatter(
+                logging.Formatter("%(levelname)s %(name)s %(message)s")
+            )
+            dash.addHandler(handler)
+        if dash.level == logging.NOTSET or dash.level > logging.INFO:
+            dash.setLevel(logging.INFO)
     return filt

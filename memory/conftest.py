@@ -10,7 +10,7 @@ import pytest
 
 
 @pytest.fixture
-def dashboard_client(tmp_path: Path):
+def dashboard_client(tmp_path: Path, monkeypatch):
     pytest.importorskip("fastapi")
     try:
         import httpx2  # noqa: F401
@@ -18,6 +18,10 @@ def dashboard_client(tmp_path: Path):
         pytest.importorskip("httpx")
     from starlette.testclient import TestClient
     from memory.dashboard.server import create_app
+
+    # матрица токена живёт в своих тестах; здесь пустой токен и порт 8112
+    monkeypatch.setenv("DASHBOARD_TOKEN", "")
+    monkeypatch.setenv("AGENTIX_DASHBOARD_PORT", "8112")
 
     prev = os.getcwd()
     app = create_app(workdir=tmp_path)

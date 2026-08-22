@@ -12,8 +12,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
+from urllib.parse import urlencode
+
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 
 from memory.dashboard.actions import register_actions
 from memory.dashboard.broadcaster import WSBroadcaster
@@ -44,6 +46,8 @@ HEARTBEAT_S = 25.0
 WS_CLOSE_TOKEN = 4401
 WS_CLOSE_ORIGIN = 4403
 log = logging.getLogger("memory.dashboard")
+_ACCESS_LOG = logging.getLogger("uvicorn.error")
+REFERRER_POLICY = "same-origin"
 
 
 class BindError(RuntimeError):
@@ -109,6 +113,19 @@ def _request_path(request: Request) -> str:
     return f"{path}?{q}" if q else path
 
 
+def _location_without_token(request: Request) -> str:
+    """Тот же path, query без token — после Set-Cookie секрет не держим в URL."""
+    pairs = [(k, v) for k, v in request.query_params.multi_items() if k != "token"]
+    path = request.url.path or "/"
+    if pairs:
+        return f"{path}?{urlencode(pairs)}"
+    return path
+
+
+def _apply_referrer_policy(response) -> None:
+    response.headers["Referrer-Policy"] = REFERRER_POLICY
+
+
 def _log_request(request: Request, status_code: int, t0: float) -> None:
     dt_ms = (time.perf_counter() - t0) * 1000.0
     ws_n = 0
@@ -118,14 +135,17 @@ def _log_request(request: Request, status_code: int, t0: float) -> None:
             ws_n = int(bc.client_count())
         except Exception:
             ws_n = 0
-    log.info(
-        "%s %s %s %.1fms ws=%s",
+    args = (
         request.method,
         redact_tokens(_request_path(request)),
         status_code,
         dt_ms,
         ws_n,
     )
+    # uvicorn.error — живой хендлер при дефолтном log_config; dashboard — caplog.
+    msg = "%s %s %s %.1fms ws=%s"
+    log.info(msg, *args)
+    _ACCESS_LOG.info(msg, *args)
 
 
 def watcher_label(watcher: Watcher) -> str:
@@ -195,6 +215,7 @@ def create_app(workdir: Optional[Path] = None) -> FastAPI:
                 {"detail": "dashboard is loopback-only"},
                 status_code=403,
             )
+            _apply_referrer_policy(resp)
             _log_request(request, 403, t0)
             return resp
         cfg_now: DashboardConfig = request.app.state.config
@@ -202,26 +223,50 @@ def create_app(workdir: Optional[Path] = None) -> FastAPI:
         if not token_ok(cfg_now.token, provided):
             resp = JSONResponse({"detail": "unauthorized"}, status_code=401)
             _stamp_cookies(request, resp, provided)
+            _apply_referrer_policy(resp)
             _log_request(request, 401, t0)
+            return resp
+        # HTML GET с ?token= — cookie и 302 без секрета в URL. /health JSON не трогаем.
+        if (
+            request.method == "GET"
+            and "token" in request.query_params
+            and request.url.path != "/health"
+        ):
+            resp = RedirectResponse(
+                url=_location_without_token(request),
+                status_code=302,
+            )
+            _stamp_cookies(request, resp, provided)
+            _apply_referrer_policy(resp)
+            _log_request(request, 302, t0)
             return resp
         if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
             if content_length_too_large(request.headers, MAX_BODY_BYTES):
+                resp = JSONResponse({"detail": "payload too large"}, status_code=413)
+                _apply_referrer_policy(resp)
                 _log_request(request, 413, t0)
-                return JSONResponse({"detail": "payload too large"}, status_code=413)
+                return resp
             body = await consume_capped(request.stream(), MAX_BODY_BYTES)
             if body is None:
+                resp = JSONResponse({"detail": "payload too large"}, status_code=413)
+                _apply_referrer_policy(resp)
                 _log_request(request, 413, t0)
-                return JSONResponse({"detail": "payload too large"}, status_code=413)
+                return resp
             request._body = body  # noqa: SLF001 — кэш для последующего request.body()
             if not is_same_origin(request):
+                resp = JSONResponse({"detail": "cross-origin rejected"}, status_code=403)
+                _apply_referrer_policy(resp)
                 _log_request(request, 403, t0)
-                return JSONResponse({"detail": "cross-origin rejected"}, status_code=403)
+                return resp
             expected_csrf = str(getattr(request.app.state, "csrf_token", "") or "")
             if not csrf_ok(request, expected_csrf):
+                resp = JSONResponse({"detail": "csrf rejected"}, status_code=403)
+                _apply_referrer_policy(resp)
                 _log_request(request, 403, t0)
-                return JSONResponse({"detail": "csrf rejected"}, status_code=403)
+                return resp
         response = await call_next(request)
         _stamp_cookies(request, response, provided)
+        _apply_referrer_policy(response)
         _log_request(request, int(response.status_code), t0)
         return response
 
@@ -298,7 +343,7 @@ def serve(
             f"дашборд только loopback (TeleGrok SR-04), отказ: {cfg.host}"
         )
     _raise_if_addr_in_use(cfg.host, int(cfg.port))
-    install_log_redaction()
+    install_log_redaction(ensure_handler=True)
     app = create_app(workdir=cfg.workdir)
     app.state.config = cfg
     import uvicorn
@@ -310,5 +355,4 @@ def serve(
         workers=1,
         reload=False,
         access_log=False,
-        log_config=None,
     )

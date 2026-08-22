@@ -28,6 +28,7 @@ def test_health_ok(dashboard_client):
     assert "stop" in body
     assert body["bind"].endswith(":8112")
     assert ":8110" not in body["bind"]
+    assert r.headers.get("referrer-policy") == "same-origin"
     assert "DASHBOARD_TOKEN" not in r.text
     assert "Authorization" not in r.text
 
@@ -67,7 +68,7 @@ def test_is_loopback_host_rejects_rebinding():
     assert not is_loopback_host("127.evil.com")
 
 
-def test_non_loopback_peer_403(tmp_path: Path):
+def test_non_loopback_peer_403(tmp_path: Path, monkeypatch):
     try:
         import httpx2  # noqa: F401
     except ModuleNotFoundError:
@@ -75,6 +76,8 @@ def test_non_loopback_peer_403(tmp_path: Path):
     from starlette.testclient import TestClient
     from memory.dashboard.server import create_app
 
+    monkeypatch.setenv("DASHBOARD_TOKEN", "")
+    monkeypatch.setenv("AGENTIX_DASHBOARD_PORT", "8112")
     app = create_app(workdir=tmp_path)
 
     async def asgi(scope, receive, send):
@@ -132,7 +135,7 @@ def _asgi_loopback(app):
     return asgi
 
 
-def _token_client(tmp_path: Path):
+def _token_client(tmp_path: Path, monkeypatch):
     try:
         import httpx2  # noqa: F401
     except ModuleNotFoundError:
@@ -140,6 +143,7 @@ def _token_client(tmp_path: Path):
     from starlette.testclient import TestClient
     from memory.dashboard.server import create_app
 
+    monkeypatch.setenv("AGENTIX_DASHBOARD_PORT", "8112")
     app = create_app(workdir=tmp_path)
     return TestClient(_asgi_loopback(app), base_url="http://127.0.0.1:8112")
 
@@ -290,21 +294,21 @@ def test_pr_link_get_skips_csrf(dashboard_client, monkeypatch):
 
 def test_dashboard_token_missing_401(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
-    with _token_client(tmp_path) as client:
+    with _token_client(tmp_path, monkeypatch) as client:
         r = client.get("/health")
         assert r.status_code == 401
 
 
 def test_dashboard_token_wrong_401(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
-    with _token_client(tmp_path) as client:
+    with _token_client(tmp_path, monkeypatch) as client:
         r = client.get("/health", headers={"X-API-Token": "nope"})
         assert r.status_code == 401
 
 
 def test_dashboard_token_query_sets_cookie(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
-    with _token_client(tmp_path) as client:
+    with _token_client(tmp_path, monkeypatch) as client:
         r = client.get("/health?token=s3cret")
         assert r.status_code == 200
         raw = r.headers.get("set-cookie") or ""
@@ -319,7 +323,7 @@ def test_dashboard_token_query_sets_cookie(tmp_path: Path, monkeypatch):
 
 def test_dashboard_token_header_ok(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
-    with _token_client(tmp_path) as client:
+    with _token_client(tmp_path, monkeypatch) as client:
         r = client.get("/health", headers={"X-API-Token": "s3cret"})
         assert r.status_code == 200
         r2 = client.get("/health", headers={"Authorization": "Bearer s3cret"})
@@ -328,7 +332,7 @@ def test_dashboard_token_header_ok(tmp_path: Path, monkeypatch):
 
 def test_query_token_overrides_stale_cookie(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "new")
-    with _token_client(tmp_path) as client:
+    with _token_client(tmp_path, monkeypatch) as client:
         r = client.get("/health?token=new", headers={"Cookie": "agentix_token=old"})
         assert r.status_code == 200
         raw = r.headers.get("set-cookie") or ""
@@ -371,13 +375,13 @@ def test_extract_token_query_beats_cookie():
 
 def test_empty_dashboard_token_disables_check(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "")
-    with _token_client(tmp_path) as client:
+    with _token_client(tmp_path, monkeypatch) as client:
         assert client.get("/health").status_code == 200
 
 
 def test_header_preferred_over_query(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "good-token")
-    with _token_client(tmp_path) as client:
+    with _token_client(tmp_path, monkeypatch) as client:
         bad = client.get("/health?token=good-token", headers={"X-API-Token": "nope"})
         assert bad.status_code == 401
         ok = client.get("/health?token=nope", headers={"X-API-Token": "good-token"})
@@ -386,7 +390,7 @@ def test_header_preferred_over_query(tmp_path: Path, monkeypatch):
 
 def test_ws_query_token_works(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "s3cret")
-    with _token_client(tmp_path) as client:
+    with _token_client(tmp_path, monkeypatch) as client:
         with client.websocket_connect("ws://127.0.0.1:8112/ws/ui?token=s3cret") as ws:
             assert ws.receive_json()["type"] == "connected"
 
@@ -466,14 +470,38 @@ def test_log_filter_redacts_token_and_authorization(monkeypatch, caplog):
 def test_request_log_does_not_echo_query_token(tmp_path: Path, monkeypatch, caplog):
     secret = "s3cret-value-99"
     monkeypatch.setenv("DASHBOARD_TOKEN", secret)
-    with _token_client(tmp_path) as client:
+    with _token_client(tmp_path, monkeypatch) as client:
         with caplog.at_level(logging.INFO, logger="memory.dashboard"):
             r = client.get("/health?token=" + secret)
             assert r.status_code == 200
     assert secret not in caplog.text
 
 
-def test_html_does_not_echo_dashboard_token(dashboard_client, tmp_path: Path, monkeypatch):
+def test_html_query_token_redirects_stripping_query(tmp_path: Path, monkeypatch):
+    secret = "s3cret-value-99"
+    monkeypatch.setenv("DASHBOARD_TOKEN", secret)
+    with _token_client(tmp_path, monkeypatch) as client:
+        r = client.get("/?token=" + secret, follow_redirects=False)
+        assert r.status_code == 302
+        loc = r.headers.get("location") or ""
+        assert "token=" not in loc
+        assert loc == "/" or loc.endswith("/")
+        assert r.headers.get("referrer-policy") == "same-origin"
+        raw = r.headers.get("set-cookie") or ""
+        cookies = r.headers.get_list("set-cookie") if hasattr(r.headers, "get_list") else [raw]
+        if hasattr(r.headers, "getlist"):
+            cookies = r.headers.getlist("set-cookie")
+        blob = "\n".join(cookies)
+        assert "agentix_token=" in blob.lower()
+        health = client.get("/health?token=" + secret, follow_redirects=False)
+        assert health.status_code == 200
+        assert health.json()["ok"] is True
+        r2 = client.get("/", follow_redirects=False)
+        assert r2.status_code == 200
+        assert "Agentix Control" in r2.text
+
+
+def test_html_does_not_echo_dashboard_token(tmp_path: Path, monkeypatch):
     secret = "super-secret-token-99"
     monkeypatch.setenv("DASHBOARD_TOKEN", secret)
     agent = tmp_path / ".agent"
@@ -489,24 +517,48 @@ def test_html_does_not_echo_dashboard_token(dashboard_client, tmp_path: Path, mo
         ),
         encoding="utf-8",
     )
-    r = dashboard_client.get("/")
-    assert r.status_code == 200
-    assert secret not in r.text
-    assert "?token=' + encodeURIComponent(q)" in r.text
+    with _token_client(tmp_path, monkeypatch) as client:
+        r = client.get("/", headers={"X-API-Token": secret})
+        assert r.status_code == 200
+        assert secret not in r.text
+        assert "supe****n-99" not in r.text
+        assert "do not leak " in r.text
+        assert "****" in r.text
+        assert "?token=' + encodeURIComponent(q)" in r.text
+        assert 'name="referrer"' in r.text
+        assert "same-origin" in r.text
 
 
 def test_env_example_dashboard_token_empty():
     root = Path(__file__).resolve().parents[1]
-    text = (root / ".env.example").read_text(encoding="utf-8")
-    assert "DASHBOARD_TOKEN=" in text
-    found = False
-    for line in text.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("DASHBOARD_TOKEN="):
-            assert stripped == "DASHBOARD_TOKEN="
-            found = True
-    assert found
-    assert "AGENTIX_DASHBOARD_PORT=8112" in text
+    for rel in (".env.example", "examples/consumer-starter/agentic.env.example"):
+        text = (root / rel).read_text(encoding="utf-8")
+        found = False
+        for line in text.splitlines():
+            stripped = line.strip()
+            if stripped.startswith("DASHBOARD_TOKEN="):
+                assert stripped == "DASHBOARD_TOKEN=", rel
+                found = True
+        assert found, rel
+    assert "AGENTIX_DASHBOARD_PORT=8112" in (root / ".env.example").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_serve_keeps_uvicorn_default_log_config():
+    root = Path(__file__).resolve().parents[1]
+    text = (root / "memory/dashboard/server.py").read_text(encoding="utf-8")
+    assert "log_config=None" not in text
+    assert "access_log=False" in text
+
+
+def test_redact_filter_not_installed_on_root():
+    from memory.dashboard.redact import RedactFilter, install_log_redaction
+
+    install_log_redaction()
+    assert not any(isinstance(f, RedactFilter) for f in logging.getLogger().filters)
+    dash = logging.getLogger("memory.dashboard")
+    assert any(isinstance(f, RedactFilter) for f in dash.filters)
 
 
 def test_redact_sources_do_not_import_runner():
