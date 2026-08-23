@@ -45,3 +45,19 @@ Do **not** parallelize when both streams must edit the same hot files (`DEVELOPM
 3. No edits outside `owned_paths` (spot-check `git diff --name-only`)  
 4. Integration Reviewer merges; run `state compact` + `metrics-log`  
 5. `SYNC_DONE` from `scripts/sync-worktree.sh --verify-only`  
+
+## Supervisor unattended
+
+After worktrees exist (or let supervisor provision them):
+
+    export PYTHONPATH=.
+    python -m memory.supervisor run-parallel \
+      --stream harness:memory/,tools/ \
+      --stream docs:docs/ \
+      --adapter mock \
+      --no-pr
+
+- Human gate remains: **merge PR to `main` only**.
+- Streams run **serially**; concurrent fan-out is future work.
+- Hub writes `.agent/streams_state.json` with per-stream status.
+- Live Grok still uses pxpipe by default (`proxy.mode=required`).

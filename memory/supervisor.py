@@ -692,6 +692,31 @@ def main(argv: Optional[List[str]] = None) -> int:
     stop_p = sub.add_parser("stop", help="Write .agent/STOP cooperative stop flag")
     stop_p.add_argument("--workdir", type=Path, default=None)
 
+    par_p = sub.add_parser(
+        "run-parallel",
+        help="Run N disjoint streams then one integration PR",
+    )
+    par_p.add_argument(
+        "--stream",
+        action="append",
+        dest="streams",
+        required=True,
+        help="name:owned/path1,path2 (repeatable)",
+    )
+    par_p.add_argument("--adapter", default=None)
+    par_p.add_argument("--max-cycles-per-stream", type=int, default=1)
+    par_p.add_argument("--workdir", type=Path, default=None)
+    par_p.add_argument("--wt-base", type=Path, default=None)
+    par_p.add_argument("--cycle-id", default=None)
+    par_p.add_argument("--base", default="main")
+    par_p.add_argument("--integration-branch", default=None)
+    par_p.add_argument("--no-pr", action="store_true")
+    par_p.add_argument(
+        "--skip-provision",
+        action="store_true",
+        help="Use plans only for worktrees already present (testing)",
+    )
+
     args = parser.parse_args(argv)
     workdir = Path(args.workdir).resolve() if getattr(args, "workdir", None) else Path.cwd()
 
@@ -701,6 +726,26 @@ def main(argv: Optional[List[str]] = None) -> int:
             adapter_name=args.adapter,
             max_cycles=args.max_cycles,
             create_pr=not args.no_pr,
+        )
+        print(json.dumps(res, ensure_ascii=False, default=str, indent=2))
+        return int(res.get("exit_code", 1))
+
+    if args.cmd == "run-parallel":
+        from memory.streams import parse_stream_specs
+        from memory.supervisor_parallel import run_parallel
+
+        plans = parse_stream_specs(args.streams)
+        res = run_parallel(
+            hub_workdir=workdir,
+            plans=plans,
+            adapter_name=args.adapter,
+            max_cycles_per_stream=args.max_cycles_per_stream,
+            create_pr=not args.no_pr,
+            base_ref=args.base,
+            cycle_id=args.cycle_id,
+            wt_base=args.wt_base,
+            skip_provision=args.skip_provision,
+            integration_branch=args.integration_branch,
         )
         print(json.dumps(res, ensure_ascii=False, default=str, indent=2))
         return int(res.get("exit_code", 1))

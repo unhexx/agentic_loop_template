@@ -106,6 +106,13 @@
     "block_process_tags": [
       "secrets_exposure",
       "destructive_prod"
-    ]
+    ],
+    "parallel": {
+      "base": "main",
+      "integration_branch": "feature/integration-parallel",
+      "wt_base": null,
+      "require_owned_paths": true,
+      "serial": true
+    }
   }
 }

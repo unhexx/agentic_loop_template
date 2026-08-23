@@ -38,6 +38,8 @@ jobs:
           python -m memory.test_knowledge
           python -m memory.test_experience_harvester
           python -m memory.test_proxy
+          python -m memory.test_streams
+          python -m memory.test_supervisor_parallel
 
       - name: Export Hub index
         run: |

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -52,6 +53,16 @@ class MockAdapter:
         r, to, phase, status = seq[self._step]
         self._step += 1
         data = _base(r, to, phase, status)
+        stream = os.environ.get("AGENTIX_STREAM")
+        if stream:
+            data["stream"] = stream
+        owned = os.environ.get("AGENTIX_OWNED_PATHS")
+        if owned:
+            data["owned_paths"] = [p.strip() for p in owned.split(",") if p.strip()]
+        wt = os.environ.get("AGENTIX_WORKTREE")
+        if wt:
+            data["worktree"] = wt
+        data.setdefault("merge_gate", "after-tests-green")
         if status == "DONE":
             data["sync_waived"] = "mock adapter CI cycle"
             data["git_sync_status"] = {"verified": False}

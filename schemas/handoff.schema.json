@@ -78,7 +78,7 @@
     "feedback_from_previous": { "type": "object" },
     "lessons_learned": { "type": "array", "items": { "type": "string" } },
     "clarification_questions": { "type": "array" },
-    "stream": { "type": "string", "enum": ["product", "meta", "cross"] },
+    "stream": { "type": "string", "minLength": 1 },
     "worktree": { "type": "string" },
     "owned_paths": { "type": "array", "items": { "type": "string" } },
     "merge_gate": { "type": "string" },
