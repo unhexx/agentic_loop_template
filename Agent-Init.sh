@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Agent-Init.sh — cross-platform Agentix bootstrap (3.7.x)
+# Agent-Init.sh — cross-platform Agentix bootstrap
 # Usage: bash Agent-Init.sh [--wizard] [--quiet] [--output-file PATH]
 set -euo pipefail
 

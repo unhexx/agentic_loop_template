@@ -755,19 +755,37 @@ Write-Host "`n[5/6] Setting agent-friendly environment variables..." -Foreground
 $env:POSH_BASH_CHAINING_NONINTERACTIVE = "1"
 Write-Host "  Variables set for non-interactive sessions." -ForegroundColor Green
 
-# Прокси: дописываем export'ы в activate. Для Blackbox/без Node не валимся.
+# Proxy exports into activate. Fail-closed only when supervisor.adapter is grok.
+if (-not $env:PYTHONPATH) { $env:PYTHONPATH = $ProjectRoot } elseif ($env:PYTHONPATH -notlike "*$ProjectRoot*") { $env:PYTHONPATH = "$ProjectRoot;$env:PYTHONPATH" }
+$initFe = "blackbox"
+$cfgPath = Join-Path $ProjectRoot ".agent\project_config.json"
+if (-not (Test-Path $cfgPath)) { $cfgPath = Join-Path $ProjectRoot ".agent\project_config.example.json" }
+if (Test-Path $cfgPath) {
+    try {
+        $cfgObj = Get-Content -LiteralPath $cfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($cfgObj.supervisor -and $cfgObj.supervisor.adapter) {
+            $initFe = [string]$cfgObj.supervisor.adapter
+        }
+    } catch {}
+}
 try {
     $oldPref = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     & $venvPython -m memory.proxy install-venv 2>$null | Out-Null
-    & $venvPython -m memory.proxy health --init --frontend blackbox 2>$null | Out-Null
     & $venvPython -m memory.knowledge ingest-if-empty --root docs --budget 800 2>$null | Out-Null
     & $venvPython -m memory.context_budget cold-start --budget 16000 --compress 2>$null | Out-Null
     $ErrorActionPreference = $oldPref
-    Write-Host "  Proxy env exports installed (pxpipe optional for Blackbox)." -ForegroundColor DarkGray
 } catch {
-    Write-Host "  Proxy install skipped (non-fatal on Windows/Blackbox)." -ForegroundColor DarkYellow
+    Write-Host "  Proxy install-venv skipped." -ForegroundColor DarkYellow
 }
+$healthOut = & $venvPython -m memory.proxy health --init --frontend $initFe --workdir $ProjectRoot 2>&1
+$healthRc = $LASTEXITCODE
+if ($initFe -eq "grok" -and $healthRc -ne 0) {
+    Write-Host "AGENT_INIT: pxpipe required for frontend=grok (or export AGENTIX_PROXY=0)" -ForegroundColor Red
+    Write-Host $healthOut
+    exit 1
+}
+Write-Host "  Proxy env exports installed (frontend=$initFe)." -ForegroundColor DarkGray
 
 # 6. Prompt generation
 Write-Host "`n[6/6] Checking for task description..." -ForegroundColor Yellow

@@ -87,7 +87,7 @@ def _open_upstream(
 
 
 class GatewayHandler(BaseHTTPRequestHandler):
-    server_version = "AgentixGateway/3.7"
+    server_version = "AgentixGateway"
     protocol_version = "HTTP/1.1"
 
     def log_message(self, fmt: str, *args: Any) -> None:

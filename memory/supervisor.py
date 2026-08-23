@@ -427,6 +427,7 @@ def run_loop(
     """
     from memory import state as state_mod
     from memory.adapters import get_adapter
+    from memory.proxy.policy import ProxyNotReady, assert_ready
     from memory.validate_handoff import validate_handoff
 
     workdir = Path(workdir).resolve()
@@ -446,6 +447,16 @@ def run_loop(
         max_role_retries = int(max_role_retries)
     role_timeout_s = int(sup.get("role_timeout_s") or role_timeout_s)
     max_turns = max(20, max_cycles * 8)
+
+    try:
+        assert_ready(workdir, adapter_name=adapter_name)
+    except ProxyNotReady as exc:
+        return {
+            "terminal": Terminal.BLOCKED,
+            "exit_code": 1,
+            "reason": str(exc),
+            "role": "Orchestrator",
+        }
 
     adapter = get_adapter(adapter_name, cfg)
     prev_cwd = Path.cwd()

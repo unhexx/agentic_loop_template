@@ -1,9 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Пробы pxpipe и (позже) шлюза. TCP достаточно: HTTP-парсинг не нужен.
-
-Тесты поднимают локальный слушатель — живой pxpipe в CI не требуется.
-"""
+"""TCP-пробы pxpipe и URL, на который ходит Grok. HTTP-парсинг не нужен."""
 
 from __future__ import annotations
 
@@ -13,6 +9,7 @@ from urllib.parse import urlparse
 
 from memory.proxy.config import (
     DEFAULT_GATEWAY_BASE,
+    DEFAULT_INSTALL_CHAT_PROXY,
     DEFAULT_PXPIPE_BASE,
     GATEWAY_PORT,
     PXPIPE_PORT,
@@ -57,11 +54,56 @@ def probe_gateway(
     return _probe_url(url, GATEWAY_PORT, timeout=timeout)
 
 
+def probe_dial(
+    cfg: Optional[Dict[str, Any]] = None, timeout: float = 1.0
+) -> Dict[str, Any]:
+    """Хоп, на который Grok CLI реально ходит (chat_proxy)."""
+    cfg = cfg or load_proxy_config()
+    url = str(cfg.get("chat_proxy") or DEFAULT_INSTALL_CHAT_PROXY)
+    return _probe_url(url, GATEWAY_PORT, timeout=timeout)
+
+
+def _hop_key(probe: Dict[str, Any]) -> tuple:
+    return (str(probe.get("host") or ""), int(probe.get("port") or 0))
+
+
+def local_hops_ok(
+    cfg: Optional[Dict[str, Any]] = None, timeout: float = 1.0
+) -> tuple[bool, Dict[str, Any], str]:
+    """pxpipe и (если другой порт) URL Grok. Один слушатель на оба — одна проба."""
+    cfg = cfg or load_proxy_config()
+    px = probe_pxpipe(cfg, timeout=timeout)
+    dial = probe_dial(cfg, timeout=timeout)
+    if not px.get("ok"):
+        return False, px, "pxpipe"
+    if _hop_key(px) != _hop_key(dial) and not dial.get("ok"):
+        return False, dial, "gateway"
+    return True, px, "pxpipe"
+
+
 def start_instructions(
     cfg: Optional[Dict[str, Any]] = None,
     probe: Optional[Dict[str, Any]] = None,
+    hop: str = "pxpipe",
 ) -> str:
     cfg = cfg or load_proxy_config()
+    opt_out = (
+        "Явный отказ: export AGENTIX_PROXY=0  (или proxy.mode=off); "
+        "для интерактивного grok ещё unset GROK_CLI_CHAT_PROXY_BASE_URL.\n"
+        "Не направляйте GROK_CLI_CHAT_PROXY_BASE_URL на публичный cli-chat-proxy "
+        "в обход локального прокси."
+    )
+    if hop == "gateway":
+        base = cfg.get("chat_proxy") or cfg.get("gateway_base") or DEFAULT_GATEWAY_BASE
+        host = (probe or {}).get("host") or urlparse(str(base)).hostname or "127.0.0.1"
+        port = (probe or {}).get("port") or GATEWAY_PORT
+        return (
+            f"шлюз не слушает {host}:{port} (proxy.mode=required).\n"
+            "Запуск:\n"
+            "  bash scripts/agentix-proxy.sh start\n"
+            "  # шаблон: scripts/systemd/agentix-gateway.service.example\n"
+            + opt_out
+        )
     base = cfg.get("pxpipe_base") or DEFAULT_PXPIPE_BASE
     host = (probe or {}).get("host") or urlparse(str(base)).hostname or "127.0.0.1"
     port = (probe or {}).get("port") or PXPIPE_PORT
@@ -71,9 +113,7 @@ def start_instructions(
         "  systemctl --user enable --now pxpipe.service\n"
         "  # или: npx pxpipe-proxy\n"
         "  # шаблон юнита: scripts/systemd/pxpipe.service.example\n"
-        "Явный отказ: export AGENTIX_PROXY=0  (или proxy.mode=off).\n"
-        "Не направляйте GROK_CLI_CHAT_PROXY_BASE_URL на публичный cli-chat-proxy "
-        "в обход локального прокси."
+        + opt_out
     )
 
 
@@ -90,12 +130,14 @@ def health_report(
     cfg = load_proxy_config(workdir)
     px = probe_pxpipe(cfg)
     gw = probe_gateway(cfg)
+    dial = probe_dial(cfg)
+    hops_ok, failed, hop = local_hops_ok(cfg)
     mode = effective_mode(cfg)
     adapter = normalize_frontend(frontend or supervisor_adapter(workdir) or "mock")
     exempt = not adapter_requires_proxy(adapter)
-    ok = bool(px.get("ok")) or mode == "off" or exempt
+    ok = hops_ok or mode == "off" or exempt
     if strict and mode != "off":
-        ok = bool(px.get("ok"))
+        ok = hops_ok
     report: Dict[str, Any] = {
         "ok": ok,
         "mode": mode,
@@ -105,10 +147,12 @@ def health_report(
         "pxpipe": px,
         "gateway_ok": bool(gw.get("ok")),
         "gateway": gw,
+        "dial_ok": bool(dial.get("ok")),
+        "dial": dial,
         "pxpipe_base": cfg.get("pxpipe_base"),
         "chat_proxy": cfg.get("chat_proxy"),
         "strict": strict,
     }
-    if not px.get("ok") and mode == "required" and not exempt:
-        report["instructions"] = start_instructions(cfg, px)
+    if not hops_ok and mode == "required" and not exempt:
+        report["instructions"] = start_instructions(cfg, failed, hop)
     return report

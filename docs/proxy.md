@@ -19,9 +19,9 @@ Knowledge retrieval and harvest stay supervisor/ritual-side. The HTTP gateway do
 
 | Knob | Default | Meaning |
 |------|---------|---------|
-| `proxy.mode` | `required` | Live adapters fail closed if pxpipe is down |
-| `AGENTIX_PROXY=0` | — | Explicit opt-out (`mode=off`) |
-| `proxy.mode=preferred` | not the example default | Warn and continue; documented escape hatch |
+| `proxy.mode` | `required` | Live adapters fail closed if pxpipe **or** the URL Grok dials is down |
+| `AGENTIX_PROXY=0` | — | Opt-out (`mode=off`): subprocess drops Agentix chat-proxy URL |
+| `proxy.mode=preferred` | not the example default | Never fail-closed; public fallback exists only inside a running gateway |
 | Mock / CI | exempt | Never talks to a model |
 
 Do **not** auto-edit `~/.grok/config.toml`. Init writes exports into `.venv/bin/activate`. Opt-in: `python -m memory.proxy install-host`.
@@ -75,8 +75,13 @@ Cursor / Claude Code / Blackbox do **not** honor `GROK_CLI_CHAT_PROXY_BASE_URL`.
 
 ## Rollback
 
+`AGENTIX_PROXY=0` is enough for **supervisor / GrokAdapter**: the grok subprocess no longer receives `GROK_CLI_CHAT_PROXY_BASE_URL` / `AGENTIX_GATEWAY_URL`, so it uses the CLI public default.
+
+Interactive `grok` in a shell that already sourced `.venv/bin/activate` still has the Init export. Full public rollback:
+
 1. `export AGENTIX_PROXY=0`
-2. Point `GROK_CLI_CHAT_PROXY_BASE_URL` back at `http://127.0.0.1:8100/v1` and stop `agentix-gateway`
-3. `proxy.fidelity=false` / FTS unused if query falls back to LIKE
+2. `unset GROK_CLI_CHAT_PROXY_BASE_URL AGENTIX_GATEWAY_URL` (or start a new shell without sourcing activate)
+3. Stop `agentix-gateway` / pxpipe if you no longer need them
+4. `proxy.fidelity=false` / FTS unused if query falls back to LIKE
 
 pxpipe is **not** vendored. Imaging stays in the host process; the Python gateway only reverse-proxies.

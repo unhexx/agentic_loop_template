@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Конфиг прокси запросов: файл проекта + переменные окружения.
-
-Env имеет приоритет. Ключа proxy в старом project_config нет —
-считаем mode=required, чтобы живые адаптеры не уходили в публичный
-апстрим молча. Mock от политики освобождён в policy.py.
-"""
+"""Конфиг прокси: env бьёт файл; нет ключа proxy → mode=required."""
 
 from __future__ import annotations
 
@@ -51,12 +45,24 @@ def _as_bool(value: Any, default: bool = False) -> bool:
     return default
 
 
+def _as_int(value: Any, default: int) -> int:
+    if value is None or value == "":
+        return default
+    return int(value)
+
+
+def is_public_upstream(url: str) -> bool:
+    raw = (url or "").strip().lower()
+    return "cli-chat-proxy.grok.com" in raw or "api.x.ai" in raw
+
+
 def project_root(workdir: Optional[Path] = None) -> Path:
+    """Явный workdir важнее AGENTIX_PROJECT_ROOT (тот — для шлюза без cwd)."""
+    if workdir is not None:
+        return Path(workdir)
     env = os.environ.get("AGENTIX_PROJECT_ROOT", "").strip()
     if env:
         return Path(env)
-    if workdir is not None:
-        return Path(workdir)
     return Path.cwd()
 
 
@@ -113,6 +119,7 @@ def load_proxy_config(workdir: Optional[Path] = None) -> Dict[str, Any]:
     section = _file_proxy_section(workdir)
     plugins = section.get("plugins") if isinstance(section.get("plugins"), dict) else {}
 
+    mode = effective_mode(section)
     pxpipe_base = _url(
         os.environ.get("AGENTIX_PXPIPE_URL") or section.get("pxpipe_base"),
         DEFAULT_PXPIPE_BASE,
@@ -127,11 +134,19 @@ def load_proxy_config(workdir: Optional[Path] = None) -> Dict[str, Any]:
         else:
             gateway_base = f"http://{listen}"
 
+    default_chat = f"{gateway_base}/v1"
     chat_env = os.environ.get("GROK_CLI_CHAT_PROXY_BASE_URL", "").strip()
-    chat_proxy = chat_env.rstrip("/") if chat_env else f"{gateway_base}/v1"
+    if mode == "required":
+        # leftover public URL must not bypass the local hop
+        if chat_env and not is_public_upstream(chat_env):
+            chat_proxy = chat_env.rstrip("/")
+        else:
+            chat_proxy = default_chat
+    else:
+        chat_proxy = chat_env.rstrip("/") if chat_env else default_chat
 
     cfg = {
-        "mode": effective_mode(section),
+        "mode": mode,
         "listen": listen,
         "pxpipe_base": pxpipe_base,
         "gateway_base": gateway_base,
@@ -140,13 +155,13 @@ def load_proxy_config(workdir: Optional[Path] = None) -> Dict[str, Any]:
             section.get("upstream_fallback"), DEFAULT_UPSTREAM_FALLBACK
         ),
         "bind": str(section.get("bind") or "loopback"),
-        "timeout_s": int(section.get("timeout_s") or DEFAULT_TIMEOUT_S),
+        "timeout_s": _as_int(section.get("timeout_s"), DEFAULT_TIMEOUT_S),
         "compress_body": _as_bool(section.get("compress_body"), True),
-        "body_budget_tokens": int(
-            section.get("body_budget_tokens") or DEFAULT_BODY_BUDGET_TOKENS
+        "body_budget_tokens": _as_int(
+            section.get("body_budget_tokens"), DEFAULT_BODY_BUDGET_TOKENS
         ),
-        "keep_recent_turns": int(
-            section.get("keep_recent_turns") or DEFAULT_KEEP_RECENT_TURNS
+        "keep_recent_turns": _as_int(
+            section.get("keep_recent_turns"), DEFAULT_KEEP_RECENT_TURNS
         ),
         "exact_cache": _as_bool(section.get("exact_cache"), True),
         "fidelity": _as_bool(section.get("fidelity"), True),
