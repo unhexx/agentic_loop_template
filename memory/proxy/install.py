@@ -1,10 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Установка маршрута прокси в activate venv и (опционально) в ~/.grok/config.toml.
-
-Init вызывает только install_venv. Хостовый TOML — явно
-`python -m memory.proxy install-host`, автоматически не трогаем.
-"""
+"""Export'ы в .venv activate; merge ~/.grok/config.toml — только install-host."""
 
 from __future__ import annotations
 

@@ -181,8 +181,7 @@ def process_request(
             meta["cached_body"] = hit[2]
             return body, meta
 
-    # Сначала вытаскиваем id, потом жмём ходы, sidecar клеим после —
-    # иначе первый ход с префиксом FIDELITY целиком обходил distill.
+    # Distill first; prepend sidecar after so FIDELITY is not treated as the whole turn.
     fidelity_block = None
     if cfg.get("fidelity", True):
         try:

@@ -129,6 +129,40 @@ def test_missing_proxy_section_defaults_to_required() -> None:
             assert cfg["mode"] == DEFAULT_MODE == "required"
 
 
+def test_missing_proxy_key_grok_fail_closed() -> None:
+    """Нет секции proxy → required: grok не стартует на закрытом порту."""
+    from memory.supervisor import Terminal, run_loop
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "prompts").mkdir()
+        for name in ("orchestrator", "coder", "tester", "debugger", "reviewer"):
+            (root / "prompts" / f"short_{name}_prompt.md").write_text(
+                f"# {name}\n", encoding="utf-8"
+            )
+        _write_cfg(root, {"supervisor": {"adapter": "grok"}})
+        with _env(
+            AGENTIX_PROXY=None,
+            AGENTIX_PROXY_MODE=None,
+            AGENTIX_PXPIPE_URL="http://127.0.0.1:1",
+            AGENTIX_GATEWAY_URL="http://127.0.0.1:1",
+            GROK_CLI_CHAT_PROXY_BASE_URL=None,
+            AGENTIX_PROJECT_ROOT=str(root),
+        ):
+            raised = False
+            try:
+                assert_ready(root, adapter_name="grok")
+            except ProxyNotReady:
+                raised = True
+            assert raised
+            result = run_loop(
+                workdir=root, adapter_name="grok", max_cycles=1, create_pr=False
+            )
+            assert result["terminal"] in (Terminal.BLOCKED, "BLOCKED")
+            assert result.get("exit_code") == 1
+            assert "pxpipe" in str(result.get("reason") or "").lower()
+
+
 def test_mock_skips_assert_ready_even_if_port_closed() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -189,7 +223,11 @@ def test_required_grok_ok_with_fake_listener() -> None:
             _write_cfg(
                 root,
                 {
-                    "proxy": {"mode": "required", "pxpipe_base": base},
+                    "proxy": {
+                        "mode": "required",
+                        "pxpipe_base": base,
+                        "listen": f"{host}:{port}",
+                    },
                     "supervisor": {"adapter": "grok"},
                 },
             )
@@ -197,6 +235,8 @@ def test_required_grok_ok_with_fake_listener() -> None:
                 AGENTIX_PROXY=None,
                 AGENTIX_PROXY_MODE=None,
                 AGENTIX_PXPIPE_URL=base,
+                AGENTIX_GATEWAY_URL=None,
+                GROK_CLI_CHAT_PROXY_BASE_URL=None,
                 AGENTIX_PROJECT_ROOT=str(root),
             ):
                 assert_ready(root, adapter_name="grok")
@@ -759,11 +799,324 @@ def test_grok_adapter_calls_assert_ready(monkeypatch=None) -> None:
         grok_mod.subprocess.run = orig_run
 
 
+def test_run_loop_grok_blocked_without_pxpipe() -> None:
+    """Цикл с живым grok не стартует, если pxpipe молчит (mode=required)."""
+    from memory.supervisor import Terminal, run_loop
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "prompts").mkdir()
+        for name in ("orchestrator", "coder", "tester", "debugger", "reviewer"):
+            (root / "prompts" / f"short_{name}_prompt.md").write_text(
+                f"# {name}\n", encoding="utf-8"
+            )
+        _write_cfg(
+            root,
+            {
+                "proxy": {
+                    "mode": "required",
+                    "pxpipe_base": "http://127.0.0.1:1",
+                },
+                "supervisor": {
+                    "adapter": "grok",
+                    "max_cycles": 1,
+                    "max_role_retries": 0,
+                },
+            },
+        )
+        with _env(
+            AGENTIX_PROXY=None,
+            AGENTIX_PROXY_MODE=None,
+            AGENTIX_PXPIPE_URL="http://127.0.0.1:1",
+            AGENTIX_PROJECT_ROOT=str(root),
+        ):
+            result = run_loop(
+                workdir=root, adapter_name="grok", max_cycles=1, create_pr=False
+            )
+            assert result["terminal"] in (Terminal.BLOCKED, "BLOCKED")
+            assert result.get("exit_code") == 1
+            assert "pxpipe" in str(result.get("reason") or "").lower()
+
+
+def test_run_loop_mock_skips_pxpipe_required() -> None:
+    """Mock-цикл не требует pxpipe даже при mode=required."""
+    from memory.supervisor import run_loop
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "prompts").mkdir()
+        for name in ("orchestrator", "coder", "tester", "debugger", "reviewer"):
+            (root / "prompts" / f"short_{name}_prompt.md").write_text(
+                f"# {name}\n", encoding="utf-8"
+            )
+        _write_cfg(
+            root,
+            {
+                "proxy": {
+                    "mode": "required",
+                    "pxpipe_base": "http://127.0.0.1:1",
+                },
+                "supervisor": {
+                    "adapter": "mock",
+                    "max_cycles": 1,
+                    "max_role_retries": 1,
+                },
+            },
+        )
+        with _env(
+            AGENTIX_PROXY=None,
+            AGENTIX_PROXY_MODE=None,
+            AGENTIX_PXPIPE_URL="http://127.0.0.1:1",
+            AGENTIX_PROJECT_ROOT=str(root),
+        ):
+            result = run_loop(
+                workdir=root, adapter_name="mock", max_cycles=1, create_pr=False
+            )
+            assert result.get("exit_code") == 0, result
+
+
+def test_run_loop_proxy_off_skips_pxpipe_probe() -> None:
+    """AGENTIX_PROXY=0 — цикл grok не BLOCKED из‑за pxpipe (адаптер подменяем)."""
+    import memory.adapters as adapters_mod
+    from memory.adapters.mock import MockAdapter
+    from memory.supervisor import run_loop
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "prompts").mkdir()
+        for name in ("orchestrator", "coder", "tester", "debugger", "reviewer"):
+            (root / "prompts" / f"short_{name}_prompt.md").write_text(
+                f"# {name}\n", encoding="utf-8"
+            )
+        _write_cfg(
+            root,
+            {
+                "proxy": {"mode": "required", "pxpipe_base": "http://127.0.0.1:1"},
+                "supervisor": {"adapter": "grok", "max_cycles": 1, "max_role_retries": 1},
+            },
+        )
+        orig = adapters_mod.get_adapter
+        adapters_mod.get_adapter = lambda name, config=None: MockAdapter()
+        try:
+            with _env(
+                AGENTIX_PROXY="0",
+                AGENTIX_PXPIPE_URL="http://127.0.0.1:1",
+                GROK_CLI_CHAT_PROXY_BASE_URL="http://127.0.0.1:8110/v1",
+                AGENTIX_PROJECT_ROOT=str(root),
+            ):
+                assert_ready(root, adapter_name="grok")
+                result = run_loop(
+                    workdir=root, adapter_name="grok", max_cycles=1, create_pr=False
+                )
+                assert result.get("exit_code") == 0, result
+                assert "pxpipe" not in str(result.get("reason") or "").lower()
+        finally:
+            adapters_mod.get_adapter = orig
+
+
+def test_apply_proxy_env_off_drops_gateway_url() -> None:
+    from memory.adapters.grok import apply_proxy_env
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _write_cfg(root, {"supervisor": {"adapter": "grok"}})
+        env = {
+            "GROK_CLI_CHAT_PROXY_BASE_URL": "http://127.0.0.1:8110/v1",
+            "AGENTIX_GATEWAY_URL": "http://127.0.0.1:8110",
+            "PATH": "/usr/bin",
+        }
+        with _env(
+            AGENTIX_PROXY="0",
+            AGENTIX_PROJECT_ROOT=str(root),
+            GROK_CLI_CHAT_PROXY_BASE_URL="http://127.0.0.1:8110/v1",
+        ):
+            out = apply_proxy_env(dict(env), root)
+            assert "GROK_CLI_CHAT_PROXY_BASE_URL" not in out
+            assert "AGENTIX_GATEWAY_URL" not in out
+
+
+def test_apply_proxy_env_required_overrides_public_url() -> None:
+    from memory.adapters.grok import apply_proxy_env
+
+    srv = _listen()
+    host, port = srv.getsockname()[:2]
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            base = f"http://{host}:{port}"
+            _write_cfg(
+                root,
+                {
+                    "proxy": {
+                        "mode": "required",
+                        "pxpipe_base": base,
+                        "listen": f"{host}:{port}",
+                    },
+                    "supervisor": {"adapter": "grok"},
+                },
+            )
+            env = {
+                "GROK_CLI_CHAT_PROXY_BASE_URL": "https://cli-chat-proxy.grok.com/v1",
+                "PATH": "/usr/bin",
+            }
+            with _env(
+                AGENTIX_PROXY=None,
+                AGENTIX_PROXY_MODE=None,
+                AGENTIX_PXPIPE_URL=base,
+                AGENTIX_GATEWAY_URL=None,
+                GROK_CLI_CHAT_PROXY_BASE_URL="https://cli-chat-proxy.grok.com/v1",
+                AGENTIX_PROJECT_ROOT=str(root),
+            ):
+                out = apply_proxy_env(dict(env), root)
+                assert "cli-chat-proxy.grok.com" not in out["GROK_CLI_CHAT_PROXY_BASE_URL"]
+                assert out["GROK_CLI_CHAT_PROXY_BASE_URL"].startswith(base)
+    finally:
+        srv.close()
+
+
+def test_grok_adapter_off_does_not_pass_gateway_to_subprocess() -> None:
+    import memory.adapters.grok as grok_mod
+    from memory.adapters.grok import GrokAdapter
+
+    captured: Dict[str, object] = {}
+
+    def _fake_run(*_a, **kwargs):
+        captured["env"] = kwargs.get("env") or {}
+
+        class R:
+            returncode = 0
+            stdout = '{"role":"Coder","handoff_to":"Tester","status":"IN_PROGRESS"}'
+            stderr = ""
+
+        return R()
+
+    orig_which = grok_mod.shutil.which
+    orig_run = grok_mod.subprocess.run
+    grok_mod.shutil.which = lambda _cmd: "/usr/bin/grok"  # type: ignore[assignment]
+    grok_mod.subprocess.run = _fake_run  # type: ignore[assignment]
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_cfg(root, {"supervisor": {"adapter": "grok"}})
+            with _env(
+                AGENTIX_PROXY="0",
+                GROK_CLI_CHAT_PROXY_BASE_URL="http://127.0.0.1:8110/v1",
+                AGENTIX_GATEWAY_URL="http://127.0.0.1:8110",
+                AGENTIX_PROJECT_ROOT=str(root),
+            ):
+                GrokAdapter({"command": "grok"}).run_role_turn(
+                    role="Coder",
+                    prompt="x",
+                    handoff_in_path=None,
+                    workdir=root,
+                    timeout_s=5,
+                )
+            env = captured.get("env") or {}
+            assert isinstance(env, dict)
+            assert "GROK_CLI_CHAT_PROXY_BASE_URL" not in env
+            assert "AGENTIX_GATEWAY_URL" not in env
+    finally:
+        grok_mod.shutil.which = orig_which
+        grok_mod.subprocess.run = orig_run
+
+
+def test_workdir_beats_agentix_project_root() -> None:
+    with tempfile.TemporaryDirectory() as leftover:
+        left = Path(leftover)
+        _write_cfg(
+            left,
+            {"proxy": {"mode": "off"}, "supervisor": {"adapter": "grok"}},
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _write_cfg(
+                root,
+                {
+                    "proxy": {"mode": "required", "pxpipe_base": "http://127.0.0.1:1"},
+                    "supervisor": {"adapter": "grok"},
+                },
+            )
+            with _env(
+                AGENTIX_PROXY=None,
+                AGENTIX_PROXY_MODE=None,
+                AGENTIX_PXPIPE_URL="http://127.0.0.1:1",
+                AGENTIX_PROJECT_ROOT=str(left),
+            ):
+                cfg = load_proxy_config(root)
+                assert cfg["mode"] == "required"
+                raised = False
+                try:
+                    assert_ready(root, adapter_name="grok")
+                except ProxyNotReady:
+                    raised = True
+                assert raised
+
+
+def test_keep_recent_turns_zero_preserved() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        _write_cfg(
+            root,
+            {
+                "proxy": {
+                    "mode": "off",
+                    "keep_recent_turns": 0,
+                    "timeout_s": 0,
+                    "body_budget_tokens": 0,
+                }
+            },
+        )
+        with _env(AGENTIX_PROXY="0", AGENTIX_PROJECT_ROOT=str(root)):
+            cfg = load_proxy_config(root)
+            assert cfg["keep_recent_turns"] == 0
+            assert cfg["timeout_s"] == 0
+            assert cfg["body_budget_tokens"] == 0
+
+
+def test_required_fails_if_dial_hop_down() -> None:
+    """pxpipe жив, шлюз (другой порт) нет — required блокирует."""
+    srv = _listen()
+    host, port = srv.getsockname()[:2]
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            px = f"http://{host}:{port}"
+            _write_cfg(
+                root,
+                {
+                    "proxy": {
+                        "mode": "required",
+                        "pxpipe_base": px,
+                        "listen": "127.0.0.1:1",
+                    },
+                    "supervisor": {"adapter": "grok"},
+                },
+            )
+            with _env(
+                AGENTIX_PROXY=None,
+                AGENTIX_PROXY_MODE=None,
+                AGENTIX_PXPIPE_URL=px,
+                AGENTIX_GATEWAY_URL=None,
+                GROK_CLI_CHAT_PROXY_BASE_URL=None,
+                AGENTIX_PROJECT_ROOT=str(root),
+            ):
+                raised = False
+                try:
+                    assert_ready(root, adapter_name="grok")
+                except ProxyNotReady as exc:
+                    raised = True
+                    assert "шлюз" in str(exc).lower() or "gateway" in str(exc).lower()
+                assert raised
+    finally:
+        srv.close()
+
+
 def _run_all() -> None:
     tests = [
         test_tcp_ok_open_and_closed_port,
         test_mode_matrix_env_beats_file,
         test_missing_proxy_section_defaults_to_required,
+        test_missing_proxy_key_grok_fail_closed,
         test_mock_skips_assert_ready_even_if_port_closed,
         test_init_foreign_frontends_skip_pxpipe,
         test_required_grok_raises_when_pxpipe_down,
@@ -780,6 +1133,15 @@ def _run_all() -> None:
         test_fidelity_keeps_short_sha_without_git_log,
         test_preferred_https_fallback_local_tls,
         test_grok_adapter_calls_assert_ready,
+        test_run_loop_grok_blocked_without_pxpipe,
+        test_run_loop_mock_skips_pxpipe_required,
+        test_run_loop_proxy_off_skips_pxpipe_probe,
+        test_apply_proxy_env_off_drops_gateway_url,
+        test_apply_proxy_env_required_overrides_public_url,
+        test_grok_adapter_off_does_not_pass_gateway_to_subprocess,
+        test_workdir_beats_agentix_project_root,
+        test_keep_recent_turns_zero_preserved,
+        test_required_fails_if_dial_hop_down,
     ]
     for fn in tests:
         fn()
