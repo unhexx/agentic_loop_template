@@ -1,6 +1,6 @@
 # Agentic Loop Memory System
 
-[![Version](https://img.shields.io/badge/version-3.8.0-blue?style=flat-square)](../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.8.1-blue?style=flat-square)](../CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](../README.md)
 [![Architecture](https://img.shields.io/badge/docs-architecture-green?style=flat-square)](../docs/architecture.md)
 

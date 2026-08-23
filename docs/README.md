@@ -1,6 +1,6 @@
 # Agentix Documentation
 
-[![Version](https://img.shields.io/badge/version-3.8.0-blue?style=flat-square)](../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.8.1-blue?style=flat-square)](../CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](../README.md)
 
 Canonical documentation for the Agentix agentic development loop template.
@@ -73,4 +73,4 @@ Canonical documentation for the Agentix agentic development loop template.
 
 ## Version
 
-Aligned with **Agentix 3.8.0** (2026-08-22). Business Efficiency Initiative (P0–P7) complete. Control Plane (`memory.dashboard`) ships as operator HTMX UI on loopback `:8112`.
+Aligned with **Agentix 3.8.1** (2026-08-23). Business Efficiency Initiative (P0–P7) complete. Control Plane (`memory.dashboard`) ships as operator HTMX UI on loopback `:8112`. Live Grok uses pxpipe by default. Parallel streams: `python -m memory.supervisor run-parallel`.

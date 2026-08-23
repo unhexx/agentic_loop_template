@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [3.8.1] - 2026-08-23
+
+### Added
+- Supervisor `run-parallel`: disjoint `owned_paths` streams (serial), git worktree provision, integration branch, one PR — never merges `main`
+- Mock adapter fills `stream` / `owned_paths` / `worktree` from `AGENTIX_*` env
+- Tests: `memory/test_streams.py`, `memory/test_supervisor_parallel.py`
+
+### Changed
+- Live Grok remains **pxpipe-default** (`proxy.mode=required`); README badges (version, CI, pxpipe) and Quick Start call this out
+- Handoff `stream` is a free-form name (named parallel streams), not a closed `product|meta|cross` enum
+- `VERSION` → 3.8.1
+
 ## [3.8.0] - 2026-08-22
 
 ### Added (Agents Dashboard / Control Plane)

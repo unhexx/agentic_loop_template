@@ -1,6 +1,6 @@
 # Agentix Public Roadmap
 
-[![Version](https://img.shields.io/badge/version-3.8.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.8.1-blue?style=flat-square)](CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](README.md)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen?style=flat-square)](docs/README.md)
 
@@ -85,6 +85,7 @@
 | Version | Highlight |
 |---------|-----------|
 | **v3.9.0** (plan) | P8 Harness Hardening — packaging, observability, extraction/validation, platform parity |
+| **v3.8.1** | Parallel streams `run-parallel` on 3.8 line; README badges (CI, pxpipe default) |
 | **v3.8.0** | Operator Control Plane (`memory.dashboard` HTMX sidecar on `:8112`), not the runner |
 | **v3.7.0** | Default request proxy (Agentix gateway `:8110` fronts host pxpipe), fidelity sidecar, FTS5, honest token SLOs |
 | **v3.6.0** | Skills + rule compressor + knowledge store + cross-project experience harvest (`audit`/`cycle`) |

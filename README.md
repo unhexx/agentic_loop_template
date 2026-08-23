@@ -1,10 +1,12 @@
 # Agentix
 
-[![Version](https://img.shields.io/badge/version-3.8.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.8.1-blue?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](docs/getting-started.md)
 [![Platform](https://img.shields.io/badge/platform-Linux_%7C_macOS_%7C_Windows-lightgrey?style=flat-square)](docs/cross-platform.md)
 [![Frontend](https://img.shields.io/badge/frontend-Grok_CLI-black?style=flat-square)](docs/multi-frontend.md)
+[![pxpipe](https://img.shields.io/badge/pxpipe-default-informational?style=flat-square)](docs/proxy.md)
+[![CI](https://github.com/unhexx/agentic_loop_template/actions/workflows/agentix-loop.yml/badge.svg?branch=main)](https://github.com/unhexx/agentic_loop_template/actions/workflows/agentix-loop.yml)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen?style=flat-square)](docs/README.md)
 [![Maintained](https://img.shields.io/badge/maintained-yes-success?style=flat-square)](https://github.com/unhexx/agentic_loop_template)
 
@@ -64,6 +66,8 @@ cd agentic_loop_template
 bash Agent-Init.sh --wizard    # interactive setup
 source .venv/bin/activate
 ```
+
+Live Grok uses **pxpipe by default** (gateway `:8110` → host pxpipe `:8100`). Mock/CI skip the proxy. Opt out: `export AGENTIX_PROXY=0`. See [`docs/proxy.md`](docs/proxy.md).
 
 Cold-start every cycle (do **not** load multi-MB `.agent` dumps):
 
@@ -232,6 +236,7 @@ python -m memory.playbooks export --format hub
 |---------|---------|
 | `bash scripts/demo-loop.sh` | One-command smoke demo |
 | `python -m memory.supervisor run --adapter mock --max-cycles 1 --no-pr` | Unattended role loop (mock CI path); adapters: mock/grok/cursor/blackbox |
+| `python -m memory.supervisor run-parallel --stream name:paths/` | Disjoint streams (serial), then one integration PR; never merges `main` |
 | `scripts/agentix-supervisor run ...` | Bash shim for the same supervisor CLI |
 | `python -m memory.dashboard serve --workdir PATH` | Operator Control Plane (HTMX UI, not the runner); loopback `:8112` |
 | `scripts/agentix-dashboard serve --workdir PATH` | Bash shim for the same dashboard CLI |
@@ -272,7 +277,8 @@ v1 does **not** listen on a tailnet IP. TeleGrok 0.1.0 does not ship runtime Tai
 | **Loop discipline** | 5 roles, JSON handoffs, INVEST tasks, git §11 sync |
 | **Control Plane** | Loopback HTMX operator UI (`memory.dashboard` on `:8112`), not the runner |
 | **Self-improvement** | Playbooks (ACE scoring), meta-harvester, performance ledger, [skills](skills/README.md) |
-| **Context** | Bounded LOOP_STATE, `context_budget` gate, rule-based compressor, local SQLite knowledge, [request proxy](docs/proxy.md) (pxpipe + Agentix gateway) |
+| **Context** | Bounded LOOP_STATE, `context_budget` gate, rule-based compressor, local SQLite knowledge, [request proxy](docs/proxy.md) (**pxpipe default** + Agentix gateway) |
+| **Parallel streams** | `run-parallel` with `owned_paths` + git worktrees; serial streams, one integration PR |
 | **Cross-platform** | `Agent-Init.ps1` + `Agent-Init.sh`, platform-adaptive prompts |
 | **Multi-frontend** | Grok (default), Cursor, Claude Code, Blackbox adapters |
 | **Experience harvest** | Scan sibling `AGENTS.md` / playbooks; `audit` + `cycle` self-improve |
@@ -362,4 +368,4 @@ Source: [`.agent/PERFORMANCE_LEDGER.md`](.agent/PERFORMANCE_LEDGER.md) · [docs/
 
 ## License
 
-[MIT](LICENSE) · **Agentix 3.8.0** · Maintained by **exception.expert**
+[MIT](LICENSE) · **Agentix 3.8.1** · Maintained by **exception.expert**
