@@ -21,7 +21,9 @@ param(
     [switch]$GeneratePromptOnly,
     [int]$MaxTaskLength = 2800,
     [string]$ProjectName,
-    [switch]$GenerateTemplate   # Generate reusable prompt with {{PLACEHOLDERS}} instead of filled content
+    [switch]$GenerateTemplate,   # Generate reusable prompt with {{PLACEHOLDERS}} instead of filled content
+    [switch]$Wizard,
+    [string]$Frontend
 )
 
 $ErrorActionPreference = "Stop"
@@ -779,33 +781,98 @@ Write-Host "`n[5/6] Setting agent-friendly environment variables..." -Foreground
 $env:POSH_BASH_CHAINING_NONINTERACTIVE = "1"
 Write-Host "  Variables set for non-interactive sessions." -ForegroundColor Green
 
-# Proxy exports into activate. Fail-closed only when supervisor.adapter is grok.
+# PYTHONPATH — запасной путь, если editable-install не подхватился
 if (-not $env:PYTHONPATH) { $env:PYTHONPATH = $TemplateRoot } elseif ($env:PYTHONPATH -notlike "*$TemplateRoot*") { $env:PYTHONPATH = "$TemplateRoot;$env:PYTHONPATH" }
-$initFe = "blackbox"
-$cfgPath = Join-Path $ProjectRoot ".agent\project_config.json"
-if (-not (Test-Path $cfgPath)) { $cfgPath = Join-Path $ProjectRoot ".agent\project_config.example.json" }
-if (Test-Path $cfgPath) {
-    try {
-        $cfgObj = Get-Content -LiteralPath $cfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
-        if ($cfgObj.supervisor -and $cfgObj.supervisor.adapter) {
-            $initFe = [string]$cfgObj.supervisor.adapter
-        }
-    } catch {}
+
+# Frontend: -Frontend > визард (grok) > supervisor.adapter > blackbox
+$explicitFrontend = -not [string]::IsNullOrWhiteSpace($Frontend)
+if ($explicitFrontend) {
+    $initFe = $Frontend.Trim().ToLowerInvariant()
+} else {
+    $initFe = "blackbox"
+    $cfgPath = Join-Path $ProjectRoot ".agent\project_config.json"
+    if (-not (Test-Path $cfgPath)) { $cfgPath = Join-Path $ProjectRoot ".agent\project_config.example.json" }
+    if (Test-Path $cfgPath) {
+        try {
+            $cfgObj = Get-Content -LiteralPath $cfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($cfgObj.supervisor -and $cfgObj.supervisor.adapter) {
+                $initFe = [string]$cfgObj.supervisor.adapter
+            }
+        } catch {}
+    }
 }
+
+if ($Wizard) {
+    Write-Host ""
+    Write-Host "=== Agentix Onboarding Wizard ===" -ForegroundColor Cyan
+    $nameIn = ""
+    $platChoice = ""
+    $feChoice = ""
+    $specIn = ""
+    try { $nameIn = Read-Host "Project name" } catch {}
+    if (-not $ProjectName) {
+        if ($nameIn) { $ProjectName = $nameIn } else { $ProjectName = "my-project" }
+    }
+    Write-Host "Platform: 1) Linux 2) macOS 3) Windows (via WSL)"
+    try { $platChoice = Read-Host "Choice [1]" } catch {}
+    Write-Host "Frontend: 1) Grok  2) Cursor  3) Claude Code  4) Blackbox"
+    try { $feChoice = Read-Host "Choice [1]" } catch {}
+    try { $specIn = Read-Host "Spec file [TASK_SPECIFICATION.md]" } catch {}
+    if ($specIn) { $TaskSpecFile = $specIn }
+
+    if (-not $explicitFrontend) {
+        switch ($feChoice) {
+            "2" { $initFe = "cursor" }
+            "3" { $initFe = "claude" }
+            "4" { $initFe = "blackbox" }
+            default { $initFe = "grok" }
+        }
+    }
+
+    $specDest = if ([System.IO.Path]::IsPathRooted($TaskSpecFile)) { $TaskSpecFile } else { Join-Path $ProjectRoot $TaskSpecFile }
+    $exampleSpec = Join-Path $TemplateRoot "examples\consumer-starter\TASK_SPECIFICATION.example.md"
+    if (-not (Test-Path $specDest) -and (Test-Path $exampleSpec)) {
+        Copy-Item -LiteralPath $exampleSpec -Destination $specDest -Force
+        Write-Host "  Created $specDest from consumer-starter template" -ForegroundColor DarkGray
+    }
+    $ctxDest = Join-Path $ProjectRoot "PROJECT_CONTEXT.md"
+    $exampleCtx = Join-Path $TemplateRoot "examples\consumer-starter\PROJECT_CONTEXT.example.md"
+    if (-not (Test-Path $ctxDest) -and (Test-Path $exampleCtx)) {
+        Copy-Item -LiteralPath $exampleCtx -Destination $ctxDest -Force
+        Write-Host "  Created PROJECT_CONTEXT.md from template" -ForegroundColor DarkGray
+    }
+
+    Write-Host ""
+    Write-Host "Setup complete for: $ProjectName"
+    Write-Host "  Platform choice: $(if ($platChoice) { $platChoice } else { '1' })"
+    Write-Host "  Frontend: $initFe"
+    Write-Host "  Spec: $TaskSpecFile"
+}
+
 try {
     $oldPref = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     & $venvPython -m memory.proxy install-venv 2>$null | Out-Null
+    & $venvPython -m memory state init 2>$null | Out-Null
+    & $venvPython -m memory.experience_harvester seed-defaults --apply 2>$null | Out-Null
     & $venvPython -m memory.knowledge ingest-if-empty --root docs --budget 800 2>$null | Out-Null
+    & $venvPython -m memory.playbooks seed --from-standards 2>$null | Out-Null
     & $venvPython -m memory.context_budget cold-start --budget 16000 --compress 2>$null | Out-Null
     $ErrorActionPreference = $oldPref
 } catch {
     Write-Host "  Proxy install-venv skipped." -ForegroundColor DarkYellow
 }
+
+# визард / явный grok|cursor|blackbox — fail-closed; иначе best-effort (CI без pxpipe)
+# mock никогда не валит bootstrap; AGENTIX_PROXY=0 по-прежнему opt-out внутри health --init
 $healthOut = & $venvPython -m memory.proxy health --init --frontend $initFe --workdir $ProjectRoot 2>&1
 $healthRc = $LASTEXITCODE
-if ($initFe -eq "grok" -and $healthRc -ne 0) {
-    Write-Host "AGENT_INIT: pxpipe required for frontend=grok (or export AGENTIX_PROXY=0)" -ForegroundColor Red
+$liveExplicit = @('grok', 'cursor', 'blackbox')
+$failClosed = ($initFe -ne 'mock') -and (
+    $Wizard -or ($explicitFrontend -and ($liveExplicit -contains $initFe))
+)
+if ($failClosed -and $healthRc -ne 0) {
+    Write-Host "AGENT_INIT: pxpipe required for frontend=$initFe (or export AGENTIX_PROXY=0)" -ForegroundColor Red
     Write-Host $healthOut
     exit 1
 }
@@ -852,6 +919,39 @@ if ($finalTask -or $GenerateTemplate) {
 } else {
     Write-Host "  No task description found automatically." -ForegroundColor DarkYellow
 }
+
+# короткий файл холодного старта — как Init.sh, даже без автодетекта задачи
+$agentDir = Join-Path $ProjectRoot ".agent"
+if (-not (Test-Path $agentDir)) {
+    New-Item -ItemType Directory -Path $agentDir -Force | Out-Null
+}
+$shortPromptPath = Join-Path $agentDir "starter_prompt_grok.txt"
+$verFile = Join-Path $TemplateRoot "VERSION"
+$tplVersion = "3.8.1"
+if (Test-Path $verFile) {
+    $tplVersion = ([System.IO.File]::ReadAllText($verFile, [System.Text.Encoding]::UTF8)).Trim()
+}
+$shortPrompt = @"
+You are running the Agentic Development Loop (template $tplVersion).
+
+Cold-start (first, max 4 tool calls):
+1. python -m memory.proxy health
+2. python -m memory state snapshot --window 3
+3. python -m memory query --top 5 --category "Common Failure Patterns"
+4. python -m memory.knowledge query --q "cycle" --top 3
+
+Then act as Orchestrator:
+- prompts/short_orchestrator_prompt.md; .agent/PLAN.md + TODO if present
+- Playbooks: python -m memory.playbooks select when available
+- Do NOT load multi-MB .agent/history archives
+- PLAN -> ACT (<=3 tools) -> REFLECT; one JSON handoff; validate with memory.validate_handoff
+- Commits: natural Russian human voice, no AI/model mentions
+- Parallel: PARALLEL_PROTOCOL.md + scripts/agentic_loop.sh
+
+Begin as Orchestrator.
+"@
+[System.IO.File]::WriteAllText($shortPromptPath, $shortPrompt, [System.Text.Encoding]::UTF8)
+Write-Host "  Starter prompt saved to: $shortPromptPath" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "=== Agentic Loop Environment Ready ===" -ForegroundColor Green

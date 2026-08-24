@@ -53,6 +53,7 @@ python -m memory state init 2>/dev/null || true
 python -m memory state compact >/dev/null 2>&1 || true
 python -m memory.experience_harvester seed-defaults --apply >/dev/null 2>&1 || true
 python -m memory.knowledge ingest-if-empty --root docs --budget 800 >/dev/null 2>&1 || true
+python -m memory.playbooks seed --from-standards >/dev/null 2>&1 || true
 
 chmod +x tools/select.py scripts/*.sh Agent-Init.sh 2>/dev/null || true
 

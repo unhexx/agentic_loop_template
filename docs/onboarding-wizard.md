@@ -10,19 +10,29 @@ bash scripts/demo-loop.sh
 
 Runs: env bootstrap → playbooks seed → plan check → resume context → eval harness sample.
 
-## Wizard Mode (Agent-Init.sh)
+## Wizard Mode
+
+Unix:
 
 ```bash
 bash Agent-Init.sh --wizard
 ```
 
+Windows:
+
+```powershell
+.\Agent-Init.ps1 -Wizard
+```
+
 Prompts for:
 1. Project name
 2. Platform (win/linux/mac)
-3. Frontend (blackbox/cursor/claude)
+3. Frontend (**grok** / cursor / claude / blackbox) — default **grok**
 4. Spec file path
 
 Outputs tailored next steps and copies consumer-starter templates if missing.
+
+Live/wizard default frontend is **grok** (fail-closed proxy health). Pass `-Frontend blackbox` (or set `supervisor.adapter` in `.agent/project_config.json`) to keep Blackbox. Non-wizard Init stays best-effort so CI does not require pxpipe. `AGENTIX_PROXY=0` still opts out.
 
 ## Stack Templates
 
