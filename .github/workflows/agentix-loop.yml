@@ -1,6 +1,9 @@
 name: Agentix Loop Trigger
 
 on:
+  pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       cycle_goal:
@@ -11,51 +14,68 @@ on:
     - cron: "0 8 * * 1"
 
 jobs:
-  loop-prep:
+  harness:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Bootstrap environment
+      - name: Editable install with dashboard extra
         run: |
-          bash Agent-Init.sh
+          python -m pip install -U pip
+          python -m pip install -e ".[dev,dashboard]"
+
+      # pytest memory/ не доказывает G1: он кладёт корень репо в sys.path.
+      # python на PATH — интерпретатор setup-python, куда ставили -e, не системный python3.
+      - name: G1 import without repo on sys.path
+        run: |
+          cd /tmp
+          env -u PYTHONPATH python -c "import memory, memory.supervisor, memory.validate_handoff; import importlib.metadata as m; print(m.version('agentix'))"
+
+      - name: Full memory pytest (includes mock O→C→T→R + dashboard)
+        run: python -m pytest -q memory/
+
+      - name: Explicit mock cycle
+        run: python -m pytest -q memory/test_supervisor_mock_cycle.py
+
+      - name: Dashboard extras imported (httpx+fastapi; tests must not skip)
+        run: |
+          python -c "import httpx, fastapi"
+          python -m pytest -q memory/test_dashboard_security.py memory/test_dashboard_ws.py
+
+      # Init без --wizard: health прокси best-effort, AGENTIX_PROXY=0 не выставляем.
+      - name: Agent-Init ritual (non-wizard, best-effort proxy)
+        run: bash Agent-Init.sh
+
+      - name: Seed / Hub export / audit
+        run: |
           source .venv/bin/activate
           python -m memory.playbooks seed --from-standards
-
-      - name: Verify loop artifacts
-        run: |
-          source .venv/bin/activate
           test -f .agent/PLAN.md
           test -f TASK_SPECIFICATION.md
-          python -m memory.test_performance_ledger
-          python -m memory.test_playbooks_hub
-          python -m memory.test_compressor
-          python -m memory.test_knowledge
-          python -m memory.test_experience_harvester
-          python -m memory.test_proxy
-          python -m memory.test_streams
-          python -m memory.test_supervisor_parallel
-
-      - name: Export Hub index
-        run: |
-          source .venv/bin/activate
           python -m memory.playbooks export --format hub
-
-      - name: Record audit entry
-        run: |
-          source .venv/bin/activate
           python -m memory.audit_log append \
             --action "github_actions_loop_trigger" \
             --role "ci" \
             --cycle 0 \
-            --details "{\"goal\":\"${{ github.event.inputs.cycle_goal || 'scheduled' }}\"}"
+            --details "{\"goal\":\"${{ github.event.inputs.cycle_goal || github.event_name }}\"}"
 
-      - name: Summary
+  stdlib-collect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Dev extra only (no FastAPI)
         run: |
-          echo "Agentix loop prep complete. Trigger your agent frontend with first_orchestrator_message.md"
-          echo "Goal: ${{ github.event.inputs.cycle_goal || 'scheduled-weekly' }}"
+          python -m pip install -U pip
+          python -m pip install -e ".[dev]"
+
+      - name: Collect supervisor tests without dashboard extra
+        run: python -m pytest --collect-only -q memory/test_supervisor_fsm.py
