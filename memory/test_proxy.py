@@ -985,7 +985,10 @@ def test_grok_adapter_off_does_not_pass_gateway_to_subprocess() -> None:
 
         class R:
             returncode = 0
-            stdout = '{"role":"Coder","handoff_to":"Tester","status":"IN_PROGRESS"}'
+            stdout = (
+                '{"role":"Coder","handoff_to":"Tester","current_phase":"implementation",'
+                '"cycle_number":1,"summary":"stub","status":"IN_PROGRESS","confidence":0.9}'
+            )
             stderr = ""
 
         return R()
