@@ -8,6 +8,7 @@ First-class reusable skills for the agentic loop. Skills are progressive knowled
 |-------|---------|--------------|
 | [reflective-improvement](reflective-improvement/SKILL.md) | Structured 6-step reflection after tasks/errors/DONE cycles → persistent lessons, playbook updates, meta proposals | Reviewer on DONE; any role after failure or major milestone |
 | [local-knowledge-ingestion](local-knowledge-ingestion/SKILL.md) | Templates for crawlers, SQLite local knowledge store, sovereign mirroring of docs/code into structured memory | Orchestrator bootstrap; when external docs or multi-repo knowledge needed |
+| [git-commit-to-jira-tasks](git-commit-to-jira-tasks/SKILL.md) | Cluster git commits into INVEST Jira Stories/Tasks with Fibonacci Story Points (hours optional) | **Explicit user request only** or `Follow skills/git-commit-to-jira-tasks/SKILL.md`. Never `--intent git` |
 
 Cross-project harvest is not a separate skill file: run `python tools/select.py --intent harvest` → `experience_harvester cycle` (see `EXPERIENCE_EXTRACTION_TOOLS.md`).
 
