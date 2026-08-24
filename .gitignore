@@ -228,4 +228,5 @@ __marimo__/
 .agent/proxy_cache.sqlite
 .agent/proxy_cache.sqlite-*
 .agent/sft/
+.agent/jira-from-commits-state.json
 .venv/
