@@ -2,27 +2,39 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from memory.proxy.policy import ProxyNotReady, assert_ready
+from memory.validate_handoff import validate_handoff
+
+from .persist import persist_role_handoff
+
+log = logging.getLogger("memory.adapters")
 
 
-def extract_json_object(text: str) -> Dict[str, Any]:
-    """
-    Find and parse the last JSON object embedded in free-form text.
+class HandoffExtractError(ValueError):
+    """Нет JSON или ни один кандидат не проходит validate_handoff."""
 
-    Prefer a real decode from each ``{`` (handles nested braces); fall back
-    to a greedy regex match if needed.
+
+def _strict_done_for(candidate: Dict[str, Any]) -> bool:
+    return (candidate.get("status") or "").upper() == "DONE"
+
+
+def extract_json_candidates(text: str) -> List[Dict[str, Any]]:
+    """Все dict, которые raw_decode принял, в порядке появления.
+
+    Greedy regex — только если ни один dict не декодирован.
     """
     if not text:
-        raise ValueError("no JSON object in adapter output")
+        return []
     decoder = json.JSONDecoder()
-    last: Optional[Dict[str, Any]] = None
+    found: List[Dict[str, Any]] = []
     i = 0
     n = len(text)
     while i < n:
@@ -30,18 +42,70 @@ def extract_json_object(text: str) -> Dict[str, Any]:
             try:
                 obj, end = decoder.raw_decode(text, i)
                 if isinstance(obj, dict):
-                    last = obj
+                    found.append(obj)
                 i = end
                 continue
             except json.JSONDecodeError:
                 pass
         i += 1
-    if last is not None:
-        return last
+    if found:
+        return found
     matches = list(re.finditer(r"\{[\s\S]*\}", text))
     if not matches:
+        return []
+    try:
+        obj = json.loads(matches[-1].group(0))
+    except json.JSONDecodeError as exc:
+        raise HandoffExtractError(
+            "Нет JSON или ни один кандидат не проходит validate_handoff."
+        ) from exc
+    if isinstance(obj, dict):
+        return [obj]
+    return []
+
+
+def extract_json_object(text: str) -> Dict[str, Any]:
+    """Последний dict (обратная совместимость тестов picks_last)."""
+    if not text:
         raise ValueError("no JSON object in adapter output")
-    return json.loads(matches[-1].group(0))
+    candidates = extract_json_candidates(text)
+    if not candidates:
+        raise ValueError("no JSON object in adapter output")
+    return candidates[-1]
+
+
+def extract_handoff(text: str) -> Dict[str, Any]:
+    """Последний кандидат, который persist примет.
+
+    strict_done=(status==DONE) на каждом кандидате. Без параметра strict_done —
+    одно правило с persist_role_handoff. Если валидных нет — HandoffExtractError
+    с errors последнего кандидата.
+    """
+    candidates = extract_json_candidates(text)
+    last_valid: Optional[Dict[str, Any]] = None
+    last_errors: List[str] = []
+    rejected = 0
+    for cand in candidates:
+        if log.isEnabledFor(logging.DEBUG):
+            keys = ",".join(str(k) for k in cand.keys())
+            log.debug("extract candidate keys: %s", keys[:200])
+        ok, errors = validate_handoff(cand, strict_done=_strict_done_for(cand))
+        if ok:
+            last_valid = cand
+        else:
+            rejected += 1
+            last_errors = errors
+    if last_valid is not None:
+        if rejected:
+            log.warning("extract_handoff rejected %s candidates", rejected)
+        return last_valid
+    log.warning("extract_handoff rejected %s candidates", rejected)
+    msg = (
+        "; ".join(last_errors)
+        if last_errors
+        else "Нет JSON или ни один кандидат не проходит validate_handoff."
+    )
+    raise HandoffExtractError(msg)
 
 
 def apply_proxy_env(env: Dict[str, str], workdir: Path) -> Dict[str, str]:
@@ -115,10 +179,5 @@ class GrokAdapter:
             raise RuntimeError(
                 f"grok failed rc={r.returncode}: {(r.stderr or '')[:500]}"
             )
-        data = extract_json_object(combined)
-        out = Path(workdir) / ".agent" / "last_handoff.json"
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(
-            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
-        return out
+        data = extract_handoff(combined)
+        return persist_role_handoff(workdir, data)

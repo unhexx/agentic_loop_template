@@ -81,6 +81,55 @@ def test_handoff_done_rules():
     assert ok2, errors2
 
 
+def test_validate_handoff_uses_jsonschema():
+    pytest.importorskip("jsonschema")
+    from memory import validate_handoff as vh
+
+    good = {
+        "handoff_to": "None",
+        "role": "Reviewer",
+        "current_phase": "finalization",
+        "cycle_number": 1,
+        "summary": "done",
+        "status": "DONE",
+        "confidence": 0.9,
+        "sync_waived": "single-repo feature branch dogfood",
+        "lessons_learned": ["use state snapshot"],
+        "metrics": {"tests_total": 3, "tests_failed": 0, "tool_calls": 2},
+    }
+    ok, errors = vh.validate_handoff(good)
+    assert ok, errors
+    assert vh._last_backend == "jsonschema"
+
+    bad_role = {
+        "handoff_to": "Coder",
+        "role": "NotARole",
+        "current_phase": "planning",
+        "cycle_number": 1,
+        "summary": "x",
+        "status": "IN_PROGRESS",
+        "confidence": 0.5,
+    }
+    ok_bad, err_bad = vh.validate_handoff(bad_role, strict_done=False)
+    assert not ok_bad
+    assert err_bad
+    assert vh._last_backend == "jsonschema"
+
+
+def test_log_metrics_agent_dir(tmp_path, monkeypatch):
+    cwd = tmp_path / "cwd"
+    cwd.mkdir()
+    monkeypatch.chdir(cwd)
+    agent = tmp_path / "work" / ".agent"
+    state_mod.log_metrics({"event": "handoff_invalid", "errors": 2}, agent_dir=agent)
+    dest = agent / "metrics.jsonl"
+    assert dest.is_file()
+    row = json.loads(dest.read_text(encoding="utf-8").splitlines()[-1])
+    assert row["event"] == "handoff_invalid"
+    assert row["errors"] == 2
+    assert not (cwd / ".agent" / "metrics.jsonl").exists()
+
+
 def test_experience_seeds_dedupe():
     rows = dedupe(DEFAULT_SEEDS + DEFAULT_SEEDS)
     assert len(rows) == len(DEFAULT_SEEDS)

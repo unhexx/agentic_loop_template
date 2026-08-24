@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from .persist import persist_role_handoff
 
 
 def _base(role: str, handoff_to: str, phase: str, status: str = "IN_PROGRESS") -> Dict[str, Any]:
@@ -39,8 +40,6 @@ class MockAdapter:
         workdir: Path,
         timeout_s: int,
     ) -> Path:
-        agent = workdir / ".agent"
-        agent.mkdir(parents=True, exist_ok=True)
         # Fixed sequence ignores role mismatches for simplicity of full-cycle tests
         seq = [
             ("Orchestrator", "Coder", "planning", "IN_PROGRESS"),
@@ -66,6 +65,4 @@ class MockAdapter:
         if status == "DONE":
             data["sync_waived"] = "mock adapter CI cycle"
             data["git_sync_status"] = {"verified": False}
-        out = agent / "last_handoff.json"
-        out.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-        return out
+        return persist_role_handoff(workdir, data)

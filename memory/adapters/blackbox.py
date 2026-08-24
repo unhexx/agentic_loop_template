@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-import json
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional
 
-from .grok import extract_json_object
+from .grok import extract_handoff
+from .persist import persist_role_handoff
 
 
 class BlackboxAdapter:
@@ -44,10 +44,5 @@ class BlackboxAdapter:
             raise RuntimeError(
                 f"blackbox failed rc={r.returncode}: {(r.stderr or '')[:500]}"
             )
-        data = extract_json_object(combined)
-        out = Path(workdir) / ".agent" / "last_handoff.json"
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(
-            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
-        return out
+        data = extract_handoff(combined)
+        return persist_role_handoff(workdir, data)

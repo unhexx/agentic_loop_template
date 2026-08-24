@@ -316,10 +316,16 @@ def compact(
     }
 
 
-def log_metrics(metrics: Dict[str, Any]) -> None:
-    _ensure_dirs()
+def log_metrics(metrics: Dict[str, Any], *, agent_dir: Optional[Path] = None) -> None:
+    if agent_dir is not None:
+        dest_dir = Path(agent_dir)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / "metrics.jsonl"
+    else:
+        _ensure_dirs()
+        dest = METRICS_JSONL
     row = {"ts": _now_iso(), **metrics}
-    with METRICS_JSONL.open("a", encoding="utf-8") as fh:
+    with dest.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
