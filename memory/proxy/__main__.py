@@ -15,6 +15,9 @@ def _print(obj) -> None:
 
 
 def cli(argv: Optional[Sequence[str]] = None) -> int:
+    from memory.logutil import configure_logging
+
+    configure_logging()
     parser = argparse.ArgumentParser(description="Прокси запросов Agentix (политика + health)")
     sub = parser.add_subparsers(dest="cmd", required=True)
 

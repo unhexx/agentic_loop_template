@@ -9,6 +9,10 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
+from memory.logutil import get_logger
+
+log = get_logger("memory.proxy.config")
+
 
 MODES = ("required", "preferred", "off")
 
@@ -76,8 +80,8 @@ def load_project_config(workdir: Optional[Path] = None) -> Dict[str, Any]:
                 data = json.loads(p.read_text(encoding="utf-8"))
                 if isinstance(data, dict):
                     return data
-            except Exception:
-                pass
+            except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                log.warning("load_project_config failed for %s: %s", p, exc)
     return {}
 
 

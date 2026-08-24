@@ -34,13 +34,18 @@ Usage from the agent (via powershell tool):
     python -m agentic_loop_template.memory.meta_harvester apply-safe --dry-run
 """
 
+import logging
+
 # Guarded imports — the full workspace/store/schema may be in separate files or installed package.
 # Core working modules (questions, meta, new performance_ledger) are self-contained.
 try:
     from .workspace import get_workspace_id, memory_paths
     from .store import read_memory, update_memory, snapshot, query_memory
     from .schema import MemoryState, Pattern
-except Exception:
+except Exception as exc:
+    logging.getLogger("memory").warning(
+        "guarded import of workspace/store/schema failed: %s", exc
+    )
     # Provide minimal fallbacks so submodule imports (performance_ledger, meta_harvester) still work
     def get_workspace_id(): return "agentix-local"
     def memory_paths(): return {"file": "~/.grok/agentic-loop-memory/agentix.md"}
@@ -76,7 +81,10 @@ from .meta_harvester import (
 # Playbooks & Knowledge Objects (full cycle guidance - P4 complete)
 try:
     from . import playbooks as playbooks_mod
-except Exception:
+except Exception as exc:
+    logging.getLogger("memory").warning(
+        "guarded import of playbooks failed: %s", exc
+    )
     playbooks_mod = None
 
 __all__ = [

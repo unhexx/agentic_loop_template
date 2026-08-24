@@ -43,6 +43,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from memory.logutil import get_logger
+
+log = get_logger("memory.playbooks")
+
 DEFAULT_ENABLED = True
 DEFAULT_AUTO_CURATE = True
 DEFAULT_MAX_BULLETS = 50
@@ -108,6 +112,7 @@ def _load_index() -> Dict[str, Any]:
     try:
         return json.loads(PLAYBOOKS_INDEX.read_text(encoding="utf-8"))
     except Exception:
+        log.warning("playbooks index corrupt, renaming to bak: %s", PLAYBOOKS_INDEX)
         try:
             PLAYBOOKS_INDEX.rename(PLAYBOOKS_INDEX.with_suffix(".json.bak"))
         except Exception:

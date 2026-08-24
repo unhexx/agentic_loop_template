@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 from urllib.parse import urlparse
 
+from memory.logutil import get_logger
 from memory.proxy.audit import redact_headers
 from memory.proxy.config import (
     DEFAULT_GATEWAY_BASE,
@@ -47,6 +48,7 @@ HOP_BY_HOP = {
 }
 CHUNK = 8192
 CONNECT_TIMEOUT = 2.0
+log = get_logger("memory.proxy.gateway")
 
 
 class BindError(RuntimeError):
@@ -194,8 +196,8 @@ class GatewayHandler(BaseHTTPRequestHandler):
                 body, meta = process_request(
                     body, path=path, headers=headers, cfg=cfg, project_root=root
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                log.warning("process_request failed path=%s: %s", path, exc)
             if meta.get("cache_hit") and meta.get("cached_body") is not None:
                 cached = bytes(meta["cached_body"])
                 self.send_response(int(meta.get("cached_status") or 200))

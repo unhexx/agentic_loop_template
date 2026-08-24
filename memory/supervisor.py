@@ -13,6 +13,10 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+from memory.logutil import get_logger
+
+log = get_logger("memory.supervisor")
+
 
 class Terminal(str, Enum):
     PR_READY = "PR_READY"
@@ -88,8 +92,8 @@ def load_config(workdir: Path) -> Dict[str, Any]:
                 data = json.loads(p.read_text(encoding="utf-8"))
                 if isinstance(data, dict):
                     return data
-            except Exception:
-                pass
+            except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                log.warning("load_config failed for %s: %s", p, exc)
     return {}
 
 
@@ -101,7 +105,8 @@ def load_last_handoff(workdir: Path) -> Optional[Dict[str, Any]]:
     try:
         data = json.loads(p.read_text(encoding="utf-8"))
         return data if isinstance(data, dict) else None
-    except Exception:
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        log.warning("load_last_handoff failed for %s: %s", p, exc)
         return None
 
 
@@ -236,7 +241,8 @@ def _state_snapshot_for_workdir(workdir: Path) -> str:
             return json.dumps(snap_obj, ensure_ascii=False)[:_SNAP_JSON_CAP]
         finally:
             _restore_state_paths(state_mod, orig)
-    except Exception:
+    except Exception as exc:
+        log.warning("state snapshot failed: %s", exc)
         return "{}"
 
 
@@ -272,7 +278,8 @@ def _knowledge_block(
         blob = "\n".join(lines)
         text = compress_text(blob, _KNOWLEDGE_BUDGET)["text"]
         return f"\n## Local knowledge (top 3)\n{text}\n"
-    except Exception:
+    except Exception as exc:
+        log.warning("knowledge inject failed: %s", exc)
         return ""
 
 
@@ -289,7 +296,8 @@ def _maybe_compress_prompt(text: str, workdir: Path) -> str:
         if estimate_tokens(text) <= _PROMPT_TOKEN_CAP:
             return text
         return compress_text(text, _PROMPT_TOKEN_CAP)["text"]
-    except Exception:
+    except Exception as exc:
+        log.warning("compress skipped: %s", exc)
         return text
 
 
@@ -310,7 +318,8 @@ def build_role_prompt(
     if path.is_file():
         try:
             body = path.read_text(encoding="utf-8")[:_PROMPT_BODY_CAP]
-        except Exception:
+        except Exception as exc:
+            log.warning("role prompt read failed for %s: %s", path, exc)
             body = ""
 
     prev = ""
@@ -612,8 +621,8 @@ def run_loop(
                         from memory.experience_harvester import maybe_cycle_on_done
 
                         maybe_cycle_on_done(workdir, apply=False)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        log.warning("maybe_cycle_on_done failed: %s", exc)
                     if create_pr:
                         term = maybe_create_pr(workdir, sup)
                     pr_ready_count += 1
@@ -667,6 +676,9 @@ def run_loop(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    from memory.logutil import configure_logging
+
+    configure_logging()
     parser = argparse.ArgumentParser(prog="memory.supervisor")
     sub = parser.add_subparsers(dest="cmd", required=True)
 

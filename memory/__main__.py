@@ -8,6 +8,9 @@ import sys
 
 
 def _cli() -> None:
+    from .logutil import configure_logging
+
+    configure_logging()
     # Early dispatch for nested modules so `python -m memory state ...` works
     if len(sys.argv) > 1 and sys.argv[1] == "state":
         from .state import cli as state_cli
