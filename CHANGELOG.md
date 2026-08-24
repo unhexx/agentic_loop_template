@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- Opt-in skill `skills/git-commit-to-jira-tasks`: cluster git commits into INVEST Jira Stories (Fibonacci Story Points; Original Estimate only if `JIRA_HOURS_PER_SP` / `--hours-per-sp` and timetracking is on the create screen). Disabled by default (`disable-model-invocation: true`; never `--intent git`)
+
 ## [3.9.0] - 2026-08-24
 
 ### Added (P8 Harness Hardening)
