@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# PYTHONPATH — запасной путь для клона без pip install -e .
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 export PYTHONPATH="${ROOT}${PYTHONPATH:+:$PYTHONPATH}"

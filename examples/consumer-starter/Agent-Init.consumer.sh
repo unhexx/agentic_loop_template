@@ -51,22 +51,21 @@ fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
 
-MARKER="# agentix-pythonpath"
-if ! grep -q "$MARKER" .venv/bin/activate 2>/dev/null; then
-  printf '\n%s\nexport PYTHONPATH="%s${PYTHONPATH:+:$PYTHONPATH}"\n' "$MARKER" "$TEMPLATE" >> .venv/bin/activate
+if command -v uv >/dev/null 2>&1; then
+  uv pip install -e "${TEMPLATE}[dev]" \
+    || uv pip install 'jsonschema>=4.18,<5' 'pytest>=8.0,<9'
+else
+  python -m pip install -U pip -q 2>/dev/null || true
+  python -m pip install -e "${TEMPLATE}[dev]" \
+    || python -m pip install 'jsonschema>=4.18,<5' 'pytest>=8.0,<9'
 fi
-export PYTHONPATH="${TEMPLATE}${PYTHONPATH:+:$PYTHONPATH}"
+if ! python -c "import memory, memory.supervisor" >/dev/null 2>&1; then
+  export PYTHONPATH="${TEMPLATE}${PYTHONPATH:+:$PYTHONPATH}"
+fi
 
 python -m memory.proxy install-venv >/dev/null 2>&1 || python -m memory.proxy install-venv || true
 # shellcheck disable=SC1091
 source .venv/bin/activate
-
-if command -v uv >/dev/null 2>&1; then
-  uv pip install -q pyyaml pytest jsonschema >/dev/null 2>&1 || true
-else
-  python -m pip install -U pip -q 2>/dev/null || true
-  python -m pip install -q pyyaml pytest jsonschema 2>/dev/null || true
-fi
 
 mkdir -p .agent
 if [[ ! -f .agent/project_config.json && -f "$TEMPLATE/.agent/project_config.example.json" ]]; then

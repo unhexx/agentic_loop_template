@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://exception.expert/schemas/agentic-handoff.json",
+  "title": "AgenticLoopHandoff",
+  "type": "object",
+  "required": [
+    "handoff_to",
+    "role",
+    "current_phase",
+    "cycle_number",
+    "summary",
+    "status",
+    "confidence"
+  ],
+  "properties": {
+    "handoff_to": {
+      "type": "string",
+      "enum": ["Orchestrator", "Coder", "Tester", "Debugger", "Reviewer", "None"]
+    },
+    "role": {
+      "type": "string",
+      "enum": ["Orchestrator", "Coder", "Tester", "Debugger", "Reviewer"]
+    },
+    "current_phase": {
+      "type": "string",
+      "enum": ["planning", "implementation", "testing", "debugging", "review", "finalization"]
+    },
+    "cycle_number": { "type": "integer", "minimum": 0 },
+    "summary": { "type": "string", "maxLength": 800 },
+    "context_delta": { "type": "string" },
+    "distillation_performed": { "type": "boolean" },
+    "memory_updated": { "type": "boolean" },
+    "proxy_stats": {
+      "type": "object",
+      "properties": {
+        "mode": { "type": "string" },
+        "compressed_pct": { "type": ["number", "null"] },
+        "cache": { "type": "string" },
+        "pxpipe_ok": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "patterns_merged": { "type": "integer" },
+    "context_updates": { "type": "array", "items": { "type": "string" } },
+    "artifacts": { "type": "array", "items": { "type": "string" } },
+    "next_input_files": { "type": "array", "items": { "type": "string" } },
+    "git_branch": { "type": "string" },
+    "last_commit": { "type": "string" },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "status": { "type": "string", "enum": ["IN_PROGRESS", "BLOCKED", "DONE"] },
+    "git_final": { "type": "string" },
+    "git_sync_status": {
+      "type": "object",
+      "properties": {
+        "feature_pushed": { "type": "boolean" },
+        "main_merged_commit": { "type": "string" },
+        "clones_synced": { "type": "array" },
+        "verified": { "type": "boolean" },
+        "timestamp": { "type": "string" },
+        "commands_run": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "sync_waived": { "type": "string", "description": "Reason if git sync intentionally skipped" },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "tests_total": { "type": "number" },
+        "tests_failed": { "type": "number" },
+        "coverage": { "type": "number" },
+        "tool_calls": { "type": "number" },
+        "elapsed_minutes": { "type": "number" },
+        "handoff_chars": { "type": "number" },
+        "context_files_bytes": { "type": "number" }
+      }
+    },
+    "issues_found": { "type": "array" },
+    "process_tags": { "type": "array", "items": { "type": "string" } },
+    "feedback_from_previous": { "type": "object" },
+    "lessons_learned": { "type": "array", "items": { "type": "string" } },
+    "clarification_questions": { "type": "array" },
+    "stream": { "type": "string", "minLength": 1 },
+    "worktree": { "type": "string" },
+    "owned_paths": { "type": "array", "items": { "type": "string" } },
+    "merge_gate": { "type": "string" },
+    "meta_harvest": { "type": "object" }
+  },
+  "additionalProperties": true
+}

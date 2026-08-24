@@ -32,10 +32,12 @@ if [[ ! -d .venv ]]; then
 fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
-python -m pip install -U pip -q 2>/dev/null || true
-python -m pip install -q pyyaml pytest jsonschema 2>/dev/null || true
-
-export PYTHONPATH="${ROOT}${PYTHONPATH:+:$PYTHONPATH}"
+python -m pip install -U pip -q
+python -m pip install -e ".[dev]" \
+  || python -m pip install 'jsonschema>=4.18,<5' 'pytest>=8.0,<9'
+if ! python -c "import memory, memory.supervisor" >/dev/null 2>&1; then
+  export PYTHONPATH="${ROOT}${PYTHONPATH:+:$PYTHONPATH}"
+fi
 
 python -m memory.proxy install-venv >/dev/null 2>&1 || python -m memory.proxy install-venv || true
 # shellcheck disable=SC1091

@@ -25,7 +25,12 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$ProjectRoot = Split-Path -Parent $PSScriptRoot
+# README: скрипт в корне шаблона; Agent-Init.md: вложенный agentic_loop_template/
+if (Test-Path (Join-Path $PSScriptRoot "memory\supervisor.py")) {
+    $ProjectRoot = $PSScriptRoot
+} else {
+    $ProjectRoot = Split-Path -Parent $PSScriptRoot
+}
 
 # Force UTF-8 everywhere possible (console + pipeline + file writing).
 # This is critical on Russian Windows (default codepage = CP1251) to prevent mojibake
@@ -732,7 +737,11 @@ if ($pipUpgradeExit -eq 0) {
 }
 
 if (Test-Path (Join-Path $ProjectRoot "pyproject.toml")) {
-    $instExit = Invoke-VenvPip @('install', '-e', "$ProjectRoot.[dev]", '--quiet')
+    # extras: путь сразу плюс [dev], без точки перед скобками
+    $instExit = Invoke-VenvPip @('install','-e',"$ProjectRoot[dev]")
+    if ($instExit -ne 0) {
+        $instExit = Invoke-VenvPip @('install', 'jsonschema>=4.18,<5', 'pytest>=8.0,<9')
+    }
     if ($instExit -eq 0) {
         Write-Host "  Dependencies installed from pyproject.toml." -ForegroundColor Green
     } else {

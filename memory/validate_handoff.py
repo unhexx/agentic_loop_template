@@ -22,13 +22,25 @@ PHASES = {
 
 
 def _load_schema() -> Dict[str, Any]:
-    candidates = [
-        Path("schemas/handoff.schema.json"),
+    # колесо / editable: data/ лежит в пакете memory, не в memory.data
+    try:
+        from importlib.resources import files as _pkg_files
+
+        packaged = _pkg_files("memory").joinpath("data/handoff.schema.json")
+        if packaged.is_file():
+            return json.loads(packaged.read_text(encoding="utf-8"))
+    except (ModuleNotFoundError, FileNotFoundError, OSError, AttributeError, ValueError, json.JSONDecodeError):
+        pass
+
+    for c in (
         Path(__file__).resolve().parents[1] / "schemas" / "handoff.schema.json",
-    ]
-    for c in candidates:
+        Path("schemas/handoff.schema.json"),
+    ):
         if c.is_file():
-            return json.loads(c.read_text(encoding="utf-8"))
+            try:
+                return json.loads(c.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError):
+                continue
     return {}
 
 
