@@ -25,11 +25,23 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-# README: скрипт в корне шаблона; Agent-Init.md: вложенный agentic_loop_template/
+# pip/схема — корень шаблона; .venv и TASK_SPEC — корень продукта (README vs Agent-Init.md)
 if (Test-Path (Join-Path $PSScriptRoot "memory\supervisor.py")) {
-    $ProjectRoot = $PSScriptRoot
+    $TemplateRoot = $PSScriptRoot
 } else {
-    $ProjectRoot = Split-Path -Parent $PSScriptRoot
+    $TemplateRoot = Split-Path -Parent $PSScriptRoot
+}
+$ProjectRoot = $TemplateRoot
+# вложенный вызов: cd product; .\agentic_loop_template\Agent-Init.ps1
+if ((Split-Path -Leaf $PSScriptRoot) -eq 'agentic_loop_template') {
+    $parentOfScript = Split-Path -Parent $PSScriptRoot
+    try {
+        $cwdFull = [System.IO.Path]::GetFullPath((Get-Location).Path).TrimEnd('\', '/').ToLowerInvariant()
+        $parentFull = [System.IO.Path]::GetFullPath($parentOfScript).TrimEnd('\', '/').ToLowerInvariant()
+        if ($cwdFull -eq $parentFull) {
+            $ProjectRoot = $parentOfScript
+        }
+    } catch {}
 }
 
 # Force UTF-8 everywhere possible (console + pipeline + file writing).
@@ -546,6 +558,9 @@ if not found:
 Write-Host "=== Agentic Loop Environment Initialization ===" -ForegroundColor Cyan
 Write-Host "Reminder: Before starting work, the agent must complete the Pre-Flight Checklist in SYSTEM_PROMPT.md (version 2.1)." -ForegroundColor DarkGray
 Write-Host "Project: $ProjectRoot" -ForegroundColor Gray
+if ($ProjectRoot -ne $TemplateRoot) {
+    Write-Host "Template: $TemplateRoot" -ForegroundColor Gray
+}
 
 # 1. Locate a RELIABLE base Python (never trust bare "python" on this machine)
 Write-Host "`n[1/6] Locating reliable Python (rejecting Inkscape and other junk)..." -ForegroundColor Yellow
@@ -736,9 +751,9 @@ if ($pipUpgradeExit -eq 0) {
     Write-Host "  Warning: pip upgrade returned exit code $pipUpgradeExit (continuing anyway)." -ForegroundColor DarkYellow
 }
 
-if (Test-Path (Join-Path $ProjectRoot "pyproject.toml")) {
+if (Test-Path (Join-Path $TemplateRoot "pyproject.toml")) {
     # extras: путь сразу плюс [dev], без точки перед скобками
-    $instExit = Invoke-VenvPip @('install','-e',"$ProjectRoot[dev]")
+    $instExit = Invoke-VenvPip @('install','-e',"$TemplateRoot[dev]")
     if ($instExit -ne 0) {
         $instExit = Invoke-VenvPip @('install', 'jsonschema>=4.18,<5', 'pytest>=8.0,<9')
     }
@@ -765,7 +780,7 @@ $env:POSH_BASH_CHAINING_NONINTERACTIVE = "1"
 Write-Host "  Variables set for non-interactive sessions." -ForegroundColor Green
 
 # Proxy exports into activate. Fail-closed only when supervisor.adapter is grok.
-if (-not $env:PYTHONPATH) { $env:PYTHONPATH = $ProjectRoot } elseif ($env:PYTHONPATH -notlike "*$ProjectRoot*") { $env:PYTHONPATH = "$ProjectRoot;$env:PYTHONPATH" }
+if (-not $env:PYTHONPATH) { $env:PYTHONPATH = $TemplateRoot } elseif ($env:PYTHONPATH -notlike "*$TemplateRoot*") { $env:PYTHONPATH = "$TemplateRoot;$env:PYTHONPATH" }
 $initFe = "blackbox"
 $cfgPath = Join-Path $ProjectRoot ".agent\project_config.json"
 if (-not (Test-Path $cfgPath)) { $cfgPath = Join-Path $ProjectRoot ".agent\project_config.example.json" }
