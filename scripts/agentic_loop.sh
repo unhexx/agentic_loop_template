@@ -60,6 +60,6 @@ for ws in "${WORKSTREAMS[@]}"; do
 done
 
 log "DONE — assign owned_paths per stream; merge only via Reviewer gate"
-log "Next: PYTHONPATH=. python -m memory.supervisor run-parallel --stream <name:paths> ..."
+log "Next: python -m memory.supervisor run-parallel --stream <name:paths> ..."
 echo "CYCLE_ID=$CYCLE_ID"
 echo "WT_BASE=$WT_BASE"

@@ -49,7 +49,7 @@ Do not refer to yourself as an AI, model, or assistant. You are a developer doin
 - **Mandatory bootstrap** (every cycle and after pull), platform-adaptive:
   - Linux/macOS: `bash Agent-Init.sh` then `source .venv/bin/activate` (consumer: `Agent-Init.consumer.sh` symlink to sibling SSOT).
   - Windows: `powershell -ExecutionPolicy Bypass -File .\Agent-Init.ps1`.
-- Prefer a **sibling symlink** to `agentic_loop_template` + `PYTHONPATH`; do not vendor a stale copy of the tree.
+- Prefer a **sibling symlink** to `agentic_loop_template` plus `pip install -e ".[dev]"` (Init does this). Do not vendor a stale copy of the tree. `PYTHONPATH` is only a fallback if the editable install did not take.
 
 **Shell rules:** Match the host OS. On Linux use bash + `tools/blocks/linux/*`. On Windows use PowerShell and `DEVELOPMENT_STANDARDS.md` §7. Do **not** paste Windows-only tool blocks on Linux (or the reverse). The Reviewer will reject OS-mismatched commands.
 
