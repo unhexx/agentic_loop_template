@@ -24,7 +24,7 @@ Use this when the work is a normal PR, not a multi-cycle autonomous sprint.
 
 ## Tier B — full Agentix loop
 
-Autonomous O→C→T→D→R. Keep the template as a **sibling SSOT** (symlink + `PYTHONPATH`).
+Autonomous O→C→T→D→R. Keep the template as a **sibling SSOT** (symlink + `pip install -e ../agentic_loop_template[dev]`).
 
 ```bash
 # layout
@@ -43,7 +43,7 @@ source .venv/bin/activate
 # paste ../agentic_loop_template/prompts/short_orchestrator_prompt.md
 ```
 
-`Agent-Init.consumer.sh` will `ln -s ../agentic_loop_template` and export `PYTHONPATH` so `python -m memory` comes from SSOT. Live Grok CLI traffic goes through the Agentix gateway (`http://127.0.0.1:8110/v1`) which fronts host pxpipe. Mock stays proxy-free. Opt out: `AGENTIX_PROXY=0`. See [docs/proxy.md](../../docs/proxy.md).
+`Agent-Init.consumer.sh` will `ln -s ../agentic_loop_template` and `pip`/`uv` install the SSOT editable so `python -m memory` works without `PYTHONPATH`. PYTHONPATH is only a fallback if the editable install did not take. Live Grok CLI traffic goes through the Agentix gateway (`http://127.0.0.1:8110/v1`) which fronts host pxpipe. Mock stays proxy-free. Opt out: `AGENTIX_PROXY=0`. See [docs/proxy.md](../../docs/proxy.md).
 
 ---
 

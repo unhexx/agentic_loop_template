@@ -1,6 +1,6 @@
 # Agentix
 
-[![Version](https://img.shields.io/badge/version-3.8.1-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.9.0-blue?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](docs/getting-started.md)
 [![Platform](https://img.shields.io/badge/platform-Linux_%7C_macOS_%7C_Windows-lightgrey?style=flat-square)](docs/cross-platform.md)
@@ -66,6 +66,8 @@ cd agentic_loop_template
 bash Agent-Init.sh --wizard    # interactive setup
 source .venv/bin/activate
 ```
+
+Init installs the harness editable (`pip install -e ".[dev]"`). Then `python -m memory` / `agentix` work from the venv.
 
 Live Grok uses **pxpipe by default** (gateway `:8110` → host pxpipe `:8100`). Mock/CI skip the proxy. Opt out: `export AGENTIX_PROXY=0`. See [`docs/proxy.md`](docs/proxy.md).
 
@@ -235,6 +237,7 @@ python -m memory.playbooks export --format hub
 | Command | Purpose |
 |---------|---------|
 | `bash scripts/demo-loop.sh` | One-command smoke demo |
+| `agentix` / `python -m memory` | Console script after `pip install -e .` (same `_cli`; no PYTHONPATH) |
 | `python -m memory.supervisor run --adapter mock --max-cycles 1 --no-pr` | Unattended role loop (mock CI path); adapters: mock/grok/cursor/blackbox |
 | `python -m memory.supervisor run-parallel --stream name:paths/` | Disjoint streams (serial), then one integration PR; never merges `main` |
 | `scripts/agentix-supervisor run ...` | Bash shim for the same supervisor CLI |
@@ -275,6 +278,7 @@ v1 does **not** listen on a tailnet IP. TeleGrok 0.1.0 does not ship runtime Tai
 | Category | Capability |
 |----------|------------|
 | **Loop discipline** | 5 roles, JSON handoffs, INVEST tasks, git §11 sync |
+| **Packaging** | `pip install -e ".[dev]"` / `.[dashboard]`; console script `agentix`; import package `memory` |
 | **Control Plane** | Loopback HTMX operator UI (`memory.dashboard` on `:8112`), not the runner |
 | **Self-improvement** | Playbooks (ACE scoring), meta-harvester, performance ledger, [skills](skills/README.md) |
 | **Context** | Bounded LOOP_STATE, `context_budget` gate, rule-based compressor, local SQLite knowledge, [request proxy](docs/proxy.md) (**pxpipe default** + Agentix gateway) |
@@ -368,4 +372,4 @@ Source: [`.agent/PERFORMANCE_LEDGER.md`](.agent/PERFORMANCE_LEDGER.md) · [docs/
 
 ## License
 
-[MIT](LICENSE) · **Agentix 3.8.1** · Maintained by **exception.expert**
+[MIT](LICENSE) · **Agentix 3.9.0** · Maintained by **exception.expert**

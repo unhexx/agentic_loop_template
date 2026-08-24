@@ -927,7 +927,7 @@ if (-not (Test-Path $agentDir)) {
 }
 $shortPromptPath = Join-Path $agentDir "starter_prompt_grok.txt"
 $verFile = Join-Path $TemplateRoot "VERSION"
-$tplVersion = "3.8.1"
+$tplVersion = "3.9.0"
 if (Test-Path $verFile) {
     $tplVersion = ([System.IO.File]::ReadAllText($verFile, [System.Text.Encoding]::UTF8)).Trim()
 }

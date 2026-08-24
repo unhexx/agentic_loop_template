@@ -48,9 +48,8 @@ Do **not** parallelize when both streams must edit the same hot files (`DEVELOPM
 
 ## Supervisor unattended
 
-After worktrees exist (or let supervisor provision them):
+After worktrees exist (or let supervisor provision them). Requires `pip install -e .` (Init does this); PYTHONPATH is only a fallback for an uninstalled clone:
 
-    export PYTHONPATH=.
     python -m memory.supervisor run-parallel \
       --stream harness:memory/,tools/ \
       --stream docs:docs/ \

@@ -27,6 +27,7 @@ Each role: **PLAN → ACT (≤3 tool calls) → REFLECT → handoff JSON**.
 
 | Layer | Location | Purpose |
 |-------|----------|---------|
+| Packaging | `pyproject.toml` | Dist name `agentix`, import `memory`. `pip install -e ".[dev]"` / `.[dashboard]`. Console scripts `agentix`, `agentix-supervisor`, `agentix-dashboard`, `agentix-proxy` |
 | Roles & prompts | `AGENT_ROLES.md`, `prompts/` | Per-role discipline |
 | Handoffs | `HANDOFF_SCHEMA.md` | State transfer contract |
 | Memory | `memory/` | questions_collector, meta_harvester, playbooks, ledger |
@@ -93,3 +94,4 @@ flowchart TD
 - [Hub](hub/README.md) — playbook marketplace
 - [memory/README.md](../memory/README.md) — memory layer API
 - [Agents Dashboard design](superpowers/specs/2026-08-21-agents-dashboard-design.md) — Control Plane spec (shipped `:8112` / 3.8.0)
+- [P8 Harness Hardening](superpowers/specs/2026-08-24-p8-harness-hardening-design.md) — packaging, observability, extract, init parity, state DI, CI (3.9.0)

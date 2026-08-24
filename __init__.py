@@ -1,12 +1,10 @@
 """agentic_loop_template package (memory harness + tools).
 
-When this repository is used as a dedicated SSOT checkout, import via:
+Версия дистрибутива — файл VERSION (единственный SSOT; setuptools dynamic).
+Хардкода здесь нет: после `pip install -e .` работает `python -m memory`
+без PYTHONPATH.
 
-    PYTHONPATH=. python -m memory …
-
-When nested inside a product repo as `agentic_loop_template/`:
+Когда шаблон вложен в продуктовый репозиторий как `agentic_loop_template/`:
 
     python -m agentic_loop_template.memory …
 """
-
-__version__ = "3.3.0"

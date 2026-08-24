@@ -1,6 +1,6 @@
 # Agentic Loop Memory System
 
-[![Version](https://img.shields.io/badge/version-3.8.1-blue?style=flat-square)](../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.9.0-blue?style=flat-square)](../CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](../README.md)
 [![Architecture](https://img.shields.io/badge/docs-architecture-green?style=flat-square)](../docs/architecture.md)
 
@@ -12,6 +12,8 @@ Inspired by:
 - Reflexion (verbal self-reflection stored for future use)
 
 The goal: the agentic loop accumulates real "институциональная память" of the project. The Orchestrator starts every cycle knowing the most common failure patterns seen on *this exact repository* (across all clones and worktrees). The Reviewer systematically feeds high-value lessons back into the memory.
+
+Install (v3.9): `pip install -e ".[dev]"` then `python -m memory` / `agentix` — no `PYTHONPATH`.
 
 ---
 

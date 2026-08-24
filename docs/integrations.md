@@ -7,10 +7,11 @@ MCP-ready integration patterns for enterprise workflows.
 Workflow: [.github/workflows/agentix-loop.yml](../.github/workflows/agentix-loop.yml)
 
 Triggers:
+- **pull_request** and **push** to `main`
 - **Manual** (`workflow_dispatch`) with `cycle_goal` input
 - **Weekly** schedule (Monday 08:00 UTC)
 
-The workflow bootstraps env, runs tests, exports Hub index, and records an audit entry. Your agent frontend completes the actual O→C→T→D→R cycle.
+The `harness` job does an editable install (`pip install -e ".[dev,dashboard]"`), proves G1 (`import memory` from `/tmp` with PYTHONPATH unset), runs `pytest memory/` including the full mock O→C→T→R cycle, then Agent-Init + Hub export + audit. `stdlib-collect` installs `.[dev]` only and collect-only supervisor tests. Mock/CI skip live pxpipe.
 
 ```bash
 gh workflow run agentix-loop.yml -f cycle_goal="P5-governance"

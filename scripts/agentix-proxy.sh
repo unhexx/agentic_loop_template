@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Обёртка шлюза Agentix: start / health / stats.
 # Usage: bash scripts/agentix-proxy.sh {start|health|stats}
+# PYTHONPATH — запасной путь для клона без pip install -e .
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"

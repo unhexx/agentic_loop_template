@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+## [3.9.0] - 2026-08-24
+
+### Added (P8 Harness Hardening)
+- Packaging: `pyproject.toml` (dist name `agentix`, import package `memory`), extras `dev` / `dashboard`, console scripts `agentix` / `agentix-supervisor` / `agentix-dashboard` / `agentix-proxy`. `pip install -e ".[dev]"` — `python -m memory` without PYTHONPATH
+- Observability: `logging.getLogger("memory.*")` + `AGENTIX_LOG_LEVEL`; WARNING on critical supervisor / proxy / playbooks swallows (no `except Exception: pass` on those paths)
+- Handoff extract/persist: `extract_handoff` picks the last persistable candidate; adapters `validate_handoff` + atomic `save_handoff`; structural checks from `schemas/handoff.schema.json` via `jsonschema`
+- Init parity: `Agent-Init.sh` and `Agent-Init.ps1` share the cold-start ritual (editable install, `state init`, knowledge ingest, playbooks seed, proxy); wizard on both; default frontend **grok**
+- State DI: state helpers take `agent_dir=`; supervisor no longer mutates module globals or `os.chdir` for correctness
+- CI: GitHub Actions `pull_request` + `pytest memory/` including the full mock O→C→T→R cycle; G1 import from `/tmp` with PYTHONPATH unset
+- Design spec: [`docs/superpowers/specs/2026-08-24-p8-harness-hardening-design.md`](docs/superpowers/specs/2026-08-24-p8-harness-hardening-design.md)
+
+### Changed
+- `VERSION` → 3.9.0
+- ROADMAP P8 complete; next = Future
+- Living docs: install without PYTHONPATH; consumer-starter editable-installs the sibling SSOT
+
 ## [3.8.1] - 2026-08-23
 
 ### Added
