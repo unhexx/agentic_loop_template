@@ -13,12 +13,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import re
 import shutil
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+log = logging.getLogger("memory.state")
 
 AGENT_DIR = Path(".agent")
 STATE_JSON = AGENT_DIR / "LOOP_STATE.json"
@@ -42,13 +45,19 @@ BLOAT_CANDIDATES = (
 )
 
 
+def _agent_dir(agent_dir: Optional[Path] = None) -> Path:
+    # На вызове, не на import: иначе monkeypatch AGENT_DIR и чужой cwd не видны.
+    return Path(agent_dir) if agent_dir is not None else AGENT_DIR
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _ensure_dirs() -> None:
-    AGENT_DIR.mkdir(parents=True, exist_ok=True)
-    HISTORY_DIR.mkdir(parents=True, exist_ok=True)
+def _ensure_dirs(agent_dir: Optional[Path] = None) -> None:
+    agent = _agent_dir(agent_dir)
+    agent.mkdir(parents=True, exist_ok=True)
+    (agent / "history").mkdir(parents=True, exist_ok=True)
 
 
 def default_state() -> Dict[str, Any]:
@@ -75,6 +84,13 @@ def default_state() -> Dict[str, Any]:
 
 
 def _read_template_version() -> str:
+    # Сначала дистрибутив: после pip install рядом с cwd может не быть VERSION.
+    try:
+        from importlib.metadata import version
+
+        return version("agentix")
+    except Exception:
+        pass
     for candidate in (Path("VERSION"), Path(__file__).resolve().parents[1] / "VERSION"):
         if candidate.is_file():
             try:
@@ -84,28 +100,40 @@ def _read_template_version() -> str:
     return "unknown"
 
 
-def load_state(path: Path = STATE_JSON) -> Dict[str, Any]:
-    _ensure_dirs()
+def load_state(path: Optional[Path] = None, *, agent_dir: Optional[Path] = None) -> Dict[str, Any]:
+    agent = _agent_dir(agent_dir)
+    path = path or (agent / "LOOP_STATE.json")
+    _ensure_dirs(agent)
     if not path.exists():
         # Migrate legacy free-form LOOP_STATE.md if present and huge
-        if STATE_MD.exists():
-            return _migrate_from_md(STATE_MD)
+        md_path = agent / "LOOP_STATE.md"
+        if md_path.exists():
+            return _migrate_from_md(md_path, agent_dir=agent)
         st = default_state()
-        save_state(st)
+        save_state(st, path=path, agent_dir=agent)
         return st
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(data, dict):
+            log.error("load_state: %s is not a JSON object", path)
             return default_state()
         base = default_state()
         base.update(data)
         return base
-    except Exception:
+    except Exception as exc:
+        log.error("load_state failed for %s: %s", path, exc)
         return default_state()
 
 
-def save_state(state: Dict[str, Any], path: Path = STATE_JSON) -> None:
-    _ensure_dirs()
+def save_state(
+    state: Dict[str, Any],
+    path: Optional[Path] = None,
+    *,
+    agent_dir: Optional[Path] = None,
+) -> None:
+    agent = _agent_dir(agent_dir)
+    path = path or (agent / "LOOP_STATE.json")
+    _ensure_dirs(agent)
     state = dict(state)
     state["updated_at"] = _now_iso()
     # Cap lists
@@ -113,7 +141,10 @@ def save_state(state: Dict[str, Any], path: Path = STATE_JSON) -> None:
     if len(deltas) > MAX_DELTAS:
         # Archive overflow
         overflow = deltas[:-MAX_DELTAS]
-        _append_history({"type": "deltas_overflow", "items": overflow, "ts": _now_iso()})
+        _append_history(
+            {"type": "deltas_overflow", "items": overflow, "ts": _now_iso()},
+            agent_dir=agent,
+        )
         deltas = deltas[-MAX_DELTAS:]
     state["recent_deltas"] = deltas
     invest = list(state.get("open_invest") or [])
@@ -131,10 +162,11 @@ def save_state(state: Dict[str, Any], path: Path = STATE_JSON) -> None:
     tmp = path.with_suffix(".json.tmp")
     tmp.write_text(text, encoding="utf-8")
     tmp.replace(path)
-    _write_md_projection(state)
+    _write_md_projection(state, agent_dir=agent)
 
 
-def _write_md_projection(state: Dict[str, Any]) -> None:
+def _write_md_projection(state: Dict[str, Any], *, agent_dir: Optional[Path] = None) -> None:
+    agent = _agent_dir(agent_dir)
     lines = [
         "# LOOP_STATE (working set — do not append free text here)",
         "",
@@ -172,23 +204,29 @@ def _write_md_projection(state: Dict[str, Any]) -> None:
     md = "\n".join(lines)
     if len(md) > MAX_MD_PREVIEW_CHARS:
         md = md[:MAX_MD_PREVIEW_CHARS] + "\n\n…truncated\n"
-    STATE_MD.write_text(md, encoding="utf-8")
+    (agent / "LOOP_STATE.md").write_text(md, encoding="utf-8")
 
 
-def _append_history(record: Dict[str, Any]) -> None:
-    _ensure_dirs()
+def _append_history(record: Dict[str, Any], *, agent_dir: Optional[Path] = None) -> None:
+    agent = _agent_dir(agent_dir)
+    _ensure_dirs(agent)
     month = datetime.now(timezone.utc).strftime("%Y%m")
-    path = HISTORY_DIR / f"loop_state-{month}.jsonl"
+    path = agent / "history" / f"loop_state-{month}.jsonl"
     with path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
-def _migrate_from_md(md_path: Path) -> Dict[str, Any]:
+def _migrate_from_md(md_path: Path, *, agent_dir: Optional[Path] = None) -> Dict[str, Any]:
     """Archive bloated LOOP_STATE.md and start clean JSON state."""
-    _ensure_dirs()
+    agent = _agent_dir(agent_dir)
+    _ensure_dirs(agent)
     size = md_path.stat().st_size if md_path.exists() else 0
     if size > 16 * 1024:
-        archive = HISTORY_DIR / f"LOOP_STATE.legacy.{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}.md"
+        archive = (
+            agent
+            / "history"
+            / f"LOOP_STATE.legacy.{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}.md"
+        )
         shutil.copy2(md_path, archive)
         _append_history(
             {
@@ -196,7 +234,8 @@ def _migrate_from_md(md_path: Path) -> Dict[str, Any]:
                 "bytes": size,
                 "archive": str(archive),
                 "ts": _now_iso(),
-            }
+            },
+            agent_dir=agent,
         )
     st = default_state()
     st["notes"] = f"Migrated from legacy LOOP_STATE.md ({size} bytes archived)."
@@ -210,13 +249,14 @@ def _migrate_from_md(md_path: Path) -> Dict[str, Any]:
             st["git_sync"]["verified"] = True
     except Exception:
         pass
-    save_state(st)
+    save_state(st, agent_dir=agent)
     return st
 
 
-def snapshot(window: int = 3) -> Dict[str, Any]:
+def snapshot(window: int = 3, *, agent_dir: Optional[Path] = None) -> Dict[str, Any]:
     """Compact snapshot for Orchestrator cold-start (no history body)."""
-    st = load_state()
+    agent = _agent_dir(agent_dir)
+    st = load_state(agent_dir=agent)
     deltas = list(st.get("recent_deltas") or [])[-max(1, window) :]
     return {
         "workspace_hint": "call `python -m memory info` for memory file paths",
@@ -231,19 +271,20 @@ def snapshot(window: int = 3) -> Dict[str, Any]:
         "template_version": st.get("template_version"),
         "updated_at": st.get("updated_at"),
         "working_bytes": len(json.dumps(st, ensure_ascii=False).encode("utf-8")),
-        "history_dir": str(HISTORY_DIR),
+        "history_dir": str(agent / "history"),
         "rule": "Do NOT read .agent/history/* or full legacy LOOP_STATE archives into context.",
     }
 
 
-def append_delta(text: str, role: str = "") -> Dict[str, Any]:
-    st = load_state()
+def append_delta(text: str, role: str = "", *, agent_dir: Optional[Path] = None) -> Dict[str, Any]:
+    agent = _agent_dir(agent_dir)
+    st = load_state(agent_dir=agent)
     entry = {"ts": _now_iso(), "role": role, "text": text.strip()[:500]}
     deltas = list(st.get("recent_deltas") or [])
     deltas.append(entry)
     st["recent_deltas"] = deltas
-    save_state(st)
-    _append_history({"type": "delta", **entry})
+    save_state(st, agent_dir=agent)
+    _append_history({"type": "delta", **entry}, agent_dir=agent)
     return {"ok": True, "delta": entry}
 
 
@@ -251,27 +292,32 @@ def compact(
     archive_bloat: bool = True,
     max_lessons_lines: int = 400,
     max_done_lines: int = 200,
+    *,
+    agent_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """
     Ensure working LOOP_STATE is bounded; optionally archive oversized sibling files.
     Does not delete product code — only moves bloat under .agent/history/.
     """
-    _ensure_dirs()
-    st = load_state()
+    agent = _agent_dir(agent_dir)
+    _ensure_dirs(agent)
+    st = load_state(agent_dir=agent)
     actions: List[str] = []
+    state_json = agent / "LOOP_STATE.json"
+    state_md = agent / "LOOP_STATE.md"
 
     # Always rewrite projection from JSON
-    save_state(st)
+    save_state(st, agent_dir=agent)
     actions.append("rewrote LOOP_STATE.json + slim LOOP_STATE.md")
 
     if not archive_bloat:
-        return {"ok": True, "actions": actions, "state_bytes": STATE_JSON.stat().st_size}
+        return {"ok": True, "actions": actions, "state_bytes": state_json.stat().st_size}
 
     for name in BLOAT_CANDIDATES:
         if name in ("LOOP_STATE.md",):
             # already slim projection
             continue
-        path = AGENT_DIR / name
+        path = agent / name
         if not path.is_file():
             continue
         size = path.stat().st_size
@@ -279,7 +325,7 @@ def compact(
         if size < 64 * 1024:
             continue
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
-        dest = HISTORY_DIR / f"{path.stem}.{stamp}{path.suffix}"
+        dest = agent / "history" / f"{path.stem}.{stamp}{path.suffix}"
         shutil.copy2(path, dest)
         actions.append(f"archived {name} ({size} bytes) -> {dest.name}")
 
@@ -307,31 +353,28 @@ def compact(
             except Exception as exc:
                 actions.append(f"skip trim {name}: {exc}")
 
-    _append_history({"type": "compact", "actions": actions, "ts": _now_iso()})
+    _append_history({"type": "compact", "actions": actions, "ts": _now_iso()}, agent_dir=agent)
     return {
         "ok": True,
         "actions": actions,
-        "state_bytes": STATE_JSON.stat().st_size if STATE_JSON.exists() else 0,
-        "md_bytes": STATE_MD.stat().st_size if STATE_MD.exists() else 0,
+        "state_bytes": state_json.stat().st_size if state_json.exists() else 0,
+        "md_bytes": state_md.stat().st_size if state_md.exists() else 0,
     }
 
 
 def log_metrics(metrics: Dict[str, Any], *, agent_dir: Optional[Path] = None) -> None:
-    if agent_dir is not None:
-        dest_dir = Path(agent_dir)
-        dest_dir.mkdir(parents=True, exist_ok=True)
-        dest = dest_dir / "metrics.jsonl"
-    else:
-        _ensure_dirs()
-        dest = METRICS_JSONL
+    agent = _agent_dir(agent_dir)
+    _ensure_dirs(agent)
+    dest = agent / "metrics.jsonl"
     row = {"ts": _now_iso(), **metrics}
     with dest.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
-def tail_history(n: int = 5) -> List[Dict[str, Any]]:
-    _ensure_dirs()
-    files = sorted(HISTORY_DIR.glob("loop_state-*.jsonl"))
+def tail_history(n: int = 5, *, agent_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+    agent = _agent_dir(agent_dir)
+    _ensure_dirs(agent)
+    files = sorted((agent / "history").glob("loop_state-*.jsonl"))
     rows: List[Dict[str, Any]] = []
     for f in reversed(files):
         try:

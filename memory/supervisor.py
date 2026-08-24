@@ -13,6 +13,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+from memory.handoff_io import save_handoff
 from memory.logutil import get_logger
 
 log = get_logger("memory.supervisor")
@@ -110,18 +111,6 @@ def load_last_handoff(workdir: Path) -> Optional[Dict[str, Any]]:
         return None
 
 
-def save_handoff(workdir: Path, data: Dict[str, Any]) -> Path:
-    """Пишет last_handoff.json через tmp+replace, чтобы не отдавать оборванный JSON."""
-    agent = Path(workdir) / ".agent"
-    agent.mkdir(parents=True, exist_ok=True)
-    p = agent / "last_handoff.json"
-    text = json.dumps(data, ensure_ascii=False, indent=2)
-    tmp = p.with_suffix(".json.tmp")
-    tmp.write_text(text, encoding="utf-8")
-    tmp.replace(p)
-    return p
-
-
 def _heartbeat_path(workdir: Path) -> Path:
     return Path(workdir) / ".agent" / HEARTBEAT_FILENAME
 
@@ -207,40 +196,13 @@ def _stop_heartbeat_thread(
             pass
 
 
-def _bind_state_paths(state_mod: Any, workdir: Path) -> Dict[str, Any]:
-    """Rebind state module paths to workdir/.agent; return previous values."""
-    agent_dir = Path(workdir) / ".agent"
-    orig = {
-        "AGENT_DIR": state_mod.AGENT_DIR,
-        "STATE_JSON": state_mod.STATE_JSON,
-        "STATE_MD": state_mod.STATE_MD,
-        "HISTORY_DIR": state_mod.HISTORY_DIR,
-        "METRICS_JSONL": state_mod.METRICS_JSONL,
-    }
-    state_mod.AGENT_DIR = agent_dir
-    state_mod.STATE_JSON = agent_dir / "LOOP_STATE.json"
-    state_mod.STATE_MD = agent_dir / "LOOP_STATE.md"
-    state_mod.HISTORY_DIR = agent_dir / "history"
-    state_mod.METRICS_JSONL = agent_dir / "metrics.jsonl"
-    return orig
-
-
-def _restore_state_paths(state_mod: Any, orig: Dict[str, Any]) -> None:
-    for key, value in orig.items():
-        setattr(state_mod, key, value)
-
-
 def _state_snapshot_for_workdir(workdir: Path) -> str:
-    """Best-effort bounded LOOP_STATE snapshot with AGENT_DIR rebound to workdir/.agent."""
+    """Снимок LOOP_STATE по workdir/.agent, без chdir и без подмены глобалей."""
     try:
         from memory import state as state_mod
 
-        orig = _bind_state_paths(state_mod, workdir)
-        try:
-            snap_obj = state_mod.snapshot(window=3)
-            return json.dumps(snap_obj, ensure_ascii=False)[:_SNAP_JSON_CAP]
-        finally:
-            _restore_state_paths(state_mod, orig)
+        snap_obj = state_mod.snapshot(window=3, agent_dir=Path(workdir) / ".agent")
+        return json.dumps(snap_obj, ensure_ascii=False)[:_SNAP_JSON_CAP]
     except Exception as exc:
         log.warning("state snapshot failed: %s", exc)
         return "{}"
@@ -430,9 +392,8 @@ def run_loop(
     (default 1 full O→C→T→R then stop). Inner turns are capped by
     ``max_turns = max(20, max_cycles * 8)``.
 
-    State helpers use module-level relative defaults evaluated at def-time, so
-    this function both rebinds ``memory.state`` paths and ``chdir``s into
-    ``workdir`` for the duration of the run.
+    Пути состояния — ``agent_dir=workdir/.agent``. Процесс cwd не меняем:
+    адаптер уже передаёт cwd=workdir в subprocess.
     """
     from memory import state as state_mod
     from memory.adapters import get_adapter
@@ -468,8 +429,7 @@ def run_loop(
         }
 
     adapter = get_adapter(adapter_name, cfg)
-    prev_cwd = Path.cwd()
-    orig_paths = _bind_state_paths(state_mod, workdir)
+    agent = workdir / ".agent"
     hb_path = _heartbeat_path(workdir)
     hb_stop: Optional[threading.Event] = None
     hb_thread: Optional[threading.Thread] = None
@@ -482,10 +442,8 @@ def run_loop(
         hb_stop = None
 
     try:
-        os.chdir(workdir)
-        state_mod._ensure_dirs()
-        # Pass rebound paths explicitly — default args on load/save are def-time.
-        st = state_mod.load_state(state_mod.STATE_JSON)
+        state_mod._ensure_dirs(agent)
+        st = state_mod.load_state(agent_dir=agent)
         handoff = load_last_handoff(workdir)
         role = st.get("active_role") or "Orchestrator"
 
@@ -497,18 +455,18 @@ def run_loop(
             st["active_role"] = "Orchestrator"
             st["status"] = "IN_PROGRESS"
             st["cycle_number"] = int(st.get("cycle_number") or 0) + 1
-            state_mod.save_state(st, state_mod.STATE_JSON)
+            state_mod.save_state(st, agent_dir=agent)
 
         turns = 0
         pr_ready_count = 0
 
         def _load() -> Dict[str, Any]:
-            return state_mod.load_state(state_mod.STATE_JSON)
+            return state_mod.load_state(agent_dir=agent)
 
         def _save(patch: Dict[str, Any]) -> None:
             cur = _load()
             cur.update(patch)
-            state_mod.save_state(cur, state_mod.STATE_JSON)
+            state_mod.save_state(cur, agent_dir=agent)
 
         while turns < max_turns:
             if (workdir / ".agent" / "STOP").exists():
@@ -603,14 +561,15 @@ def run_loop(
                 }
 
             state_mod.append_delta(
-                f"{role}: {handoff.get('summary', '')}", role=role
+                f"{role}: {handoff.get('summary', '')}", role=role, agent_dir=agent
             )
             state_mod.log_metrics(
                 {
                     "role": role,
                     "status": handoff.get("status"),
                     "adapter": adapter_name,
-                }
+                },
+                agent_dir=agent,
             )
 
             nxt = next_role(role, handoff)
@@ -668,11 +627,6 @@ def run_loop(
         }
     finally:
         _halt_heartbeat()
-        _restore_state_paths(state_mod, orig_paths)
-        try:
-            os.chdir(prev_cwd)
-        except Exception:
-            pass
 
 
 def main(argv: Optional[List[str]] = None) -> int:
@@ -765,29 +719,20 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.cmd == "status":
         from memory import state as state_mod
 
-        prev_cwd = Path.cwd()
-        orig = _bind_state_paths(state_mod, workdir)
-        try:
-            os.chdir(workdir)
-            state_mod._ensure_dirs()
-            snap = state_mod.snapshot()
-            handoff = load_last_handoff(workdir)
-            out = {
-                "state": snap,
-                "last_handoff_summary": (handoff or {}).get("summary"),
-                "last_handoff_status": (handoff or {}).get("status"),
-                "last_handoff_role": (handoff or {}).get("role"),
-            }
-            hb = load_heartbeat(workdir)
-            if hb is not None:
-                out["heartbeat"] = hb
-            print(json.dumps(out, ensure_ascii=False, indent=2))
-        finally:
-            _restore_state_paths(state_mod, orig)
-            try:
-                os.chdir(prev_cwd)
-            except Exception:
-                pass
+        agent = workdir / ".agent"
+        state_mod._ensure_dirs(agent)
+        snap = state_mod.snapshot(agent_dir=agent)
+        handoff = load_last_handoff(workdir)
+        out = {
+            "state": snap,
+            "last_handoff_summary": (handoff or {}).get("summary"),
+            "last_handoff_status": (handoff or {}).get("status"),
+            "last_handoff_role": (handoff or {}).get("role"),
+        }
+        hb = load_heartbeat(workdir)
+        if hb is not None:
+            out["heartbeat"] = hb
+        print(json.dumps(out, ensure_ascii=False, indent=2))
         return 0
 
     if args.cmd == "stop":

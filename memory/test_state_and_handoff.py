@@ -130,6 +130,51 @@ def test_log_metrics_agent_dir(tmp_path, monkeypatch):
     assert not (cwd / ".agent" / "metrics.jsonl").exists()
 
 
+def test_snapshot_agent_dir_without_chdir(tmp_path, monkeypatch):
+    cwd = tmp_path / "cwd"
+    cwd.mkdir()
+    monkeypatch.chdir(cwd)
+    agent = tmp_path / "work" / ".agent"
+    st = state_mod.default_state()
+    st["cycle_number"] = 7
+    state_mod.save_state(st, agent_dir=agent)
+    snap = state_mod.snapshot(agent_dir=agent)
+    assert snap["cycle_number"] == 7
+    assert snap["history_dir"] == str(agent / "history")
+    assert (agent / "LOOP_STATE.json").is_file()
+    assert (agent / "LOOP_STATE.md").is_file()
+    assert not (cwd / ".agent").exists()
+
+
+def test_append_delta_agent_dir_writes_history_under_tmp(tmp_path, monkeypatch):
+    cwd = tmp_path / "cwd"
+    cwd.mkdir()
+    monkeypatch.chdir(cwd)
+    agent = tmp_path / "work" / ".agent"
+    state_mod.save_state(state_mod.default_state(), agent_dir=agent)
+    state_mod.append_delta("hello from elsewhere", role="Coder", agent_dir=agent)
+    hist = list((agent / "history").glob("loop_state-*.jsonl"))
+    assert hist
+    blob = hist[0].read_text(encoding="utf-8")
+    assert "hello from elsewhere" in blob
+    assert not (cwd / ".agent").exists()
+
+
+def test_load_state_corrupt_json_logs_error(tmp_path, monkeypatch, caplog):
+    import logging
+
+    cwd = tmp_path / "cwd"
+    cwd.mkdir()
+    monkeypatch.chdir(cwd)
+    agent = tmp_path / "work" / ".agent"
+    agent.mkdir(parents=True)
+    (agent / "LOOP_STATE.json").write_text("{not json", encoding="utf-8")
+    with caplog.at_level(logging.ERROR, logger="memory.state"):
+        st = state_mod.load_state(agent_dir=agent)
+    assert st["status"] == "READY"
+    assert any("load_state" in rec.getMessage() for rec in caplog.records)
+
+
 def test_experience_seeds_dedupe():
     rows = dedupe(DEFAULT_SEEDS + DEFAULT_SEEDS)
     assert len(rows) == len(DEFAULT_SEEDS)

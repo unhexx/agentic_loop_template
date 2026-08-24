@@ -30,6 +30,48 @@ def _setup(tmp_path, monkeypatch):
     )
 
 
+def test_run_loop_from_different_cwd(tmp_path: Path, monkeypatch):
+    work = tmp_path / "work"
+    other = tmp_path / "other"
+    work.mkdir()
+    other.mkdir()
+    (work / "prompts").mkdir()
+    for name in ("orchestrator", "coder", "tester", "debugger", "reviewer"):
+        (work / "prompts" / f"short_{name}_prompt.md").write_text(
+            f"# {name}\n", encoding="utf-8"
+        )
+    (work / ".agent").mkdir()
+    (work / ".agent" / "project_config.json").write_text(
+        json.dumps(
+            {
+                "supervisor": {
+                    "adapter": "mock",
+                    "max_cycles": 1,
+                    "max_role_retries": 1,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.chdir(other)
+    result = run_loop(
+        workdir=work, adapter_name="mock", max_cycles=1, create_pr=False
+    )
+    assert result["terminal"] in (
+        Terminal.PR_READY,
+        Terminal.PR_READY_LOCAL,
+        "PR_READY",
+        "PR_READY_LOCAL",
+    )
+    assert result.get("exit_code") == 0
+    assert (work / ".agent" / "last_handoff.json").is_file()
+    assert (work / ".agent" / "LOOP_STATE.json").is_file()
+    assert not (other / ".agent" / "LOOP_STATE.json").exists()
+    assert not (other / ".agent" / "last_handoff.json").exists()
+    assert Path.cwd() == other
+    assert not (work / ".agent" / HEARTBEAT_FILENAME).exists()
+
+
 def test_mock_full_cycle_pr_ready(tmp_path: Path, monkeypatch):
     _setup(tmp_path, monkeypatch)
     result = run_loop(
