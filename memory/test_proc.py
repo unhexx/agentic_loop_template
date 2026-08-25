@@ -18,7 +18,36 @@ def _write_script(tmp_path: Path, name: str, source: str) -> Path:
     return path
 
 
-def _assert_pid_dead(pid: int) -> None:
+def _pid_alive_win32(pid: int) -> bool:
+    import ctypes
+
+    # PROCESS_QUERY_LIMITED_INFORMATION; STILL_ACTIVE
+    handle = ctypes.windll.kernel32.OpenProcess(0x1000, False, int(pid))
+    if not handle:
+        return False
+    try:
+        code = ctypes.c_ulong()
+        ok = ctypes.windll.kernel32.GetExitCodeProcess(handle, ctypes.byref(code))
+        return bool(ok) and code.value == 259
+    finally:
+        ctypes.windll.kernel32.CloseHandle(handle)
+
+
+def _assert_pid_dead(pid: int, timeout_s: float = 2.0) -> None:
+    # kill(pid,0) проходит на зомби, пока init не wait
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        if sys.platform == "win32":
+            if not _pid_alive_win32(pid):
+                return
+        else:
+            try:
+                os.kill(pid, 0)
+            except (OSError, ProcessLookupError):
+                return
+        time.sleep(0.05)
+    if sys.platform == "win32":
+        raise AssertionError(f"pid {pid} ещё жив")
     with pytest.raises((OSError, ProcessLookupError)):
         os.kill(pid, 0)
 
@@ -82,6 +111,40 @@ def test_run_cli_timeout_kills_process_group(tmp_path: Path) -> None:
         "import json, os, time\n"
         "child = os.fork()\n"
         "if child == 0:\n"
+        "    time.sleep(30)\n"
+        "    os._exit(0)\n"
+        "path = os.environ['FAKE_PID_PATH']\n"
+        "with open(path, 'w') as f:\n"
+        "    json.dump({'parent': os.getpid(), 'child': child}, f)\n"
+        "    f.flush()\n"
+        "    os.fsync(f.fileno())\n"
+        "time.sleep(30)\n",
+    )
+    env = {**os.environ, "FAKE_PID_PATH": str(pid_path)}
+    t0 = time.monotonic()
+    with pytest.raises(CliTimeoutError):
+        run_cli(
+            [sys.executable, str(script)],
+            cwd=tmp_path,
+            timeout_s=1,
+            env=env,
+        )
+    assert time.monotonic() - t0 < 10
+    data = json.loads(pid_path.read_text(encoding="utf-8"))
+    _assert_pid_dead(int(data["parent"]))
+    _assert_pid_dead(int(data["child"]))
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="killpg только POSIX")
+def test_run_cli_timeout_sigkill_grandchild_ignoring_sigterm(tmp_path: Path) -> None:
+    pid_path = tmp_path / "pids.json"
+    script = _write_script(
+        tmp_path,
+        "hang_ign.py",
+        "import json, os, signal, time\n"
+        "child = os.fork()\n"
+        "if child == 0:\n"
+        "    signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
         "    time.sleep(30)\n"
         "    os._exit(0)\n"
         "path = os.environ['FAKE_PID_PATH']\n"

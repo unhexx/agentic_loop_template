@@ -59,11 +59,12 @@ def _kill_posix_group(proc: subprocess.Popen) -> None:
         os.killpg(pgid, signal.SIGTERM)
     except (ProcessLookupError, PermissionError, OSError):
         pass
-    if not _wait_exit(proc, _KILL_GRACE_S):
-        try:
-            os.killpg(pgid, signal.SIGKILL)
-        except (ProcessLookupError, PermissionError, OSError):
-            pass
+    _wait_exit(proc, _KILL_GRACE_S)
+    # лидер мог выйти по SIGTERM, внуки с handler/SIG_IGN — нет
+    try:
+        os.killpg(pgid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError, OSError):
+        pass
 
 
 def _kill_after_timeout(proc: subprocess.Popen) -> None:
@@ -85,8 +86,8 @@ def run_cli(
 
     POSIX: start_new_session=True; по timeout — os.killpg(SIGTERM), затем SIGKILL.
     win32: CREATE_NEW_PROCESS_GROUP; по timeout — proc.terminate(), затем proc.kill().
-    Убийство группы — только Unix. Windows: best-effort kill прямого потомка,
-    внуки Node не гарантируются.
+    Убийство группы — только Unix. На Windows — только прямой потомок,
+    без гарантии для внуков Node.
     """
     if timeout_s <= 0:
         raise ValueError("timeout_s должен быть положительным")
