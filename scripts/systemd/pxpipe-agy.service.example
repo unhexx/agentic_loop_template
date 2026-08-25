@@ -1,0 +1,24 @@
+[Unit]
+Description=pxpipe token-saving proxy (agy Gemini 3.7 Flash imager)
+Documentation=https://github.com/teamchong/pxpipe
+After=network-online.target pxpipe-agy-shim.service
+Wants=network-online.target pxpipe-agy-shim.service
+
+[Service]
+Type=simple
+# Не путать с Grok-юнитом на :8100 (scripts/systemd/pxpipe.service.example).
+ExecStart=%h/.local/bin/pxpipe
+Restart=on-failure
+RestartSec=2
+Environment=HOST=127.0.0.1
+Environment=PORT=8103
+Environment=PXPIPE_MODELS=gemini-3.7-flash
+Environment=PXPIPE_CONFIG=%h/.config/pxpipe-agy/config.json
+Environment=PXPIPE_LOG=%h/.pxpipe-agy/events.jsonl
+Environment=PXPIPE_UPSTREAM=http://127.0.0.1:8102
+Environment=PATH=/usr/bin:%h/.local/bin
+WorkingDirectory=%h
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
