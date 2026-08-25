@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [3.9.2] - 2026-08-25
+
+### Added
+- Blackbox AI CLI adapter hardening: PATH/search_paths resolve, reject X11 WM (`/usr/bin/blackbox` 0.77) and non-AI binaries, hermetic fake-CLI tests, Unix `scripts/probe_blackbox.sh`
+- Shared `memory/adapters/proc.py` (`run_cli` process-group timeout kill; POSIX killpg, win32 best-effort child kill)
+- `BLACKBOX_*=` log redaction; `_CHILD_LOGGERS` includes `memory.adapters`
+- Design spec: [`docs/superpowers/specs/2026-08-25-blackbox-cli-adapter-design.md`](docs/superpowers/specs/2026-08-25-blackbox-cli-adapter-design.md)
+
+### Changed
+- `VERSION` → 3.9.2
+- Example config: `blackbox.command` `"blackbox"` with `prompt_mode` / `extra_args`; `search_paths` omitted (defaults `~/.local/bin` first). Wizard default remains grok.
+
+Patch, not 3.10.0: no wizard default change, no new product surface, existing adapter hardened.
+
 ## [3.9.1] - 2026-08-24
 
 ### Added

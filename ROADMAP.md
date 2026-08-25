@@ -1,6 +1,6 @@
 # Agentix Public Roadmap
 
-[![Version](https://img.shields.io/badge/version-3.9.1-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.9.2-blue?style=flat-square)](CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](README.md)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen?style=flat-square)](docs/README.md)
 
@@ -66,6 +66,7 @@ Leftover nice-to-haves (token estimate, docs i18n, concurrency, …) moved to Fu
 
 | Version | Highlight |
 |---------|-----------|
+| **v3.9.2** | Blackbox AI CLI adapter hardening (WM collision, hermetic tests, probe) |
 | **v3.9.1** | Opt-in `git-commit-to-jira-tasks` skill (disabled by default; never `--intent git`) |
 | **v3.9.0** | P8 Harness Hardening — packaging, observability, extraction/validation, init parity, state DI, CI mock cycle |
 | **v3.8.1** | Parallel streams `run-parallel` on 3.8 line; README badges (CI, pxpipe default) |
