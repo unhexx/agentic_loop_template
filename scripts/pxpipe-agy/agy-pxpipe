@@ -1,0 +1,5 @@
+#!/bin/bash
+# agy через отдельный pxpipe-agy (Gemini 3.7 Flash). Обычный agy не трогаем.
+set -euo pipefail
+export GOOGLE_GEMINI_BASE_URL="${GOOGLE_GEMINI_BASE_URL:-http://127.0.0.1:8101}"
+exec "$(command -v agy)" "$@"

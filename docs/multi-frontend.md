@@ -11,6 +11,7 @@ Agentix is frontend-agnostic. The loop discipline (roles, handoffs, memory) work
 | **Blackbox + VS Code** | `Agent-Init.ps1` or `.sh` | Paste-prompt path. Does not honor the Grok chat-proxy env. pxpipe warp is optional, not auto. |
 | **Cursor** | Copy `prompts/short_orchestrator_prompt.md` as first message | Use Agent mode. Point custom rules to `SYSTEM_PROMPT.md`. Same: no auto warp. |
 | **Claude Code** | Same short prompts + `AGENT_ROLES.md` blocks | Append role block per handoff. Temperature per role table in `AGENTIC_LOOP_README.md`. |
+| **Antigravity (`agy`)** | Optional `agy-pxpipe` + second pxpipe | Does not honor the Grok chat-proxy env. Images `gemini-3.7-flash-high` / `-medium` via a loopback shim. Not auto-wrapped. See [proxy.md — agy](proxy.md#agy-antigravity-cli-optional-second-pxpipe). |
 
 ## Cursor Adapter
 

@@ -1,0 +1,22 @@
+[Unit]
+Description=pxpipe-agy path-rewrite sidecar (agy Gemini REST <-> google-ai-studio)
+Documentation=file://%h/.config/pxpipe-agy/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Шим из шаблона: scripts/pxpipe-agy/shim.py
+ExecStart=/usr/bin/python3 %h/.config/pxpipe-agy/shim.py
+Restart=on-failure
+RestartSec=2
+Environment=HOST=127.0.0.1
+Environment=SHIM_IN_PORT=8101
+Environment=SHIM_OUT_PORT=8102
+Environment=PXPIPE_AGY_URL=http://127.0.0.1:8103
+Environment=GOOGLE_UPSTREAM=https://generativelanguage.googleapis.com
+WorkingDirectory=%h
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

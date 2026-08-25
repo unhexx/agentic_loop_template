@@ -44,7 +44,7 @@ Canonical documentation for the Agentix agentic development loop template.
 | [Multi-Frontend](multi-frontend.md) | Agent UI adapters |
 | [Architecture](architecture.md) | Loop, memory, handoffs |
 | [Metrics & ROI](metrics-roi.md) | Performance ledger proof |
-| [Request proxy](proxy.md) | Default pxpipe gateway, SLOs, opt-out |
+| [Request proxy](proxy.md) | Default pxpipe gateway, SLOs, opt-out, optional agy second instance |
 | [Hub](hub/README.md) | Marketplace foundation |
 | [Hub Discovery](hub/discovery.md) | Install playbooks |
 | [Hub API Schema](hub/api-schema.json) | Web-ready JSON schema |

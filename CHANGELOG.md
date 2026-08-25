@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- Optional host recipe for Antigravity CLI (`agy`) + second pxpipe: `scripts/pxpipe-agy/` shim and `agy-pxpipe` wrapper, systemd examples `pxpipe-agy*.service.example`. Images `gemini-3.7-flash-high` / `-medium` without touching the Grok imager on `:8100`. README + `docs/proxy.md` Foreign CLIs.
+
 ## [3.9.2] - 2026-08-25
 
 ### Added
