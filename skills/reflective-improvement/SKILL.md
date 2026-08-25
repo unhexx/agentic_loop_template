@@ -6,6 +6,8 @@ version: 1.1.0
 
 # reflective-improvement
 
+Pipeline: **experience-accumulation** writes memory; **loop-self-improve** queries it and apply-safes. This file is the 6-step write-up only.
+
 **Purpose**: Turn every completed task, error, or cycle into systematic, persistent improvement of agent behavior, knowledge, playbooks, and the loop itself.
 
 **Owner context**: Agentix `.agent/` (LOOP_STATE, PERFORMANCE_LEDGER, PLAYBOOKS, META_PROPOSALS, TRAJECTORIES) + memory layer + Reviewer role.
@@ -23,9 +25,8 @@ version: 1.1.0
 ## Standard Workflow (imperative)
 
 1. **Trigger & gather**
-   - Scope: single task, cycle, error cluster, full review, or **parent-folder harvest**.
-   - Fetch: last handoff JSON, PERFORMANCE_LEDGER recent, LOOP_STATE snapshot, relevant playbooks, test output.
-   - Parent-folder session: `python -m memory.experience_harvester cycle --parent <_PROJECT>` (dry-run first). Reads AGENTS.md / playbooks, not only LESSONS.md.
+   - Scope: single task, cycle, error cluster, or full review. Parent-folder harvest is **experience-accumulation**, not this file.
+   - Fetch: last handoff JSON, PERFORMANCE_LEDGER recent, LOOP_STATE snapshot (`python -m memory state snapshot`), relevant playbooks, test output.
 
 2. **Structured Reflection Ritual**
    - **Review**: Goal, actions, outcome vs expected, confidence.
@@ -50,9 +51,9 @@ version: 1.1.0
    - Log in PERFORMANCE_LEDGER / META_PROPOSALS / SELF_IMPROVEMENT if present.
 
 5. **Close the loop**
-   - On DONE: Reviewer MUST run this skill (or equivalent meta_harvester harvest + reflect).
-   - If the session spanned `../_PROJECT/*`, apply `experience_harvester cycle --parent ..` and record `memory_updated`. Supervisor also calls `maybe_cycle_on_done` (dry-run) after Reviewer DONE.
-   - High-quality DONE: `python -m memory.meta_harvester export-sft` → `.agent/sft/train.jsonl` (gitignored, export only, no GPU).
+   - On DONE: Reviewer follows **loop-self-improve** (query → this 6-step write-up → apply-safe). This file is the write-up only.
+   - Parent-folder harvest stays in **experience-accumulation**. Supervisor `maybe_cycle_on_done` (dry-run) is unchanged.
+   - High-quality DONE export-sft is owned by **loop-self-improve**.
    - Suggest decomposition into `.agent/TODO.md` / PLAN.
 
 ## Trigger Phrases
