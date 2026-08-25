@@ -29,10 +29,10 @@ INTENTS = {
 
 # Skills живут в корне репозитория, не в tools/blocks.
 SKILL_INTENTS = {
-    "reflect": ["skills/reflective-improvement/SKILL.md"],
+    "reflect": ["skills/loop-self-improve/SKILL.md"],
     "knowledge": ["skills/local-knowledge-ingestion/SKILL.md"],
     "compress": ["skills/README.md"],
-    "harvest": ["skills/reflective-improvement/SKILL.md"],
+    "harvest": ["skills/experience-accumulation/SKILL.md"],
 }
 
 
