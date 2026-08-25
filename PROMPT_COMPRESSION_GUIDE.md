@@ -93,7 +93,7 @@ python -m memory.context_budget check --files .agent/PLAN.md .agent/TODO.md --bu
 python -m memory.compressor files --budget 4000 .agent/history/x.md TRAJECTORIES.json
 ```
 
-Reviewer on DONE must run the reflective-improvement skill and, if over budget, `--compress`. Sources are never rewritten; the report is the contract.
+Reviewer on DONE must run `skills/loop-self-improve` and, if over budget, `--compress`. Sources are never rewritten; the report is the contract.
 
 ## Rituals vs request proxy (v3.7)
 

@@ -17,4 +17,4 @@ Sources (v3.6): `AGENTS.md`, Agent-Playbook, CONTRIBUTING, living plans, LESSONS
 
 When: Reviewer on DONE (parent-folder session), or Orchestrator after adopting a new consumer.
 
-See `EXPERIENCE_EXTRACTION_TOOLS.md` and `skills/reflective-improvement/SKILL.md`.
+See `EXPERIENCE_EXTRACTION_TOOLS.md` and `skills/experience-accumulation/SKILL.md`.

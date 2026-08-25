@@ -103,6 +103,6 @@ The Reviewer is responsible for enforcing these rules (including sync evidence i
 
 ---
 
-**Self-learning updates in 3.6:** Orchestrator cold-start: `python -m memory state snapshot --window 3` then `python -m memory query --top 5 --category "Common Failure Patterns"`. On a parent-folder session, Reviewer runs `python -m memory.experience_harvester cycle --parent <_PROJECT>` (see `skills/reflective-improvement`). Distillation and questions pool remain required. Git sync evidence mandatory in every DONE handoff.
+**Self-learning updates in 3.6:** Orchestrator cold-start: `python -m memory state snapshot --window 3` then `python -m memory query --top 5 --category "Common Failure Patterns"`. On a parent-folder session, Reviewer follows `skills/experience-accumulation` then `skills/loop-self-improve`. Distillation and questions pool remain required. Git sync evidence mandatory in every DONE handoff.
 
 **Template Version:** 3.6.0 — English instructions, Linux/Grok default, two-tier consumer adoption, cross-project experience harvest.

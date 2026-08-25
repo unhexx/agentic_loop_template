@@ -48,7 +48,7 @@ Aliases: `python -m memory experience …` / `python -m memory harvest-experienc
 ## Integration
 
 - **Orchestrator:** `python -m memory query --top 5 --category "Common Failure Patterns"` at cycle start.
-- **Reviewer (DONE, parent-folder session):** `python -m memory.experience_harvester cycle --parent ..` then `skills/reflective-improvement`.
+- **Reviewer (DONE, parent-folder session):** `skills/experience-accumulation` (`cycle --parent ..`) then `skills/loop-self-improve`.
 - Progressive tools: `python tools/select.py --intent harvest`.
 - Skill-compatible with eegent `agentic-loop-error-collector` (same memory update path).
 

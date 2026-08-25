@@ -61,7 +61,7 @@ Implemented as `memory/knowledge.py` (SQLite under `.agent/knowledge/knowledge.s
 ## Integration
 
 - Feeds `memory/store.py` categories and playbooks.
-- Complements reflective-improvement (lessons become ingested knowledge).
+- Complements experience-accumulation / loop-self-improve (lessons become ingested knowledge).
 - Use with context_budget: ingest only if total stays under budget.
 - Classifier-style catalogs are ideal seeds for domain playbooks.
 
