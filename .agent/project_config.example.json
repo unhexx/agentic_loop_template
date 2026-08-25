@@ -100,7 +100,9 @@
         "command": null
       },
       "blackbox": {
-        "command": null
+        "command": "blackbox",
+        "prompt_mode": "p",
+        "extra_args": []
       }
     },
     "block_process_tags": [

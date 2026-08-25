@@ -11,7 +11,7 @@ Agentix supports Windows (primary) and Linux/macOS with platform-adaptive bootst
 
 ## Cold-start parity
 
-Both scripts run the same ritual. Wizard (`bash Agent-Init.sh --wizard` / `.\Agent-Init.ps1 -Wizard`) and explicit `-Frontend grok|cursor|blackbox` are fail-closed on proxy health. Non-wizard Init stays **best-effort** so CI and `demo-loop.sh` do not need pxpipe. Mock never fail-closes. `AGENTIX_PROXY=0` still opts out. Wizard/live default frontend is **grok**; `-Frontend blackbox` and `project_config.supervisor.adapter` still win.
+Both scripts run the same ritual. Wizard (`bash Agent-Init.sh --wizard` / `.\Agent-Init.ps1 -Wizard`) and explicit `-Frontend grok|cursor|blackbox` are fail-closed on proxy health. Non-wizard Init stays **best-effort** so CI and `demo-loop.sh` do not need pxpipe. Mock never fail-closes. `AGENTIX_PROXY=0` still opts out. Wizard/live default frontend is **grok**; `-Frontend blackbox` and `project_config.supervisor.adapter` still win. CLI adapter is opt-in `--adapter blackbox`.
 
 After the editable install, `python -m memory` does **not** need `PYTHONPATH`. Init exports it only if `import memory` fails.
 

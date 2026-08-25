@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
-"""Маскировка DASHBOARD_TOKEN и Authorization — аналог telegrok redact_tokens.
+"""Маскировка DASHBOARD_TOKEN, Authorization и BLACKBOX_* — аналог telegrok redact_tokens.
 
 Логи и HTML не должны светить секрет. Пустой токен ничего не режет по значению;
-шаблоны query/Bearer/заголовков режем всегда. Короткий токен (< 8 символов)
+шаблоны query/Bearer/заголовков и BLACKBOX_*= режем всегда. Короткий токен (< 8 символов)
 по значению не подменяем — иначе «new» размажет весь UI.
 """
 
@@ -31,6 +31,8 @@ _BEARER_RE = re.compile(r"(Bearer\s+)(\S+)", re.IGNORECASE)
 _AUTH_HEADER_RE = re.compile(r"(Authorization:\s*)(\S.+)", re.IGNORECASE)
 _X_API_RE = re.compile(r"(X-API-Token:\s*)(\S+)", re.IGNORECASE)
 _COOKIE_RE = re.compile(r"(agentix_token=)([^;\s\"']+)", re.IGNORECASE)
+# BLACKBOX_* в логах адаптера — без привязки к DASHBOARD_TOKEN
+_BLACKBOX_ENV_RE = re.compile(r"\b(BLACKBOX_[A-Z0-9_]+=)(\S+)")
 
 _MIN_VALUE_LEN = 8
 _PLACEHOLDER = "****"
@@ -64,6 +66,7 @@ def _pattern_redact(text: str) -> str:
     red = _BEARER_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, red)
     red = _X_API_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, red)
     red = _COOKIE_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, red)
+    red = _BLACKBOX_ENV_RE.sub(lambda m: m.group(1) + _PLACEHOLDER, red)
     return red
 
 
@@ -73,7 +76,7 @@ def redact_tokens(
     *,
     keep_edges: bool = False,
 ) -> str:
-    """Вычищает DASHBOARD_TOKEN, ``?token=``, Bearer и Authorization из строки.
+    """Вычищает DASHBOARD_TOKEN, ``?token=``, Bearer, Authorization и ``BLACKBOX_*=``.
 
     По умолчанию значение токена целиком ``****`` (HTML). ``keep_edges=True`` —
     только access-логи, не страница.

@@ -29,6 +29,10 @@ Only `LESSONS.md` / `SELF_IMPROVEMENT_LOG.md` were scanned; no current project h
 
 See `docs/TOP10_IMPROVEMENTS.md` (3.6 rows) and `EXPERIENCE_EXTRACTION_TOOLS.md`.
 
+### 2026-08-25 — Blackbox CLI adapter
+
+`BlackboxAdapter` now fail-hard on a missing binary, the X11 window manager (`/usr/bin/blackbox` 0.77), and probed-but-not-AI binaries (e.g. Ellipse IoT `blackbox-cli`). Hermetic fake-CLI tests cover argv, timeout, and persist without a live account. This is **not** a port of eegent `blackbox_wrapper` (`run` + `--yolo` + worktree simulate) and does not vendor agent-box artifacts.
+
 ---
 
 # Historical: 2026-07-29 (eegent / tunex era)

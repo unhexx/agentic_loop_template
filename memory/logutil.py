@@ -11,6 +11,7 @@ _CHILD_LOGGERS = (
     "memory.proxy.config",
     "memory.proxy.gateway",
     "memory.playbooks",
+    "memory.adapters",  # фильтры родителя memory на child не действуют
 )
 
 

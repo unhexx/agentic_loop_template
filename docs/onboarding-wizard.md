@@ -32,7 +32,7 @@ Prompts for:
 
 Outputs tailored next steps and copies consumer-starter templates if missing.
 
-Live/wizard default frontend is **grok** (fail-closed proxy health). Pass `-Frontend blackbox` (or set `supervisor.adapter` in `.agent/project_config.json`) to keep Blackbox. Non-wizard Init stays best-effort so CI does not require pxpipe. `AGENTIX_PROXY=0` still opts out.
+Live/wizard default frontend is **grok** (fail-closed proxy health). Pass `-Frontend blackbox` (or set `supervisor.adapter` in `.agent/project_config.json`) to keep Blackbox. The subprocess CLI adapter is opt-in: `python -m memory.supervisor run --adapter blackbox`. Non-wizard Init stays best-effort so CI does not require pxpipe. `AGENTIX_PROXY=0` still opts out.
 
 ## Stack Templates
 
