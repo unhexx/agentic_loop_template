@@ -298,13 +298,10 @@ Reviewer / meta должны поддерживать этот раздел ак
 
 ## Concrete small-context examples for M2.5+ (Blackbox, limited resources, no GPU) — 2026-06
 
-**Token budget estimation (tiktoken-like, approximate for planning):**
-```python
-# Rough: 1 token ~ 4 chars English / 2-3 Russian. Use for handoff size limit.
-def estimate_tokens(text: str) -> int:
-    return len(text) // 3  # conservative for mixed
-# In prompt: "Keep this handoff under 4000 tokens. Current estimate: {estimate}."
-```
+**Token budget estimation:**
+
+Use `python -m memory.context_budget check --files … --budget N` (optional `--model` / `--encoding`).
+Runtime SSOT is `memory.context_budget.estimate_tokens`: tiktoken when the `tokens`/`dev` extra is installed, otherwise `max(1, len(text)//4)`. Default encoding `cl100k_base` (grok); `gpt-4o` / `o1` / `o3` → `o200k_base`.
 
 **Pydantic for structured output (reduces tokens, easier parse):**
 Use Pydantic models in executor prompts for handoff/results (see EXECUTOR_PROMPT_TEMPLATE.md). Model enforces schema, less prose from LLM.

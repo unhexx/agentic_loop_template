@@ -27,7 +27,8 @@ Each role: **PLAN → ACT (≤3 tool calls) → REFLECT → handoff JSON**.
 
 | Layer | Location | Purpose |
 |-------|----------|---------|
-| Packaging | `pyproject.toml` | Dist name `agentix`, import `memory`. `pip install -e ".[dev]"` / `.[dashboard]`. Console scripts `agentix`, `agentix-supervisor`, `agentix-dashboard`, `agentix-proxy` |
+| Packaging | `pyproject.toml` | Dist name `agentix`, import `memory`. `pip install -e ".[dev]"` / `.[dashboard]` / `.[tokens]`. `.[dev]` includes tiktoken. Console scripts `agentix`, `agentix-supervisor`, `agentix-dashboard`, `agentix-proxy` |
+| Context budget | `memory/context_budget.py` | tiktoken extra (`dev`/`tokens`); fallback chars/4; per-model encoding |
 | Roles & prompts | `AGENT_ROLES.md`, `prompts/` | Per-role discipline |
 | Handoffs | `HANDOFF_SCHEMA.md` | State transfer contract |
 | Memory | `memory/` | questions_collector, meta_harvester, playbooks, ledger |
