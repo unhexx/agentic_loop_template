@@ -41,7 +41,9 @@
   "context_budget": {
     "cold_start_tokens": 16000,
     "next_input_files_tokens": 12000,
-    "compress_when_over": true
+    "compress_when_over": true,
+    "encoding": null,
+    "model": null
   },
   "state": {
     "max_working_json_bytes": 8192,
