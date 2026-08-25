@@ -5,6 +5,21 @@
 ### Added
 - Optional host recipe for Antigravity CLI (`agy`) + second pxpipe: `scripts/pxpipe-agy/` shim and `agy-pxpipe` wrapper, systemd examples `pxpipe-agy*.service.example`. Images `gemini-3.7-flash-high` / `-medium` without touching the Grok imager on `:8100`. README + `docs/proxy.md` Foreign CLIs.
 
+## [3.9.3] - 2026-08-25
+
+### Added
+- First-class skills `skills/experience-accumulation` (`--intent harvest`) and `skills/loop-self-improve` (`--intent reflect`)
+- `memory/test_select.py` locks harvest/reflect/git loader paths
+- Design spec: [`docs/superpowers/specs/2026-08-25-harvest-reflect-skill-split-design.md`](docs/superpowers/specs/2026-08-25-harvest-reflect-skill-split-design.md)
+
+### Changed
+- `tools/select.py` `SKILL_INTENTS`: harvest and reflect no longer share `reflective-improvement`
+- `reflective-improvement` is the 6-step write-up sub-skill only (no `experience_harvester cycle`)
+- Reviewer DONE / SYSTEM_PROMPT / experience docs point at the split
+- `VERSION` → 3.9.3
+
+Patch, not 3.10.0: no wizard default change, no new product surface, skill routing only.
+
 ## [3.9.2] - 2026-08-25
 
 ### Added
