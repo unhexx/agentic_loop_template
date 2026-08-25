@@ -229,4 +229,5 @@ __marimo__/
 .agent/proxy_cache.sqlite-*
 .agent/sft/
 .agent/jira-from-commits-state.json
+.agent/blackbox_prompt.txt
 .venv/
