@@ -4,14 +4,17 @@ set -euo pipefail
 HINT="Install: curl -fsSL https://blackbox.ai/install.sh | bash"
 
 _lower() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+# те же подстроки, что _WM_MARKERS / _AI_MARKERS в memory/adapters/blackbox.py
 _is_wm() {
   local t; t=$(_lower "$1")
-  [[ "$t" == *shaleh* || "$t" == *"blackbox 0.77"* || "$t" == *"-display"* ]]
+  [[ "$t" == *"sean 'shaleh' perry"* || "$t" == *"bradley t hughes"* || \
+     "$t" == *"blackbox 0.77"* || "$t" == *"-display"* ]]
 }
 _is_ai() {
   local t; t=$(_lower "$1")
   _is_wm "$t" && return 1
-  [[ "$t" == *configure* || "$t" == *headless* || "$t" == *session* || "$t" == *"blackbox run"* ]]
+  [[ "$t" == *"blackbox cli"* || "$t" == *headless* || "$t" == *configure* || \
+     "$t" == *session* || "$t" == *"blackbox run"* ]]
 }
 _help() {
   if command -v timeout >/dev/null 2>&1; then timeout 3 "$@"; else "$@"; fi
