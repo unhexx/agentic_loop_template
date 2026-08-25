@@ -244,6 +244,30 @@ def test_blackbox_empty_search_paths_skips_defaults(tmp_path, monkeypatch):
 
 
 @_SHEBANG
+def test_blackbox_default_search_paths_prefers_homedir_ai(tmp_path, monkeypatch):
+    fakehome = _isolate_home(tmp_path, monkeypatch)
+    ai = _write_fake(
+        fakehome / ".local" / "bin" / "blackbox",
+        help_text=_AI_HELP,
+        stdout=json.dumps(_valid_in_progress()),
+    )
+    wm = _write_fake(
+        tmp_path / "bin" / "blackbox",
+        help_text=_WM_HELP,
+        stdout="",
+    )
+    argv_path = tmp_path / "fake_argv.json"
+    monkeypatch.setenv("FAKE_ARGV_PATH", str(argv_path))
+    monkeypatch.setenv("PATH", str(wm.parent) + os.pathsep + os.environ.get("PATH", ""))
+    ad = BlackboxAdapter({"command": "blackbox"})
+    out = _turn(ad, tmp_path)
+    assert out.is_file()
+    exe, _args = _load_argv(argv_path)
+    assert exe is not None
+    assert Path(exe).resolve() == ai.resolve()
+
+
+@_SHEBANG
 def test_blackbox_prefers_search_path_ai_cli_over_usr_wm(tmp_path, monkeypatch):
     _isolate_home(tmp_path, monkeypatch)
     ai = _write_fake(
@@ -306,6 +330,7 @@ def test_blackbox_prompt_mode_run_writes_file_and_argv(tmp_path, monkeypatch):
     assert any(str(a).endswith("blackbox_prompt.txt") for a in args)
     pf = tmp_path / ".agent" / "blackbox_prompt.txt"
     assert pf.read_text(encoding="utf-8") == prompt
+    assert pf.stat().st_mode & 0o777 == 0o600
     assert out.is_file()
 
 
@@ -431,6 +456,7 @@ def test_blackbox_does_not_log_prompt_or_api_key(tmp_path, monkeypatch, caplog):
     with caplog.at_level(logging.INFO, logger="memory.adapters"):
         _turn(ad, tmp_path, prompt=prompt)
     text = caplog.text
+    assert "blackbox spawn" in text or "exe=" in text
     assert "CANARY_PROMPT_XYZ" not in text
     assert "sk-secret-canary-key" not in text
 

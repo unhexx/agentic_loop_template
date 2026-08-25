@@ -13,7 +13,7 @@ from typing import Optional
 
 from memory.logutil import get_logger
 
-from .grok import HandoffExtractError, extract_handoff
+from .grok import extract_handoff
 from .persist import persist_role_handoff
 from .proc import CliTimeoutError, run_cli
 
@@ -45,6 +45,8 @@ def _probe_help(path: str, timeout_s: float = 3.0) -> str:
         [path, "--help"],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         timeout=timeout_s,
         stdin=subprocess.DEVNULL,
         env={**os.environ, "TERM": "dumb", "NO_COLOR": "1", "CI": "true"},
@@ -128,7 +130,7 @@ def _classify_candidates(candidates: list[str], command: str) -> str:
     for path in candidates:
         try:
             text = _probe_help(path)
-        except (subprocess.TimeoutExpired, OSError):
+        except (subprocess.TimeoutExpired, OSError, UnicodeDecodeError):
             # файл был — это не «нет на PATH»
             neither_paths.append(path)
             continue
