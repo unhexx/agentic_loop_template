@@ -56,7 +56,14 @@ After worktrees exist (or let supervisor provision them). Requires `pip install 
       --adapter mock \
       --no-pr
 
+    python -m memory.supervisor run-parallel \
+      --stream harness:memory/,tools/ \
+      --stream docs:docs/ \
+      --adapter mock \
+      --no-pr \
+      --concurrent
+
 - Human gate remains: **merge PR to `main` only**.
-- Streams run **serially**; concurrent fan-out is future work.
+- Default: streams run **serially**. `run-parallel --concurrent` overlaps disjoint streams in time; provision and integration merge stay serial; never merges `main`.
 - Hub writes `.agent/streams_state.json` with per-stream status.
 - Live Grok still uses pxpipe by default (`proxy.mode=required`).
