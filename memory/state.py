@@ -21,6 +21,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from memory.agent_lock import agent_lock
+
 log = logging.getLogger("memory.state")
 
 AGENT_DIR = Path(".agent")
@@ -134,35 +136,36 @@ def save_state(
     agent = _agent_dir(agent_dir)
     path = path or (agent / "LOOP_STATE.json")
     _ensure_dirs(agent)
-    state = dict(state)
-    state["updated_at"] = _now_iso()
-    # Cap lists
-    deltas = list(state.get("recent_deltas") or [])
-    if len(deltas) > MAX_DELTAS:
-        # Archive overflow
-        overflow = deltas[:-MAX_DELTAS]
-        _append_history(
-            {"type": "deltas_overflow", "items": overflow, "ts": _now_iso()},
-            agent_dir=agent,
-        )
-        deltas = deltas[-MAX_DELTAS:]
-    state["recent_deltas"] = deltas
-    invest = list(state.get("open_invest") or [])
-    state["open_invest"] = invest[:MAX_OPEN_INVEST]
+    with agent_lock(agent, name="state"):
+        state = dict(state)
+        state["updated_at"] = _now_iso()
+        # Cap lists
+        deltas = list(state.get("recent_deltas") or [])
+        if len(deltas) > MAX_DELTAS:
+            # Archive overflow
+            overflow = deltas[:-MAX_DELTAS]
+            _append_history(
+                {"type": "deltas_overflow", "items": overflow, "ts": _now_iso()},
+                agent_dir=agent,
+            )
+            deltas = deltas[-MAX_DELTAS:]
+        state["recent_deltas"] = deltas
+        invest = list(state.get("open_invest") or [])
+        state["open_invest"] = invest[:MAX_OPEN_INVEST]
 
-    text = json.dumps(state, ensure_ascii=False, indent=2)
-    if len(text.encode("utf-8")) > MAX_WORKING_JSON_BYTES:
-        # Drop notes and trim command lists
-        gs = state.get("git_sync") or {}
-        if isinstance(gs, dict) and isinstance(gs.get("commands_run"), list):
-            gs["commands_run"] = gs["commands_run"][-3:]
-        state["notes"] = "truncated"
         text = json.dumps(state, ensure_ascii=False, indent=2)
+        if len(text.encode("utf-8")) > MAX_WORKING_JSON_BYTES:
+            # Drop notes and trim command lists
+            gs = state.get("git_sync") or {}
+            if isinstance(gs, dict) and isinstance(gs.get("commands_run"), list):
+                gs["commands_run"] = gs["commands_run"][-3:]
+            state["notes"] = "truncated"
+            text = json.dumps(state, ensure_ascii=False, indent=2)
 
-    tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(text, encoding="utf-8")
-    tmp.replace(path)
-    _write_md_projection(state, agent_dir=agent)
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(text, encoding="utf-8")
+        tmp.replace(path)
+        _write_md_projection(state, agent_dir=agent)
 
 
 def _write_md_projection(state: Dict[str, Any], *, agent_dir: Optional[Path] = None) -> None:
