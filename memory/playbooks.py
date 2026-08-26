@@ -43,6 +43,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from memory.agent_lock import agent_lock
 from memory.logutil import get_logger
 
 log = get_logger("memory.playbooks")
@@ -56,6 +57,24 @@ DEFAULT_MIN_EFFECT = 0.5
 PLAYBOOKS_INDEX = Path(".agent/PLAYBOOKS.json")
 PLAYBOOKS_DIR = Path(".agent/PLAYBOOKS")
 PROJECT_CONFIG = Path(".agent/project_config.json")
+HUB_INDEX_PATH = Path(".agent/HUB_INDEX.json")
+
+
+def _playbooks_index(agent_dir: Optional[Path] = None) -> Path:
+    """Явный каталог .agent или cwd-дефолт — иначе параллельные сессии пишут не туда."""
+    return Path(agent_dir) / "PLAYBOOKS.json" if agent_dir is not None else PLAYBOOKS_INDEX
+
+
+def _playbooks_dir(agent_dir: Optional[Path] = None) -> Path:
+    return Path(agent_dir) / "PLAYBOOKS" if agent_dir is not None else PLAYBOOKS_DIR
+
+
+def _project_config_path(agent_dir: Optional[Path] = None) -> Path:
+    return Path(agent_dir) / "project_config.json" if agent_dir is not None else PROJECT_CONFIG
+
+
+def _hub_index_path(agent_dir: Optional[Path] = None) -> Path:
+    return Path(agent_dir) / "HUB_INDEX.json" if agent_dir is not None else HUB_INDEX_PATH
 
 
 def _now_iso() -> str:
@@ -63,19 +82,22 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _ensure_agent_dir() -> None:
-    """Гарантирует существование .agent/PLAYBOOKS/."""
-    PLAYBOOKS_INDEX.parent.mkdir(parents=True, exist_ok=True)
-    PLAYBOOKS_DIR.mkdir(parents=True, exist_ok=True)
+def _ensure_agent_dir(agent_dir: Optional[Path] = None) -> None:
+    """Гарантирует существование каталога индекса и PLAYBOOKS/."""
+    _playbooks_index(agent_dir).parent.mkdir(parents=True, exist_ok=True)
+    _playbooks_dir(agent_dir).mkdir(parents=True, exist_ok=True)
 
 
-def load_config() -> Dict[str, Any]:
+def load_config(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
     """
     Загружает настройки playbooks.
 
     Приоритет:
-    1. .agent/project_config.json -> playbooks.{enabled, auto_curate, ...}
+    1. project_config.json -> playbooks.{enabled, auto_curate, ...}
     2. Дефолты.
+
+    agent_dir=None — файлы относительно cwd (CLI и старые тесты).
+    Иначе читаем ``agent_dir / project_config.json``.
 
     Возвращает dict.
     """
@@ -88,9 +110,10 @@ def load_config() -> Dict[str, Any]:
         "scopes": ["global", "role:*", "tool:*", "phase:*"],
     }
 
-    if PROJECT_CONFIG.exists():
+    cfg_path = _project_config_path(agent_dir)
+    if cfg_path.exists():
         try:
-            raw = json.loads(PROJECT_CONFIG.read_text(encoding="utf-8"))
+            raw = json.loads(cfg_path.read_text(encoding="utf-8"))
             pb = raw.get("playbooks", {}) or {}
             if isinstance(pb, dict):
                 for k in ("enabled", "auto_curate", "max_bullets_per_playbook", "default_k", "min_effectiveness"):
@@ -104,32 +127,40 @@ def load_config() -> Dict[str, Any]:
     return cfg
 
 
-def _load_index() -> Dict[str, Any]:
+def _load_index(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
     """Внутренняя загрузка индекса playbooks."""
-    _ensure_agent_dir()
-    if not PLAYBOOKS_INDEX.exists():
+    _ensure_agent_dir(agent_dir)
+    path = _playbooks_index(agent_dir)
+    if not path.exists():
         return {"playbooks": {}, "updated_at": _now_iso(), "version": "3.3-playbooks"}
     try:
-        return json.loads(PLAYBOOKS_INDEX.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
-        log.warning("playbooks index corrupt, renaming to bak: %s", PLAYBOOKS_INDEX)
+        log.warning("playbooks index corrupt, renaming to bak: %s", path)
         try:
-            PLAYBOOKS_INDEX.rename(PLAYBOOKS_INDEX.with_suffix(".json.bak"))
+            path.rename(path.with_suffix(".json.bak"))
         except Exception:
             pass
         return {"playbooks": {}, "updated_at": _now_iso(), "version": "3.3-playbooks"}
 
 
-def _save_index(data: Dict[str, Any]) -> None:
+def _save_index(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
     """Сохранение + обновление md + timestamp."""
+    path = _playbooks_index(agent_dir)
     data["updated_at"] = _now_iso()
-    PLAYBOOKS_INDEX.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    _write_human_views(data)
+    # Блокируем родителя файла: параллельные записи не должны рвать JSON.
+    with agent_lock(path.parent, name="playbooks"):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(path)
+        _write_human_views(data, agent_dir=agent_dir)
 
 
-def _write_human_views(data: Dict[str, Any]) -> None:
+def _write_human_views(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
     """Генерирует человекочитаемые .md для каждого playbook'а + общий обзор."""
-    _ensure_agent_dir()
+    _ensure_agent_dir(agent_dir)
+    views_dir = _playbooks_dir(agent_dir)
     lines = [
         "# PLAYBOOKS.md — Структурированные Playbooks и Knowledge Objects",
         "",
@@ -151,7 +182,7 @@ def _write_human_views(data: Dict[str, Any]) -> None:
             lines.append(f"  last_curated: {pb.get('last_curated', 'never')}")
 
     # Пишем общий
-    (PLAYBOOKS_DIR / "overview.md").write_text("\n".join(lines), encoding="utf-8")
+    (views_dir / "overview.md").write_text("\n".join(lines), encoding="utf-8")
 
     # Отдельные views
     for pid, pb in pbs.items():
@@ -159,7 +190,7 @@ def _write_human_views(data: Dict[str, Any]) -> None:
         for b in pb.get("bullets", []):
             eff = b.get("effectiveness", 0.5)
             pb_lines.append(f"- [{eff:.2f}] {b.get('content', '')}  (tags: {b.get('tags', [])})")
-        (PLAYBOOKS_DIR / f"{pid}.md").write_text("\n".join(pb_lines), encoding="utf-8")
+        (views_dir / f"{pid}.md").write_text("\n".join(pb_lines), encoding="utf-8")
 
 
 def _score_bullet(bullet: Dict[str, Any], query_lower: str, now_ts: str) -> float:
@@ -175,13 +206,19 @@ def _score_bullet(bullet: Dict[str, Any], query_lower: str, now_ts: str) -> floa
     return 0.5 * eff + 0.3 * recency + 0.2 * relevance
 
 
-def select_bullets(query: str, scopes: Optional[List[str]] = None, k: int = 5, min_effect: float = 0.5) -> List[Dict[str, Any]]:
+def select_bullets(
+    query: str,
+    scopes: Optional[List[str]] = None,
+    k: int = 5,
+    min_effect: float = 0.5,
+    agent_dir: Optional[Path] = None,
+) -> List[Dict[str, Any]]:
     """Выбирает лучшие bullets для запроса и скоупов. Возвращает отсортированные по score."""
-    cfg = load_config()
+    cfg = load_config(agent_dir)
     if not cfg.get("enabled"):
         return []
 
-    index = _load_index()
+    index = _load_index(agent_dir)
     pbs = index.get("playbooks", {})
     now = _now_iso()
     q = query.lower()
@@ -208,12 +245,16 @@ def select_bullets(query: str, scopes: Optional[List[str]] = None, k: int = 5, m
     return result
 
 
-def curate_from_reflection(reflection: Dict[str, Any], playbook_id: str) -> Dict[str, Any]:
+def curate_from_reflection(
+    reflection: Dict[str, Any],
+    playbook_id: str,
+    agent_dir: Optional[Path] = None,
+) -> Dict[str, Any]:
     """
     Курация playbook на основе рефлексии цикла.
     Добавляет/улучшает/демотирует bullets. Возвращает мутацию.
     """
-    index = _load_index()
+    index = _load_index(agent_dir)
     pbs = index.setdefault("playbooks", {})
     if playbook_id not in pbs:
         pbs[playbook_id] = {"scope": "auto", "bullets": [], "last_curated": _now_iso()}
@@ -257,19 +298,19 @@ def curate_from_reflection(reflection: Dict[str, Any], playbook_id: str) -> Dict
                 mutation["demoted"] += 1
 
     # Ограничение размера
-    if len(bullets) > load_config().get("max_bullets_per_playbook", 50):
+    if len(bullets) > load_config(agent_dir).get("max_bullets_per_playbook", 50):
         bullets.sort(key=lambda x: x.get("effectiveness", 0), reverse=True)
         bullets[:] = bullets[:50]
 
     pb["last_curated"] = _now_iso()
-    _save_index(index)
+    _save_index(index, agent_dir)
     return mutation
 
 
-def seed_initial_playbooks() -> int:
+def seed_initial_playbooks(agent_dir: Optional[Path] = None) -> int:
     """Сидирует начальные playbooks из текущих стандартов и паттернов (bootstrap)."""
-    _ensure_agent_dir()
-    index = _load_index()
+    _ensure_agent_dir(agent_dir)
+    index = _load_index(agent_dir)
     pbs = index.setdefault("playbooks", {})
 
     # Глобальный dev + git sync playbook (из STANDARDS + прошлого опыта)
@@ -317,16 +358,13 @@ def seed_initial_playbooks() -> int:
             "last_curated": _now_iso(),
         }
 
-    _save_index(index)
+    _save_index(index, agent_dir)
     return len(pbs)
 
 
-HUB_INDEX_PATH = Path(".agent/HUB_INDEX.json")
-
-
-def list_playbooks() -> List[Dict[str, Any]]:
+def list_playbooks(agent_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
     """Возвращает каталог всех playbooks для Hub discovery."""
-    index = _load_index()
+    index = _load_index(agent_dir)
     items: List[Dict[str, Any]] = []
     for pid, pb in index.get("playbooks", {}).items():
         bullets = pb.get("bullets", [])
@@ -361,22 +399,30 @@ def discover_items(query: str, scope: Optional[str] = None, k: int = 10) -> List
     ]
 
 
-def export_hub_index(fmt: str = "hub", output: Optional[Path] = None) -> Dict[str, Any]:
+def export_hub_index(
+    fmt: str = "hub",
+    output: Optional[Path] = None,
+    agent_dir: Optional[Path] = None,
+) -> Dict[str, Any]:
     """Экспортирует индекс для Agentix Hub (discovery + install metadata)."""
-    index = _load_index()
-    items = list_playbooks()
+    index = _load_index(agent_dir)
+    items = list_playbooks(agent_dir)
     hub_data: Dict[str, Any] = {
         "version": "1.0",
         "generated_at": _now_iso(),
-        "source": str(PLAYBOOKS_INDEX),
+        "source": str(_playbooks_index(agent_dir)),
         "item_count": len(items),
         "items": items,
         "playbooks": index.get("playbooks", {}),
     }
     if fmt == "hub":
-        out = output or HUB_INDEX_PATH
-        out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps(hub_data, ensure_ascii=False, indent=2), encoding="utf-8")
+        out = output or _hub_index_path(agent_dir)
+        # Тот же lock, что у индекса: HUB_INDEX лежит рядом с PLAYBOOKS.json.
+        with agent_lock(_playbooks_index(agent_dir).parent, name="playbooks"):
+            out.parent.mkdir(parents=True, exist_ok=True)
+            tmp = out.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(hub_data, ensure_ascii=False, indent=2), encoding="utf-8")
+            tmp.replace(out)
     return hub_data
 
 
