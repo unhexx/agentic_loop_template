@@ -69,6 +69,7 @@ def test_build_role_prompt_appends_fence(tmp_path: Path, no_stream_env) -> None:
     assert "memory/,tools/" in prompt
     assert wt in prompt
     assert prompt.endswith(fence)
+    assert prompt.count(_FENCE_MARK) == 1
     assert "You are the **Coder**" in prompt
     assert len(fence) <= FENCE_OVERHEAD_CHARS
 
@@ -87,21 +88,47 @@ def test_build_role_prompt_without_stream_has_no_fence(
 def test_build_role_prompt_appends_fence_after_compress(
     tmp_path: Path, monkeypatch, no_stream_env
 ) -> None:
-    _write_coder_prompt(tmp_path)
-    compressed = "COMPRESSED_BODY_NO_FENCE"
-    monkeypatch.setattr(
-        "memory.supervisor._maybe_compress_prompt",
-        lambda text, workdir: compressed,
+    from memory import supervisor as s
+
+    _write_coder_prompt(tmp_path, "KEEP_HEAD " + ("PAD " * 3000))
+    (tmp_path / ".agent" / "project_config.json").write_text(
+        json.dumps(
+            {
+                "context_budget": {
+                    "prompt_token_cap": 40,
+                    "prompt_body_chars": 20000,
+                    "compress_when_over": True,
+                }
+            }
+        ),
+        encoding="utf-8",
     )
+    seen: dict = {}
+    real = s._maybe_compress_prompt
+
+    def wrapped(text: str, workdir: Path) -> str:
+        seen["in"] = text
+        out = real(text, workdir)
+        seen["out"] = out
+        return out
+
+    monkeypatch.setattr(s, "_maybe_compress_prompt", wrapped)
     with use_stream(name="docs", owned_paths="docs/", worktree="/tmp/wt-docs"):
         fence = fence_block()
         prompt = build_role_prompt("Coder", None, tmp_path)
-    assert prompt.startswith(compressed)
-    assert prompt == compressed + fence
+    assert "in" in seen and "out" in seen
+    assert _FENCE_MARK not in seen["in"]
+    assert "Stream fence" not in seen["in"]
+    assert "KEEP_HEAD" in seen["in"]
+    assert "You are the **Coder**" in seen["in"]
+    assert len(seen["out"]) < len(seen["in"])
+    assert _FENCE_MARK not in seen["out"]
+    assert prompt == seen["out"] + fence
+    assert prompt.endswith(fence)
     assert _FENCE_MARK in prompt
+    assert prompt.count(_FENCE_MARK) == 1
     assert "`docs`" in prompt
-    assert prompt.index(_FENCE_MARK) > prompt.index(compressed)
-    extra = len(prompt) - len(compressed)
+    extra = len(prompt) - len(seen["out"])
     assert extra == len(fence)
     assert extra <= FENCE_OVERHEAD_CHARS
 
@@ -132,7 +159,7 @@ def test_mock_cycle_without_stream_has_no_fence(
         assert "Stream fence" not in prompt
 
 
-def test_stop_cli_fanout(tmp_path: Path) -> None:
+def test_stop_cli_fanout(tmp_path: Path, capsys) -> None:
     from memory import supervisor as s
 
     hub = tmp_path / "hub"
@@ -155,12 +182,73 @@ def test_stop_cli_fanout(tmp_path: Path) -> None:
     )
     code = s.main(["stop", "--workdir", str(hub)])
     assert code == 0
-    hub_stop = hub / ".agent" / "STOP"
-    wt_stop = wt / ".agent" / "STOP"
+    hub_stop = (hub / ".agent" / "STOP").resolve()
+    wt_stop = (wt / ".agent" / "STOP").resolve()
     assert hub_stop.is_file()
     assert wt_stop.is_file()
     assert hub_stop.read_text(encoding="utf-8") == STOP_BODY
     assert wt_stop.read_text(encoding="utf-8") == "1"
+    payload = json.loads(capsys.readouterr().out)
+    assert payload.get("ok") is True
+    assert payload.get("stop_flag") == str(hub_stop)
+    written = [Path(p).resolve() for p in payload.get("written") or []]
+    assert written == [hub_stop, wt_stop]
+
+
+def test_stop_cli_fanout_custom_wt_base(tmp_path: Path, capsys) -> None:
+    from memory import supervisor as s
+
+    hub = tmp_path / "hub"
+    custom = tmp_path / "custom-wts"
+    wt = custom / "stream-a"
+    poison = tmp_path / "outside" / "poison-wt"
+    (hub / ".agent").mkdir(parents=True)
+    (wt / ".agent").mkdir(parents=True)
+    (poison / ".agent").mkdir(parents=True)
+    (hub / ".agent" / "project_config.json").write_text(
+        json.dumps(
+            {
+                "supervisor": {
+                    "parallel": {"wt_base": str(custom.resolve())},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    (hub / ".agent" / "streams_state.json").write_text(
+        json.dumps(
+            {
+                "streams": {
+                    "harness": {
+                        "worktree": str(wt.resolve()),
+                        "status": "RUNNING",
+                    },
+                    "poison": {
+                        "worktree": str(poison.resolve()),
+                        "status": "RUNNING",
+                    },
+                },
+                "terminal": "IN_PROGRESS",
+            }
+        ),
+        encoding="utf-8",
+    )
+    code = s.main(["stop", "--workdir", str(hub)])
+    assert code == 0
+    hub_stop = (hub / ".agent" / "STOP").resolve()
+    wt_stop = (wt / ".agent" / "STOP").resolve()
+    poison_stop = poison / ".agent" / "STOP"
+    assert hub_stop.is_file()
+    assert wt_stop.is_file()
+    assert hub_stop.read_text(encoding="utf-8") == STOP_BODY
+    assert wt_stop.read_text(encoding="utf-8") == "1"
+    assert not poison_stop.exists()
+    payload = json.loads(capsys.readouterr().out)
+    assert payload.get("ok") is True
+    assert payload.get("stop_flag") == str(hub_stop)
+    written = [Path(p).resolve() for p in payload.get("written") or []]
+    assert written == [hub_stop, wt_stop]
+    assert poison_stop.resolve() not in written
 
 
 def test_cli_parses_push(tmp_path: Path, monkeypatch) -> None:

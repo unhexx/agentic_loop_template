@@ -771,7 +771,15 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.cmd == "stop":
         from memory.stream_stop import fanout_stop
 
-        written = fanout_stop(workdir)
+        extra_roots: List[Path] = []
+        cfg = load_config(workdir)
+        sup = cfg.get("supervisor") if isinstance(cfg.get("supervisor"), dict) else {}
+        par = (sup.get("parallel") or {}) if isinstance(sup.get("parallel"), dict) else {}
+        raw_wt = par.get("wt_base")
+        # Кастомный wt_base не в sibling agentic-loop-worktrees — без extra_roots fan-out его пропустит.
+        if isinstance(raw_wt, str) and raw_wt.strip():
+            extra_roots.append(Path(raw_wt).expanduser().resolve())
+        written = fanout_stop(workdir, extra_roots=extra_roots)
         stop_flag = str(written[0]) if written else str(workdir / ".agent" / "STOP")
         print(
             json.dumps(
