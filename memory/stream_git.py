@@ -12,6 +12,7 @@ import re
 import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -19,6 +20,7 @@ log = logging.getLogger(__name__)
 
 MERGE_TIMEOUT_S = 120
 PUSH_TIMEOUT_S = 120
+_ABORT_TIMEOUT_S = 15
 _PROTECTED_BRANCHES = frozenset({"main", "master"})
 _DEFAULT_WT_DIR = "agentic-loop-worktrees"
 _UNSAFE_IN_PATH = re.compile(r"[^A-Za-z0-9._-]")
@@ -30,14 +32,29 @@ class IntegrationWorktreeError(RuntimeError):
 
 
 def _sanitize_branch(name: str) -> str:
-    """В путь worktree: «/» и прочие символы → «-», как feature-integration-parallel."""
+    """В путь worktree: «/» и прочие символы → «-», как feature-integration-parallel.
+
+    «.»/«..» оставляем fallback, иначе dest = wt_base / «..» выходит из wt_base.
+    """
     cleaned = _UNSAFE_IN_PATH.sub("-", name or "")
     cleaned = re.sub(r"-{2,}", "-", cleaned).strip("-")
-    return cleaned or "integration"
+    if not cleaned or cleaned in {".", ".."}:
+        return "integration"
+    return cleaned
 
 
 def _is_git_checkout(path: Path) -> bool:
     return (path / ".git").exists()
+
+
+def _git_env() -> Dict[str, str]:
+    env = os.environ.copy()
+    # иначе «нет слияния / MERGE_HEAD» на русской локали не совпадёт с разбором abort
+    env["LC_ALL"] = "C"
+    env["LANG"] = "C"
+    env.setdefault("GIT_EDITOR", "true")
+    env.setdefault("GIT_MERGE_AUTOEDIT", "no")
+    return env
 
 
 def _run_git(args: List[str], cwd: Path) -> subprocess.CompletedProcess:
@@ -47,56 +64,64 @@ def _run_git(args: List[str], cwd: Path) -> subprocess.CompletedProcess:
         capture_output=True,
         text=True,
         check=False,
+        env=_git_env(),
     )
 
 
-def _kill_git_process(proc: subprocess.Popen) -> None:
-    """Группа git (start_new_session) — иначе merge остаётся зомби после таймаута."""
-    if proc.poll() is not None:
-        return
-    if sys.platform == "win32":
-        try:
-            proc.terminate()
-        except ProcessLookupError:
-            return
-        try:
-            proc.wait(timeout=_KILL_GRACE_S)
-            return
-        except subprocess.TimeoutExpired:
-            pass
-        try:
-            proc.kill()
-        except ProcessLookupError:
-            pass
-    else:
-        try:
-            pgid = os.getpgid(proc.pid)
-        except (ProcessLookupError, PermissionError, OSError):
-            try:
-                proc.terminate()
-            except ProcessLookupError:
-                return
-        else:
-            try:
-                os.killpg(pgid, signal.SIGTERM)
-            except (ProcessLookupError, PermissionError, OSError):
-                pass
-        try:
-            proc.wait(timeout=_KILL_GRACE_S)
-            return
-        except subprocess.TimeoutExpired:
-            pass
-        try:
-            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-        except (ProcessLookupError, PermissionError, OSError):
-            try:
-                proc.kill()
-            except ProcessLookupError:
-                pass
+def _reap(proc: subprocess.Popen) -> None:
     try:
         proc.communicate(timeout=5)
     except (subprocess.TimeoutExpired, OSError):
         pass
+
+
+def _wait_exit(proc: subprocess.Popen, grace_s: float) -> bool:
+    deadline = time.monotonic() + grace_s
+    while time.monotonic() < deadline:
+        if proc.poll() is not None:
+            return True
+        time.sleep(0.05)
+    return proc.poll() is not None
+
+
+def _kill_direct(proc: subprocess.Popen) -> None:
+    try:
+        proc.terminate()
+    except ProcessLookupError:
+        return
+    if not _wait_exit(proc, _KILL_GRACE_S):
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            pass
+
+
+def _kill_git_process(proc: subprocess.Popen) -> None:
+    """Группа git: pgid один раз, SIGTERM, пауза, всегда SIGKILL по тому же pgid, drain PIPE."""
+    if sys.platform == "win32":
+        if proc.poll() is None:
+            _kill_direct(proc)
+        _reap(proc)
+        return
+    try:
+        pgid = os.getpgid(proc.pid)
+    except (ProcessLookupError, PermissionError, OSError):
+        if proc.poll() is None:
+            _kill_direct(proc)
+        _reap(proc)
+        return
+    if proc.poll() is None:
+        try:
+            os.killpg(pgid, signal.SIGTERM)
+        except (ProcessLookupError, PermissionError, OSError):
+            pass
+        _wait_exit(proc, _KILL_GRACE_S)
+    # лидер мог выйти по SIGTERM — внуков всё равно снимаем по сохранённому pgid
+    try:
+        os.killpg(pgid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError, OSError):
+        pass
+    _reap(proc)
 
 
 def _run_git_timed(
@@ -104,11 +129,8 @@ def _run_git_timed(
     cwd: Path,
     timeout: float,
 ) -> subprocess.CompletedProcess:
-    """git с лимитом; по TimeoutExpired убиваем группу и пробрасываем дальше."""
-    env = os.environ.copy()
-    # merge --no-ff без -m иначе откроет редактор и сожрёт весь таймаут
-    env.setdefault("GIT_EDITOR", "true")
-    env.setdefault("GIT_MERGE_AUTOEDIT", "no")
+    """git с лимитом; по TimeoutExpired убиваем группу, drain PIPE, затем пробрасываем."""
+    env = _git_env()
     kwargs: Dict[str, Any] = {
         "stdout": subprocess.PIPE,
         "stderr": subprocess.PIPE,
@@ -146,6 +168,58 @@ def _is_dirty(cwd: Path) -> bool:
 
 def _err_text(proc: subprocess.CompletedProcess, limit: int = 500) -> str:
     return ((proc.stderr or proc.stdout or "")).strip()[:limit]
+
+
+def _git_dir(cwd: Path) -> Optional[Path]:
+    r = _run_git(["rev-parse", "--git-dir"], cwd)
+    raw = (r.stdout or "").strip()
+    if r.returncode != 0 or not raw:
+        return None
+    p = Path(raw)
+    return p if p.is_absolute() else (cwd / p)
+
+
+def _unlink_index_lock(cwd: Path) -> None:
+    git_dir = _git_dir(cwd)
+    if git_dir is None:
+        return
+    lock = git_dir / "index.lock"
+    try:
+        if lock.is_file():
+            lock.unlink()
+    except OSError:
+        pass
+
+
+def _nothing_to_abort(proc: subprocess.CompletedProcess) -> bool:
+    if proc.returncode == 0:
+        return True
+    text = (proc.stderr or proc.stdout or "").lower()
+    return (
+        "no merge to abort" in text
+        or "merge_head missing" in text
+        or "нет слияния" in text
+        or "отсутствует файл merge_head" in text
+    )
+
+
+def _abort_merge(cwd: Path) -> Optional[str]:
+    """merge --abort с коротким таймаутом; после SIGKILL часто остаётся index.lock."""
+    last_err = "merge --abort timeout"
+    for attempt in range(2):
+        if attempt == 1:
+            _unlink_index_lock(cwd)
+        try:
+            aborted = _run_git_timed(
+                ["merge", "--abort"], cwd=cwd, timeout=_ABORT_TIMEOUT_S
+            )
+        except subprocess.TimeoutExpired:
+            last_err = "merge --abort timeout"
+            continue
+        if _nothing_to_abort(aborted):
+            return None
+        last_err = _err_text(aborted)
+    return last_err
 
 
 def _checkout_path_of_branch(repo: Path, branch: str) -> Optional[Path]:
@@ -304,12 +378,18 @@ def merge_stream_branch(
             timeout=MERGE_TIMEOUT_S,
         )
     except subprocess.TimeoutExpired:
-        _run_git(["merge", "--abort"], cwd=wd)
-        return {"ok": False, "error": "merge timeout"}
+        abort_err = _abort_merge(wd)
+        err = "merge timeout"
+        if abort_err:
+            err = f"{err}; abort failed: {abort_err}"
+        return {"ok": False, "error": err}
 
     if merged.returncode != 0:
-        _run_git(["merge", "--abort"], cwd=wd)
-        return {"ok": False, "error": _err_text(merged)}
+        abort_err = _abort_merge(wd)
+        err = _err_text(merged)
+        if abort_err:
+            err = f"{err}; abort failed: {abort_err}"
+        return {"ok": False, "error": err}
     return {"ok": True, "branch": integration_branch}
 
 

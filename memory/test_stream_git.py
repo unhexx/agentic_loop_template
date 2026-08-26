@@ -200,18 +200,16 @@ def test_merge_timeout_aborts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     _git(stream_wt, "commit", "-m", "stream")
 
     abort_cwds: list[Path] = []
-    orig_run = stream_git._run_git
+    orig_timed = stream_git._run_git_timed
 
-    def spy_run(args, cwd):
-        if list(args)[:2] == ["merge", "--abort"]:
+    def spy_timed(args, cwd, timeout):
+        argv = list(args)
+        if argv[:2] == ["merge", "--abort"]:
             abort_cwds.append(Path(cwd).resolve())
-        return orig_run(args, cwd)
+            return orig_timed(args, cwd, timeout)
+        raise subprocess.TimeoutExpired(cmd=["git", *argv], timeout=timeout)
 
-    def boom(args, cwd, timeout):
-        raise subprocess.TimeoutExpired(cmd=["git", *list(args)], timeout=timeout)
-
-    monkeypatch.setattr(stream_git, "_run_git", spy_run)
-    monkeypatch.setattr(stream_git, "_run_git_timed", boom)
+    monkeypatch.setattr(stream_git, "_run_git_timed", spy_timed)
 
     result = merge_stream_branch(
         integration_workdir=integ,
@@ -221,6 +219,80 @@ def test_merge_timeout_aborts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     assert result["ok"] is False
     assert result["error"] == "merge timeout"
     assert integ.resolve() in abort_cwds
+
+
+def test_merge_timeout_surfaces_abort_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo, wt_base = _setup_hub(tmp_path)
+    integ = ensure_integration_worktree(
+        repo, integration_branch=INTEGRATION, wt_base=wt_base
+    )
+
+    abort_cwds: list[Path] = []
+
+    def spy_timed(args, cwd, timeout):
+        argv = list(args)
+        if argv[:2] == ["merge", "--abort"]:
+            abort_cwds.append(Path(cwd).resolve())
+            return subprocess.CompletedProcess(
+                ["git", *argv], 128, "", "fatal: Unable to write new index file"
+            )
+        raise subprocess.TimeoutExpired(cmd=["git", *argv], timeout=timeout)
+
+    monkeypatch.setattr(stream_git, "_run_git_timed", spy_timed)
+
+    result = merge_stream_branch(
+        integration_workdir=integ,
+        stream_branch="feature/stream",
+        integration_branch=INTEGRATION,
+    )
+    assert result["ok"] is False
+    assert result["error"].startswith("merge timeout")
+    assert "abort failed" in result["error"]
+    assert "Unable to write new index file" in result["error"]
+    assert integ.resolve() in abort_cwds
+    assert len(abort_cwds) >= 2  # первая попытка + повтор после index.lock
+
+
+def test_merge_refuses_main(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    timed_calls: list[list[str]] = []
+    run_calls: list[list[str]] = []
+
+    def boom_timed(args, cwd, timeout):
+        timed_calls.append(list(args))
+        raise AssertionError("git merge не должен вызываться для protected branch")
+
+    def boom_run(args, cwd):
+        run_calls.append(list(args))
+        raise AssertionError("git не должен вызываться для protected branch")
+
+    monkeypatch.setattr(stream_git, "_run_git_timed", boom_timed)
+    monkeypatch.setattr(stream_git, "_run_git", boom_run)
+    cases = (
+        ("main", "main"),
+        ("master", "main"),
+        ("develop", "develop"),
+    )
+    for integration_branch, main_branch in cases:
+        timed_calls.clear()
+        run_calls.clear()
+        result = merge_stream_branch(
+            integration_workdir=tmp_path,
+            stream_branch="feature/stream",
+            integration_branch=integration_branch,
+            main_branch=main_branch,
+        )
+        assert result["ok"] is False, (integration_branch, result)
+        assert result["error"] == "never merge into main"
+        assert timed_calls == []
+        assert run_calls == []
+
+
+def test_sanitize_dotdot_stays_under_wt_base() -> None:
+    assert stream_git._sanitize_branch("..") == "integration"
+    assert stream_git._sanitize_branch(".") == "integration"
+    assert stream_git._sanitize_branch("feature/integration-parallel") == SANITIZED
 
 
 def test_push_refuses_main(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
