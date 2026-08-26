@@ -111,24 +111,32 @@ def _overlap_error(name_a: str, name_b: str, oa: str, ob: str) -> ValueError:
     )
 
 
-def _load(agent: Path) -> Dict[str, Any]:
+def _load(agent: Path, *, strict: bool = True) -> Dict[str, Any]:
+    """Прочитать реестр. strict=True — битый JSON не затираем (мутации)."""
     path = _leases_path(agent)
     if not path.is_file():
         return {"leases": {}}
+
+    def _fail(exc: Optional[BaseException] = None) -> Dict[str, Any]:
+        if strict:
+            msg = f"unreadable stream_leases.json: {path}"
+            if exc is not None:
+                raise ValueError(msg) from exc
+            raise ValueError(msg)
+        return {"leases": {}}
+
     try:
         raw = path.read_text(encoding="utf-8")
-    except OSError:
-        return {"leases": {}}
+    except OSError as exc:
+        return _fail(exc)
     if not raw.strip():
-        return {"leases": {}}
+        return _fail()
     try:
         data = json.loads(raw)
-    except json.JSONDecodeError:
-        return {"leases": {}}
-    if not isinstance(data, dict):
-        return {"leases": {}}
-    if not isinstance(data.get("leases"), dict):
-        data["leases"] = {}
+    except json.JSONDecodeError as exc:
+        return _fail(exc)
+    if not isinstance(data, dict) or not isinstance(data.get("leases"), dict):
+        return _fail()
     return data
 
 
@@ -145,6 +153,22 @@ def _public(name: str, rec: Dict[str, Any]) -> Dict[str, Any]:
     out = dict(rec)
     out["name"] = name
     return out
+
+
+def _drop_dead_overlapping(
+    leases: Dict[str, Any], name: str, paths: Sequence[str]
+) -> None:
+    """Убрать мёртвые чужие записи, пересекающиеся с paths. Живых не трогаем."""
+    for other_name, rec in list(leases.items()):
+        if other_name == name:
+            continue
+        if not isinstance(rec, dict):
+            del leases[other_name]
+            continue
+        if not _lease_pid_dead(rec):
+            continue
+        if _overlap_pair(paths, rec.get("owned_paths") or []) is not None:
+            del leases[other_name]
 
 
 def _new_record(
@@ -198,15 +222,9 @@ def claim(
 
         existing = leases.get(name)
         if isinstance(existing, dict) and not _lease_pid_dead(existing):
-            if _lease_pid(existing) != my_pid:
-                other_paths = existing.get("owned_paths") or []
-                pair = _overlap_pair(paths, other_paths)
-                if pair is None:
-                    oa = paths[0]
-                    ob = other_paths[0] if other_paths else paths[0]
-                else:
-                    oa, ob = pair
-                raise _overlap_error(name, name, oa, ob)
+            holder = _lease_pid(existing)
+            if holder != my_pid:
+                raise ValueError(f"lease {name!r} held by live pid {holder}")
             existing["owned_paths"] = paths
             existing["pid"] = my_pid
             existing["expires_at"] = _iso(_now() + timedelta(seconds=int(ttl_s)))
@@ -214,19 +232,11 @@ def claim(
                 existing["worktree"] = wt
             if br is not None:
                 existing["branch"] = br
+            _drop_dead_overlapping(leases, name, paths)
             _save(agent, data)
             return _public(name, existing)
 
-        for other_name, rec in list(leases.items()):
-            if other_name == name:
-                continue
-            if not isinstance(rec, dict):
-                del leases[other_name]
-                continue
-            if not _lease_pid_dead(rec):
-                continue
-            if _overlap_pair(paths, rec.get("owned_paths") or []) is not None:
-                del leases[other_name]
+        _drop_dead_overlapping(leases, name, paths)
 
         rec = _new_record(paths, pid=my_pid, worktree=wt, branch=br, ttl_s=ttl_s)
         leases[name] = rec
@@ -282,7 +292,7 @@ def status(hub: Path | str) -> Dict[str, Any]:
     """Снимок .agent/stream_leases.json."""
     agent = _agent_dir(hub)
     with agent_lock(agent, name=_LOCK_NAME):
-        return _load(agent)
+        return _load(agent, strict=False)
 
 
 def _stream_name_arg(raw: str) -> str:

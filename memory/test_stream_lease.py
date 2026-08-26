@@ -6,11 +6,12 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
+import memory.stream_lease as stream_lease
 from memory.agent_lock import lock_path
 from memory.stream_lease import (
     DEFAULT_TTL_S,
@@ -206,8 +207,14 @@ def test_foreign_live_pid_not_stolen_even_if_expired(tmp_path: Path) -> None:
                 }
             },
         )
-        with pytest.raises(ValueError, match="overlap"):
+        with pytest.raises(
+            ValueError, match=rf"lease 'harness' held by live pid {proc.pid}"
+        ):
             claim(tmp_path, "harness", ["memory/"])
+        with pytest.raises(
+            ValueError, match=rf"lease 'harness' held by live pid {proc.pid}"
+        ):
+            claim(tmp_path, "harness", ["docs/"])
         with pytest.raises(ValueError, match="overlap between streams"):
             claim(tmp_path, "other", ["memory/"])
         stored = _read(tmp_path)["leases"]["harness"]
@@ -218,14 +225,75 @@ def test_foreign_live_pid_not_stolen_even_if_expired(tmp_path: Path) -> None:
         proc.wait(timeout=5)
 
 
-def test_renew_extends_expires_at(tmp_path: Path) -> None:
+def test_renew_extends_expires_at(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    t0 = datetime(2026, 8, 26, 12, 0, 0, tzinfo=timezone.utc)
+    clock = {"t": t0}
+
+    def fake_now() -> datetime:
+        return clock["t"]
+
+    monkeypatch.setattr(stream_lease, "_now", fake_now)
     first = claim(tmp_path, "harness", ["memory/"], ttl_s=100)
+    assert first["expires_at"] == "2026-08-26T12:01:40Z"
+    clock["t"] = t0 + timedelta(seconds=30)
     second = renew(tmp_path, "harness", ttl_s=500)
-    assert second["claimed_at"] == first["claimed_at"]
-    assert second["expires_at"] != first["expires_at"]
-    claimed = datetime.strptime(second["claimed_at"], "%Y-%m-%dT%H:%M:%SZ")
-    expires = datetime.strptime(second["expires_at"], "%Y-%m-%dT%H:%M:%SZ")
-    assert (expires - claimed).total_seconds() == 500
+    assert second["claimed_at"] == first["claimed_at"] == "2026-08-26T12:00:00Z"
+    assert second["expires_at"] == "2026-08-26T12:08:50Z"
+
+
+def test_inplace_claim_drops_dead_overlapping_neighbour(tmp_path: Path) -> None:
+    claim(tmp_path, "harness", ["memory/"])
+    data = _read(tmp_path)
+    data["leases"]["stale"] = {
+        "owned_paths": ["tools/"],
+        "pid": 99999999,
+        "claimed_at": "2000-01-01T00:00:00Z",
+        "expires_at": "2099-01-01T00:00:00Z",
+    }
+    data["leases"]["docs"] = {
+        "owned_paths": ["docs/"],
+        "pid": 99999999,
+        "claimed_at": "2000-01-01T00:00:00Z",
+        "expires_at": "2099-01-01T00:00:00Z",
+    }
+    _leases_file(tmp_path).write_text(
+        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    claim(tmp_path, "harness", ["memory/", "tools/"])
+    leases = _read(tmp_path)["leases"]
+    assert "stale" not in leases
+    assert "docs" in leases
+    assert leases["harness"]["owned_paths"] == ["memory/", "tools/"]
+    assert leases["harness"]["pid"] == os.getpid()
+
+
+def test_mutations_fail_closed_on_torn_json(tmp_path: Path) -> None:
+    agent = tmp_path / ".agent"
+    agent.mkdir()
+    path = _leases_file(tmp_path)
+    raw = "{not json"
+    path.write_text(raw, encoding="utf-8")
+    with pytest.raises(ValueError, match="unreadable stream_leases.json"):
+        claim(tmp_path, "harness", ["memory/"])
+    with pytest.raises(ValueError, match="unreadable stream_leases.json"):
+        renew(tmp_path, "harness")
+    with pytest.raises(ValueError, match="unreadable stream_leases.json"):
+        release(tmp_path, "harness")
+    assert path.read_text(encoding="utf-8") == raw
+    assert status(tmp_path) == {"leases": {}}
+
+
+def test_claim_rejects_leases_not_object(tmp_path: Path) -> None:
+    agent = tmp_path / ".agent"
+    agent.mkdir()
+    path = _leases_file(tmp_path)
+    raw = json.dumps({"leases": []})
+    path.write_text(raw, encoding="utf-8")
+    with pytest.raises(ValueError, match="unreadable stream_leases.json"):
+        claim(tmp_path, "harness", ["memory/"])
+    assert path.read_text(encoding="utf-8") == raw
 
 
 def test_renew_dead_pid_raises(tmp_path: Path) -> None:
