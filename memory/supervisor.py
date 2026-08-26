@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from memory.handoff_io import save_handoff
 from memory.logutil import get_logger
+from memory.prompt_caps import resolve_prompt_caps
 
 log = get_logger("memory.supervisor")
 
@@ -202,7 +203,8 @@ def _state_snapshot_for_workdir(workdir: Path) -> str:
         from memory import state as state_mod
 
         snap_obj = state_mod.snapshot(window=3, agent_dir=Path(workdir) / ".agent")
-        return json.dumps(snap_obj, ensure_ascii=False)[:_SNAP_JSON_CAP]
+        cap = resolve_prompt_caps(load_config(workdir)).snap_json_chars
+        return json.dumps(snap_obj, ensure_ascii=False)[:cap]
     except Exception as exc:
         log.warning("state snapshot failed: %s", exc)
         return "{}"
@@ -238,7 +240,8 @@ def _knowledge_block(
             content = str(row.get("content") or "").replace("\n", " ").strip()
             lines.append(f"- {title} ({source}): {content}")
         blob = "\n".join(lines)
-        text = compress_text(blob, _KNOWLEDGE_BUDGET)["text"]
+        budget = resolve_prompt_caps(load_config(workdir)).knowledge_budget_tokens
+        text = compress_text(blob, budget)["text"]
         return f"\n## Local knowledge (top 3)\n{text}\n"
     except Exception as exc:
         log.warning("knowledge inject failed: %s", exc)
@@ -255,9 +258,20 @@ def _maybe_compress_prompt(text: str, workdir: Path) -> str:
         from memory.compressor import compress_text
         from memory.context_budget import estimate_tokens
 
-        if estimate_tokens(text) <= _PROMPT_TOKEN_CAP:
+        caps = resolve_prompt_caps(cfg)
+        model = budget_cfg.get("model") or None
+        encoding = budget_cfg.get("encoding") or None
+        if isinstance(model, str):
+            model = model.strip() or None
+        else:
+            model = None
+        if isinstance(encoding, str):
+            encoding = encoding.strip() or None
+        else:
+            encoding = None
+        if estimate_tokens(text, model=model, encoding=encoding) <= caps.prompt_token_cap:
             return text
-        return compress_text(text, _PROMPT_TOKEN_CAP)["text"]
+        return compress_text(text, caps.prompt_token_cap)["text"]
     except Exception as exc:
         log.warning("compress skipped: %s", exc)
         return text
@@ -279,7 +293,9 @@ def build_role_prompt(
     path = workdir / rel
     if path.is_file():
         try:
-            body = path.read_text(encoding="utf-8")[:_PROMPT_BODY_CAP]
+            body = path.read_text(encoding="utf-8")[
+                : resolve_prompt_caps(load_config(workdir)).prompt_body_chars
+            ]
         except Exception as exc:
             log.warning("role prompt read failed for %s: %s", path, exc)
             body = ""

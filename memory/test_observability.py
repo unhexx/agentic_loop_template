@@ -82,7 +82,7 @@ def test_compress_skipped_logs_warning_without_prompt_body(
     import memory.compressor as compressor
     import memory.context_budget as budget
 
-    monkeypatch.setattr(budget, "estimate_tokens", lambda text: 99_999)
+    monkeypatch.setattr(budget, "estimate_tokens", lambda text, **_k: 99_999)
 
     def boom(*a, **k):
         raise RuntimeError("compress boom")

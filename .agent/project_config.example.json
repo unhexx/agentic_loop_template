@@ -43,7 +43,11 @@
     "next_input_files_tokens": 12000,
     "compress_when_over": true,
     "encoding": null,
-    "model": null
+    "model": null,
+    "prompt_body_chars": 8000,
+    "snap_json_chars": 4000,
+    "knowledge_budget_tokens": 800,
+    "prompt_token_cap": 8000
   },
   "state": {
     "max_working_json_bytes": 8192,
