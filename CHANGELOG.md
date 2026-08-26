@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+## [3.10.0] - 2026-08-26
+
+### Added
+- P8-11 opt-in concurrent fan-out: `python -m memory.supervisor run-parallel --concurrent` (or `supervisor.parallel.concurrent` in project config). Disjoint streams overlap in time via `ThreadPoolExecutor`; provision and integration merge stay serial; default remains serial. Context identity is `memory/stream_context.py` (ContextVar, then `AGENTIX_*` env). Concurrent path does not patch process-global `os.environ`. Wait-all: any non-ready stream skips the integration merge.
+- Shared `.agent/` lock (`memory/agent_lock.py`): stdlib `O_EXCL` + PID, stale-PID recovery, used by `save_state`, `save_handoff`, and hub `streams_state.json` (tmp+replace).
+- Design spec: [`docs/superpowers/specs/2026-08-26-p8-11-concurrent-fanout-design.md`](docs/superpowers/specs/2026-08-26-p8-11-concurrent-fanout-design.md)
+
+### Changed
+- `VERSION` → 3.10.0
+- ROADMAP: P8-11 concurrent fan-out removed from Future
+- `PARALLEL_PROTOCOL.md`: serial default; `--concurrent` documented
+
+Minor, not 3.11: wizard default unchanged; concurrent is opt-in; streams still never merge `main`.
+
 ## [3.9.4] - 2026-08-25
 
 ### Added

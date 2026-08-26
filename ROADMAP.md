@@ -1,10 +1,10 @@
 # Agentix Public Roadmap
 
-[![Version](https://img.shields.io/badge/version-3.9.4-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.10.0-blue?style=flat-square)](CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](README.md)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen?style=flat-square)](docs/README.md)
 
-**Status Date:** 2026-08-25 · **Initiative:** Business Efficiency — **COMPLETE** · **v3.9 Harness Hardening** — **COMPLETE** · **Next:** Future
+**Status Date:** 2026-08-26 · **Initiative:** Business Efficiency — **COMPLETE** · **v3.9 Harness Hardening** — **COMPLETE** · **v3.10 Concurrent fan-out** — **COMPLETE** · **Next:** Future
 
 ---
 
@@ -51,7 +51,6 @@ Leftover nice-to-haves (docs i18n, concurrency, …) moved to Future.
 
 - Hosted Agentix Hub SaaS (optional)
 - Full MCP skills for Linear/Jira/Slack
-- True concurrent fan-out / shared `.agent/` locking (P8-11; `run-parallel` stays serial)
 - Docs i18n / dual-language public guides (P8-09)
 - Playbook embeddings ranking (P8-10)
 - Modularize large modules (`meta_harvester`, `experience_harvester`, Init.ps1) (P8-12)
@@ -65,6 +64,7 @@ Leftover nice-to-haves (docs i18n, concurrency, …) moved to Future.
 
 | Version | Highlight |
 |---------|-----------|
+| **v3.10.0** | Opt-in `run-parallel --concurrent` + stdlib `.agent/` lock (P8-11) |
 | **v3.9.4** | Token estimate: tiktoken extra, per-model encoding, chars/4 fallback |
 | **v3.9.3** | Harvest/reflect skill split (experience-accumulation vs loop-self-improve) |
 | **v3.9.2** | Blackbox AI CLI adapter hardening (WM collision, hermetic tests, probe) |

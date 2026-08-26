@@ -1,6 +1,6 @@
 # Agentix
 
-[![Version](https://img.shields.io/badge/version-3.9.4-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.10.0-blue?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](docs/getting-started.md)
 [![Platform](https://img.shields.io/badge/platform-Linux_%7C_macOS_%7C_Windows-lightgrey?style=flat-square)](docs/cross-platform.md)
@@ -326,7 +326,7 @@ python -m memory.playbooks export --format hub
 | `bash scripts/demo-loop.sh` | One-command smoke demo |
 | `agentix` / `python -m memory` | Console script after `pip install -e .` (same `_cli`; no PYTHONPATH) |
 | `python -m memory.supervisor run --adapter mock --max-cycles 1 --no-pr` | Unattended role loop (mock CI path); adapters: mock/grok/cursor/blackbox |
-| `python -m memory.supervisor run-parallel --stream name:paths/` | Disjoint streams (serial), then one integration PR; never merges `main` |
+| `python -m memory.supervisor run-parallel --stream name:paths/` | Disjoint streams (serial default; `--concurrent` overlaps in time), then one integration PR; never merges `main` |
 | `scripts/agentix-supervisor run ...` | Bash shim for the same supervisor CLI |
 | `python -m memory.dashboard serve --workdir PATH` | Operator Control Plane (HTMX UI, not the runner); loopback `:8112` |
 | `scripts/agentix-dashboard serve --workdir PATH` | Bash shim for the same dashboard CLI |
@@ -370,7 +370,7 @@ v1 does **not** listen on a tailnet IP. TeleGrok 0.1.0 does not ship runtime Tai
 | **Control Plane** | Loopback HTMX operator UI (`memory.dashboard` on `:8112`), not the runner |
 | **Self-improvement** | Playbooks (ACE scoring), meta-harvester, performance ledger, [skills](skills/README.md) |
 | **Context** | Bounded LOOP_STATE, `context_budget` gate, rule-based compressor, local SQLite knowledge, [request proxy](docs/proxy.md) (**pxpipe default** + Agentix gateway) |
-| **Parallel streams** | `run-parallel` with `owned_paths` + git worktrees; serial streams, one integration PR |
+| **Parallel streams** | `run-parallel` with `owned_paths` + git worktrees; serial default, opt-in `--concurrent`, one integration PR |
 | **Cross-platform** | `Agent-Init.ps1` + `Agent-Init.sh`, platform-adaptive prompts |
 | **Multi-frontend** | Grok (default), Cursor, Claude Code, Blackbox adapters |
 | **Experience harvest** | Scan sibling `AGENTS.md` / playbooks; `audit` + `cycle` self-improve |

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from memory import streams as streams_mod
+from memory.agent_lock import agent_lock
 from memory.stream_context import use_stream
 from memory.streams import StreamPlan, provision_stream_worktrees, validate_stream_plans
 from memory.supervisor import Terminal, load_config, maybe_create_pr, run_loop, save_handoff
@@ -71,8 +72,9 @@ def _write_hub_streams_state(hub: Path, payload: Dict[str, Any]) -> None:
     text = json.dumps(payload, ensure_ascii=False, indent=2)
     tmp = path.with_suffix(".json.tmp")
     with _HUB_STATE_LOCK:
-        tmp.write_text(text, encoding="utf-8")
-        tmp.replace(path)
+        with agent_lock(agent, name="streams"):
+            tmp.write_text(text, encoding="utf-8")
+            tmp.replace(path)
 
 
 def _blocked_outer_reason(plan_name: str, rec: Dict[str, Any]) -> str:
