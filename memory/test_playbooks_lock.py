@@ -115,6 +115,8 @@ def test_playbooks_two_threads_max_held(tmp_path: Path, monkeypatch: pytest.Monk
     import memory.playbooks as pb
 
     agent = tmp_path / ".agent"
+    pb.seed_initial_playbooks(agent_dir=agent)
+
     current = 0
     max_held = 0
     gate = threading.Lock()
@@ -135,14 +137,24 @@ def test_playbooks_two_threads_max_held(tmp_path: Path, monkeypatch: pytest.Monk
 
     monkeypatch.setattr(pb, "agent_lock", counting_lock)
     errors: list[BaseException] = []
+    lessons = [
+        "Alpha lesson: pin the git remote before any clone sync step",
+        "Beta lesson: verify FETCH_HEAD after every fetch from origin",
+        "Gamma lesson: never force-push a shared integration branch",
+        "Delta lesson: record SYNC_DONE only after verify-only check",
+    ]
 
-    def worker() -> None:
+    def worker(lesson: str) -> None:
         try:
-            pb.seed_initial_playbooks(agent_dir=agent)
+            pb.curate_from_reflection(
+                {"lessons_learned": [lesson], "cycle": 3},
+                "global-dev",
+                agent_dir=agent,
+            )
         except Exception as exc:
             errors.append(exc)
 
-    threads = [threading.Thread(target=worker) for _ in range(4)]
+    threads = [threading.Thread(target=worker, args=(lesson,)) for lesson in lessons]
     for t in threads:
         t.start()
     for t in threads:
@@ -152,7 +164,12 @@ def test_playbooks_two_threads_max_held(tmp_path: Path, monkeypatch: pytest.Monk
     assert max_held == 1
     raw = (agent / "PLAYBOOKS.json").read_text(encoding="utf-8")
     payload = json.loads(raw)
-    assert "playbooks" in payload
+    contents = [
+        str(b.get("content", ""))
+        for b in payload["playbooks"]["global-dev"]["bullets"]
+    ]
+    for lesson in lessons:
+        assert lesson in contents
     assert not lock_path(agent, "playbooks").exists()
 
 
@@ -161,17 +178,20 @@ def test_load_config_reads_agent_dir_not_cwd(
 ) -> None:
     agent = tmp_path / "iso" / ".agent"
     agent.mkdir(parents=True)
-    (agent / "project_config.json").write_text(
-        json.dumps({"playbooks": {"enabled": False, "default_k": 1}}),
-        encoding="utf-8",
-    )
     other = tmp_path / "cwd"
     other.mkdir()
     monkeypatch.chdir(other)
 
+    seed_initial_playbooks(agent_dir=agent)
+    assert len(select_bullets("git", agent_dir=agent)) >= 1
+
+    (agent / "project_config.json").write_text(
+        json.dumps({"playbooks": {"enabled": False, "default_k": 1}}),
+        encoding="utf-8",
+    )
     cfg = load_config(agent_dir=agent)
     assert cfg["enabled"] is False
     assert cfg["default_k"] == 1
+    assert select_bullets("git", agent_dir=agent) == []
     cfg_cwd = load_config()
     assert cfg_cwd["enabled"] is True
-    assert select_bullets("git", agent_dir=agent) == []

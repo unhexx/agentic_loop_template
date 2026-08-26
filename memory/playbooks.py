@@ -127,12 +127,21 @@ def load_config(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
     return cfg
 
 
-def _load_index(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
-    """Внутренняя загрузка индекса playbooks."""
+def _playbooks_lock(agent_dir: Optional[Path] = None):
+    """Секция на родителе индекса — один писатель на каталог, имя не разъезжается."""
+    return agent_lock(_playbooks_index(agent_dir).parent, name="playbooks")
+
+
+def _empty_index() -> Dict[str, Any]:
+    return {"playbooks": {}, "updated_at": _now_iso(), "version": "3.3-playbooks"}
+
+
+def _load_index_unlocked(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Чтение без lock: RMW уже держит секцию, повторный O_EXCL на том же PID повиснет."""
     _ensure_agent_dir(agent_dir)
     path = _playbooks_index(agent_dir)
     if not path.exists():
-        return {"playbooks": {}, "updated_at": _now_iso(), "version": "3.3-playbooks"}
+        return _empty_index()
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
@@ -141,20 +150,30 @@ def _load_index(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
             path.rename(path.with_suffix(".json.bak"))
         except Exception:
             pass
-        return {"playbooks": {}, "updated_at": _now_iso(), "version": "3.3-playbooks"}
+        return _empty_index()
+
+
+def _write_index_unlocked(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
+    """tmp+replace + md без lock — вызывающий уже в секции."""
+    path = _playbooks_index(agent_dir)
+    data["updated_at"] = _now_iso()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(path)
+    _write_human_views(data, agent_dir=agent_dir)
+
+
+def _load_index(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Одиночное чтение под lock, чтобы bak-rename не пересёкся с записью."""
+    with _playbooks_lock(agent_dir):
+        return _load_index_unlocked(agent_dir)
 
 
 def _save_index(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
     """Сохранение + обновление md + timestamp."""
-    path = _playbooks_index(agent_dir)
-    data["updated_at"] = _now_iso()
-    # Блокируем родителя файла: параллельные записи не должны рвать JSON.
-    with agent_lock(path.parent, name="playbooks"):
-        path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(".json.tmp")
-        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-        tmp.replace(path)
-        _write_human_views(data, agent_dir=agent_dir)
+    with _playbooks_lock(agent_dir):
+        _write_index_unlocked(data, agent_dir)
 
 
 def _write_human_views(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
@@ -254,112 +273,115 @@ def curate_from_reflection(
     Курация playbook на основе рефлексии цикла.
     Добавляет/улучшает/демотирует bullets. Возвращает мутацию.
     """
-    index = _load_index(agent_dir)
-    pbs = index.setdefault("playbooks", {})
-    if playbook_id not in pbs:
-        pbs[playbook_id] = {"scope": "auto", "bullets": [], "last_curated": _now_iso()}
+    # Весь RMW в одной секции: иначе два curate читают одно и последний replace трёт bullets.
+    with _playbooks_lock(agent_dir):
+        index = _load_index_unlocked(agent_dir)
+        pbs = index.setdefault("playbooks", {})
+        if playbook_id not in pbs:
+            pbs[playbook_id] = {"scope": "auto", "bullets": [], "last_curated": _now_iso()}
 
-    pb = pbs[playbook_id]
-    bullets = pb.setdefault("bullets", [])
+        pb = pbs[playbook_id]
+        bullets = pb.setdefault("bullets", [])
 
-    mutation = {"added": 0, "updated": 0, "demoted": 0, "playbook": playbook_id}
+        mutation = {"added": 0, "updated": 0, "demoted": 0, "playbook": playbook_id}
 
-    # Простая эвристика: lessons -> новые bullets
-    for lesson in reflection.get("lessons_learned", []):
-        if len(lesson) < 10:
-            continue
-        # Ищем похожий
-        found = False
-        for b in bullets:
-            if lesson.lower()[:30] in b.get("content", "").lower():
-                b["effectiveness"] = min(1.0, b.get("effectiveness", 0.5) + 0.1)
-                b["last_used"] = _now_iso()
-                b["usage_count"] = b.get("usage_count", 0) + 1
-                mutation["updated"] += 1
-                found = True
-                break
-        if not found:
-            bullets.append({
-                "id": f"b-{len(bullets)+1:04d}",
-                "content": lesson,
-                "tags": ["auto-from-reflection"],
-                "effectiveness": 0.65,
-                "recency_ts": _now_iso(),
-                "usage_count": 1,
-                "source": reflection.get("cycle", "unknown"),
-            })
-            mutation["added"] += 1
+        # Простая эвристика: lessons -> новые bullets
+        for lesson in reflection.get("lessons_learned", []):
+            if len(lesson) < 10:
+                continue
+            # Ищем похожий
+            found = False
+            for b in bullets:
+                if lesson.lower()[:30] in b.get("content", "").lower():
+                    b["effectiveness"] = min(1.0, b.get("effectiveness", 0.5) + 0.1)
+                    b["last_used"] = _now_iso()
+                    b["usage_count"] = b.get("usage_count", 0) + 1
+                    mutation["updated"] += 1
+                    found = True
+                    break
+            if not found:
+                bullets.append({
+                    "id": f"b-{len(bullets)+1:04d}",
+                    "content": lesson,
+                    "tags": ["auto-from-reflection"],
+                    "effectiveness": 0.65,
+                    "recency_ts": _now_iso(),
+                    "usage_count": 1,
+                    "source": reflection.get("cycle", "unknown"),
+                })
+                mutation["added"] += 1
 
-    # Демотив за плохие исходы (если есть)
-    for issue in reflection.get("issues_found", []):
-        for b in bullets:
-            if issue.get("pattern", "").lower() in b.get("content", "").lower():
-                b["effectiveness"] = max(0.1, b.get("effectiveness", 0.5) - 0.15)
-                mutation["demoted"] += 1
+        # Демотив за плохие исходы (если есть)
+        for issue in reflection.get("issues_found", []):
+            for b in bullets:
+                if issue.get("pattern", "").lower() in b.get("content", "").lower():
+                    b["effectiveness"] = max(0.1, b.get("effectiveness", 0.5) - 0.15)
+                    mutation["demoted"] += 1
 
-    # Ограничение размера
-    if len(bullets) > load_config(agent_dir).get("max_bullets_per_playbook", 50):
-        bullets.sort(key=lambda x: x.get("effectiveness", 0), reverse=True)
-        bullets[:] = bullets[:50]
+        # Ограничение размера
+        if len(bullets) > load_config(agent_dir).get("max_bullets_per_playbook", 50):
+            bullets.sort(key=lambda x: x.get("effectiveness", 0), reverse=True)
+            bullets[:] = bullets[:50]
 
-    pb["last_curated"] = _now_iso()
-    _save_index(index, agent_dir)
-    return mutation
+        pb["last_curated"] = _now_iso()
+        _write_index_unlocked(index, agent_dir)
+        return mutation
 
 
 def seed_initial_playbooks(agent_dir: Optional[Path] = None) -> int:
     """Сидирует начальные playbooks из текущих стандартов и паттернов (bootstrap)."""
     _ensure_agent_dir(agent_dir)
-    index = _load_index(agent_dir)
-    pbs = index.setdefault("playbooks", {})
+    with _playbooks_lock(agent_dir):
+        index = _load_index_unlocked(agent_dir)
+        pbs = index.setdefault("playbooks", {})
 
-    # Глобальный dev + git sync playbook (из STANDARDS + прошлого опыта)
-    if "global-dev" not in pbs:
-        pbs["global-dev"] = {
-            "scope": "global",
-            "name": "Global Development & Process Best Practices",
-            "bullets": [
-                {"id": "b-0001", "content": "Всегда начинай цикл с git self-cycle §11 и memory/playbooks snapshot.", "tags": ["orchestrator", "git"], "effectiveness": 0.95},
-                {"id": "b-0002", "content": "Используй PLAN → ACT (≤3 calls) → REFLECT. Никогда не пропускай рефлексию.", "tags": ["all-roles"], "effectiveness": 0.9},
-            ],
-            "last_curated": _now_iso(),
-        }
+        # Глобальный dev + git sync playbook (из STANDARDS + прошлого опыта)
+        if "global-dev" not in pbs:
+            pbs["global-dev"] = {
+                "scope": "global",
+                "name": "Global Development & Process Best Practices",
+                "bullets": [
+                    {"id": "b-0001", "content": "Всегда начинай цикл с git self-cycle §11 и memory/playbooks snapshot.", "tags": ["orchestrator", "git"], "effectiveness": 0.95},
+                    {"id": "b-0002", "content": "Используй PLAN → ACT (≤3 calls) → REFLECT. Никогда не пропускай рефлексию.", "tags": ["all-roles"], "effectiveness": 0.9},
+                ],
+                "last_curated": _now_iso(),
+            }
 
-    if "tool-git" not in pbs:
-        pbs["tool-git"] = {
-            "scope": "tool:git",
-            "name": "Git & Sync Playbook",
-            "bullets": [
-                {"id": "b-0101", "content": "Для кросс-клона используй git -C /path ... + явный маркер SYNC_DONE / VerifyOnly.", "tags": ["sync", "verification"], "effectiveness": 0.92},
-            ],
-            "last_curated": _now_iso(),
-        }
+        if "tool-git" not in pbs:
+            pbs["tool-git"] = {
+                "scope": "tool:git",
+                "name": "Git & Sync Playbook",
+                "bullets": [
+                    {"id": "b-0101", "content": "Для кросс-клона используй git -C /path ... + явный маркер SYNC_DONE / VerifyOnly.", "tags": ["sync", "verification"], "effectiveness": 0.92},
+                ],
+                "last_curated": _now_iso(),
+            }
 
-    if "tool-ledger" not in pbs:
-        pbs["tool-ledger"] = {
-            "scope": "tool:performance_ledger",
-            "name": "Performance & ROI Tracking",
-            "bullets": [
-                {"id": "b-0201", "content": "На высококачественном DONE всегда вызывай append в performance_ledger + включай 'performance' в handoff.", "tags": ["P1", "metrics"], "effectiveness": 0.88},
-            ],
-            "last_curated": _now_iso(),
-        }
+        if "tool-ledger" not in pbs:
+            pbs["tool-ledger"] = {
+                "scope": "tool:performance_ledger",
+                "name": "Performance & ROI Tracking",
+                "bullets": [
+                    {"id": "b-0201", "content": "На высококачественном DONE всегда вызывай append в performance_ledger + включай 'performance' в handoff.", "tags": ["P1", "metrics"], "effectiveness": 0.88},
+                ],
+                "last_curated": _now_iso(),
+            }
 
-    # New: WorkflowBlueprint for full continuous dev cycle (per user request for other objects)
-    if "continuous-dev-cycle" not in pbs:
-        pbs["continuous-dev-cycle"] = {
-            "scope": "workflow:full-cycle",
-            "name": "Continuous Development Cycle Blueprint",
-            "bullets": [
-                {"id": "b-wf01", "content": "Orchestrator: always select playbooks for planning + tools before SPRINTPLAN.", "tags": ["orchestrator", "playbook"], "effectiveness": 0.9},
-                {"id": "b-wf02", "content": "Every role: use playbooks for tool decisions. Record usage for curate.", "tags": ["all-roles"], "effectiveness": 0.88},
-                {"id": "b-wf03", "content": "Reviewer: mandatory playbook curation + meta harvest on high quality DONE.", "tags": ["reviewer", "self-improvement"], "effectiveness": 0.92},
-            ],
-            "last_curated": _now_iso(),
-        }
+        # New: WorkflowBlueprint for full continuous dev cycle (per user request for other objects)
+        if "continuous-dev-cycle" not in pbs:
+            pbs["continuous-dev-cycle"] = {
+                "scope": "workflow:full-cycle",
+                "name": "Continuous Development Cycle Blueprint",
+                "bullets": [
+                    {"id": "b-wf01", "content": "Orchestrator: always select playbooks for planning + tools before SPRINTPLAN.", "tags": ["orchestrator", "playbook"], "effectiveness": 0.9},
+                    {"id": "b-wf02", "content": "Every role: use playbooks for tool decisions. Record usage for curate.", "tags": ["all-roles"], "effectiveness": 0.88},
+                    {"id": "b-wf03", "content": "Reviewer: mandatory playbook curation + meta harvest on high quality DONE.", "tags": ["reviewer", "self-improvement"], "effectiveness": 0.92},
+                ],
+                "last_curated": _now_iso(),
+            }
 
-    _save_index(index, agent_dir)
-    return len(pbs)
+        _write_index_unlocked(index, agent_dir)
+        return len(pbs)
 
 
 def list_playbooks(agent_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
@@ -418,7 +440,7 @@ def export_hub_index(
     if fmt == "hub":
         out = output or _hub_index_path(agent_dir)
         # Тот же lock, что у индекса: HUB_INDEX лежит рядом с PLAYBOOKS.json.
-        with agent_lock(_playbooks_index(agent_dir).parent, name="playbooks"):
+        with _playbooks_lock(agent_dir):
             out.parent.mkdir(parents=True, exist_ok=True)
             tmp = out.with_suffix(".json.tmp")
             tmp.write_text(json.dumps(hub_data, ensure_ascii=False, indent=2), encoding="utf-8")
