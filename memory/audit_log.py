@@ -15,6 +15,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from memory.agent_lock import agent_lock
+
 AUDIT_JSON = Path(".agent/AUDIT_LOG.json")
 AUDIT_MD = Path(".agent/AUDIT_LOG.md")
 TORN_RETRIES = 3
@@ -74,7 +76,10 @@ def _save(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
     data["updated_at"] = _now_iso()
     path = _audit_json(agent_dir)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    # tmp+replace: прямой write_text оставляет обрезанный JSON, если процесс оборвётся.
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    tmp.replace(path)
     _write_md(data, agent_dir=agent_dir)
 
 
@@ -106,11 +111,29 @@ def append_entry(
     agent_dir=None — пути модуля (CLI и старые тесты с подменой AUDIT_JSON).
     Дашборд передаёт workdir/.agent, чтобы не зависеть от cwd.
     """
-    data = _load(agent_dir=agent_dir)
-    if data is None:
-        # порванный журнал не затираем однострочной записью
+    # Лок на родителе реального JSON, не на cwd/.agent: иначе патч AUDIT_JSON уезжает мимо.
+    with agent_lock(_audit_json(agent_dir).parent, name="audit"):
+        data = _load(agent_dir=agent_dir)
+        if data is None:
+            # порванный журнал не затираем однострочной записью
+            entry = {
+                "id": "A-0000",
+                "ts": _now_iso(),
+                "action": action,
+                "role": role,
+                "cycle": cycle,
+                "details": details or {},
+                "approval_required": approval_required,
+                "approved": approved,
+            }
+            entry["signature"] = _sign(entry)
+            return entry
+        entries = data.setdefault("entries", [])
+        if not isinstance(entries, list):
+            entries = []
+            data["entries"] = entries
         entry = {
-            "id": "A-0000",
+            "id": f"A-{len(entries) + 1:04d}",
             "ts": _now_iso(),
             "action": action,
             "role": role,
@@ -120,25 +143,9 @@ def append_entry(
             "approved": approved,
         }
         entry["signature"] = _sign(entry)
+        entries.append(entry)
+        _save(data, agent_dir=agent_dir)
         return entry
-    entries = data.setdefault("entries", [])
-    if not isinstance(entries, list):
-        entries = []
-        data["entries"] = entries
-    entry = {
-        "id": f"A-{len(entries) + 1:04d}",
-        "ts": _now_iso(),
-        "action": action,
-        "role": role,
-        "cycle": cycle,
-        "details": details or {},
-        "approval_required": approval_required,
-        "approved": approved,
-    }
-    entry["signature"] = _sign(entry)
-    entries.append(entry)
-    _save(data, agent_dir=agent_dir)
-    return entry
 
 
 def list_entries(limit: int = 20, agent_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
