@@ -1,14 +1,14 @@
 # Conflict-Free Parallel Sessions — Remaining Implementation DAG (Agentix v3.11.0)
 
 **Title:** Conflict-free parallel sessions: live identity, leases, hub-safe git, dashboard streams, remaining `.agent/` isolation  
-**Author:** design agent / unhex placeholder  
+**Author:** Agentix SSOT cycle fire  
 **Date:** 2026-08-26  
-**Status:** Draft  
+**Status:** Accepted  
 **Repo / home:** `agentic_loop_template` (Agentix harness), package `memory`  
 **Baseline:** VERSION **3.10.1**, `main` `86d699b` (“Обновил версию до 3.10.1: настраиваемые лимиты контекста супервизора”). `main...origin/main` clean.  
 **Target version:** **3.11.0** (new product surface: stream leases, `--push`, STOP fan-out, Control Plane Streams view, live CLI identity under `--concurrent`. Not a 3.10.2 patch.)  
-**House style:** match [2026-08-26-p8-11-concurrent-fanout-design.md](docs/superpowers/specs/2026-08-26-p8-11-concurrent-fanout-design.md) structure.  
-**Canonical landing path:** this document (operator `/design` fire). Implementer specs/plans may be copied under `docs/superpowers/specs/` in the docs PR, not in this fire.
+**House style:** match [2026-08-26-p8-11-concurrent-fanout-design.md](2026-08-26-p8-11-concurrent-fanout-design.md) structure.  
+**Canonical landing path:** `docs/superpowers/specs/2026-08-26-conflict-free-parallel-sessions-design.md`
 
 This document is **not** a redo of 3.10.0 (P8-11 concurrent fan-out) or 3.10.1 (P8-14 supervisor caps). Those increments shipped and stay closed. It is the remaining DAG that makes **operator parallel agent sessions** and **supervisor `--concurrent`** actually conflict-free: locking leftovers, worktree isolation, `owned_paths` enforcement, merge/push protocol, dashboard/supervisor interaction, shared `.agent/` races, and tests.
 

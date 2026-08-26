@@ -42,7 +42,7 @@ Each role: **PLAN → ACT (≤3 tool calls) → REFLECT → handoff JSON**.
 | Stream identity | `memory/stream_context.py` | ContextVar then `AGENTIX_*` env; `apply_stream_env` copies into the child dict **once** per spawn |
 | Agent lock | `memory/agent_lock.py` | stdlib `O_EXCL` + PID on `.agent/<name>.lock`; stale-PID recovery; named locks for state / handoff / streams / leases / writers |
 | Stream leases | `memory/stream_lease.py` | Exclusive `owned_paths` claim (`python -m memory.stream_lease`); **live PID is never stolen**; TTL display-only |
-| Stream git | `memory/stream_git.py` | Dedicated integration worktree; `--no-ff` merge; opt-in push to `origin`; never checkout hub `HEAD`; never `main` |
+| Stream git | `memory/stream_git.py` | Dedicated integration worktree; `--no-ff` merge; opt-in push to `origin`; steady-state never moves hub `HEAD`; never merge/push `main` |
 | Streams page | `memory.dashboard` `/streams` | Per-stream status, worktree, heartbeat age, STOP; Control Plane STOP fans out |
 
 ---
