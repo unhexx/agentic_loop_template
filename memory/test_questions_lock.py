@@ -87,14 +87,16 @@ def test_two_threads_max_held_one(tmp_path: Path, monkeypatch) -> None:
     max_held = 0
     counter = threading.Lock()
     names: List[str] = []
+    lock_roots: List[Path] = []
     orig = qc.agent_lock
     hub_before = {p: p.exists() for p in _hub_question_locks()}
 
     @contextmanager
-    def wrapping_lock(*args, **kwargs) -> Iterator[None]:
+    def wrapping_lock(agent_dir, *, name="agent", timeout=30.0) -> Iterator[None]:
         nonlocal held, max_held
-        names.append(str(kwargs.get("name")))
-        with orig(*args, **kwargs):
+        names.append(name)
+        lock_roots.append(Path(agent_dir).resolve())
+        with orig(agent_dir, name=name, timeout=timeout):
             with counter:
                 held += 1
                 if held > max_held:
@@ -128,12 +130,14 @@ def test_two_threads_max_held_one(tmp_path: Path, monkeypatch) -> None:
     assert errors == []
     assert max_held == 1
     assert names == ["questions", "questions"]
+    assert lock_roots == [agent.resolve(), agent.resolve()]
     data = json.loads((agent / "QUESTIONS_POOL.json").read_text(encoding="utf-8"))
     questions = data.get("questions")
     assert isinstance(questions, list)
-    assert len(questions) >= 1
+    assert len(questions) == 2
     texts = {q.get("question") for q in questions}
-    assert texts & {"поток-а", "поток-б"}
+    assert texts == {"поток-а", "поток-б"}
+    assert {q.get("id") for q in questions} == {"Q-001", "Q-002"}
     assert not lock_path(agent, "questions").exists()
     for path, existed in hub_before.items():
         if not existed:

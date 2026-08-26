@@ -162,17 +162,18 @@ def _load_pool_raw(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
 
 
 def _save_pool_raw(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
-    """Сохранение + обновление updated_at + генерация человекочитаемого md."""
+    """Сохранение + обновление updated_at + генерация человекочитаемого md.
+
+    Без внутреннего лока: вызывающий уже держит agent_lock (не реентерабелен).
+    """
     data["updated_at"] = _now_iso()
     _ensure_agent_dir(agent_dir)
     path = _pool_json(agent_dir)
     text = json.dumps(data, ensure_ascii=False, indent=2)
-    # корень — parent фактического json, не cwd/.agent: тесты патчат POOL_JSON, дашборд даёт agent_dir
-    with agent_lock(path.parent, name="questions"):
-        tmp = path.with_suffix(".json.tmp")
-        tmp.write_text(text, encoding="utf-8")
-        tmp.replace(path)
-        _write_human_md(data, agent_dir=agent_dir)
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(path)
+    _write_human_md(data, agent_dir=agent_dir)
 
 
 def _write_human_md(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
@@ -264,34 +265,36 @@ def append_question(
 
     agent_dir=None оставляет CLI-поведение (пути модуля, cwd).
     """
-    pool = _load_pool_raw(agent_dir=agent_dir)
-    qs = pool.setdefault("questions", [])
+    # лок на весь RMW: иначе параллельный append/resolve затирает чужую правку
+    with agent_lock(_pool_json(agent_dir).parent, name="questions"):
+        pool = _load_pool_raw(agent_dir=agent_dir)
+        qs = pool.setdefault("questions", [])
 
-    # Простая дедупликация
-    for existing in qs:
-        if existing.get("status") == "open" and existing.get("question") == question:
-            return existing.get("id", "")
+        # Простая дедупликация
+        for existing in qs:
+            if existing.get("status") == "open" and existing.get("question") == question:
+                return existing.get("id", "")
 
-    qid = _next_id(qs)
-    item = {
-        "id": qid,
-        "question": question,
-        "context": context,
-        "priority": priority,
-        "source_role": source_role,
-        "created_cycle": cycle,
-        "created_sprint": sprint,
-        "created_phase": phase,
-        "suggested_recipient": suggested_recipient,
-        "status": "open",
-        "created_at": _now_iso(),
-        "resolution": None,
-        "resolved_at": None,
-        "resolved_by": None,
-    }
-    qs.append(item)
-    _save_pool_raw(pool, agent_dir=agent_dir)
-    return qid
+        qid = _next_id(qs)
+        item = {
+            "id": qid,
+            "question": question,
+            "context": context,
+            "priority": priority,
+            "source_role": source_role,
+            "created_cycle": cycle,
+            "created_sprint": sprint,
+            "created_phase": phase,
+            "suggested_recipient": suggested_recipient,
+            "status": "open",
+            "created_at": _now_iso(),
+            "resolution": None,
+            "resolved_at": None,
+            "resolved_by": None,
+        }
+        qs.append(item)
+        _save_pool_raw(pool, agent_dir=agent_dir)
+        return qid
 
 
 def get_open_questions(agent_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
@@ -365,22 +368,24 @@ def mark_reviewed(
     """
     if not ids:
         return 0
-    pool = _load_pool_raw(agent_dir=agent_dir)
-    qs = pool.get("questions", [])
-    updated = 0
-    now = _now_iso()
-    idset = set(ids)
-    for q in qs:
-        if q.get("id") in idset and q.get("status") != "resolved":
-            q["status"] = "resolved"
-            q["resolution"] = resolution_notes
-            q["resolved_at"] = now
-            q["resolved_by"] = reviewed_by
-            updated += 1
-    if updated > 0:
-        pool["last_escalated_cycle"] = pool.get("last_escalated_cycle", 0)
-        _save_pool_raw(pool, agent_dir=agent_dir)
-    return updated
+    # тот же RMW-лок, что у append: иначе resolve и append затирают друг друга
+    with agent_lock(_pool_json(agent_dir).parent, name="questions"):
+        pool = _load_pool_raw(agent_dir=agent_dir)
+        qs = pool.get("questions", [])
+        updated = 0
+        now = _now_iso()
+        idset = set(ids)
+        for q in qs:
+            if q.get("id") in idset and q.get("status") != "resolved":
+                q["status"] = "resolved"
+                q["resolution"] = resolution_notes
+                q["resolved_at"] = now
+                q["resolved_by"] = reviewed_by
+                updated += 1
+        if updated > 0:
+            pool["last_escalated_cycle"] = pool.get("last_escalated_cycle", 0)
+            _save_pool_raw(pool, agent_dir=agent_dir)
+        return updated
 
 
 def sync_from_handoff(handoff_path: Path, current_cycle: Optional[int] = None) -> List[str]:
