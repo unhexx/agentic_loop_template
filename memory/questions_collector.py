@@ -36,6 +36,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from memory.agent_lock import agent_lock
+
 
 DEFAULT_FREQUENCY = "every_3_cycles"
 DEFAULT_N = 3
@@ -164,8 +166,13 @@ def _save_pool_raw(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> No
     data["updated_at"] = _now_iso()
     _ensure_agent_dir(agent_dir)
     path = _pool_json(agent_dir)
-    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    _write_human_md(data, agent_dir=agent_dir)
+    text = json.dumps(data, ensure_ascii=False, indent=2)
+    # корень — parent фактического json, не cwd/.agent: тесты патчат POOL_JSON, дашборд даёт agent_dir
+    with agent_lock(path.parent, name="questions"):
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(text, encoding="utf-8")
+        tmp.replace(path)
+        _write_human_md(data, agent_dir=agent_dir)
 
 
 def _write_human_md(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
@@ -247,14 +254,17 @@ def append_question(
     sprint: Optional[str] = None,
     phase: Optional[str] = None,
     suggested_recipient: str = "product_owner",
+    agent_dir: Optional[Path] = None,
 ) -> str:
     """
     Добавляет вопрос в пул (если похожего ещё нет).
 
     Возвращает id созданного/найденного вопроса.
     Не дублирует по точному тексту вопроса + контексту.
+
+    agent_dir=None оставляет CLI-поведение (пути модуля, cwd).
     """
-    pool = _load_pool_raw()
+    pool = _load_pool_raw(agent_dir=agent_dir)
     qs = pool.setdefault("questions", [])
 
     # Простая дедупликация
@@ -280,7 +290,7 @@ def append_question(
         "resolved_by": None,
     }
     qs.append(item)
-    _save_pool_raw(pool)
+    _save_pool_raw(pool, agent_dir=agent_dir)
     return qid
 
 
