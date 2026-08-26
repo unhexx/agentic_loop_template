@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+## [3.11.0] - 2026-08-27
+
+### Added
+- Exclusive `owned_paths` leases for operator parallel sessions: `python -m memory.stream_lease claim|renew|release|status`. Registry hub `.agent/stream_leases.json` under `agent_lock(name="leases")`. Live PID is never stolen; TTL (`supervisor.parallel.lease_ttl_s`, default 7200) is display-only. `run_parallel` claims after validate, renews on hub `streams_state` ticks, releases in `finally`.
+- Opt-in `run-parallel --push` (or `supervisor.parallel.push`): pushes stream + integration branches to `origin` after `STREAM_READY`; refuses `main` / `master`. When `create_pr` and `push` are both on, push is a hard precondition of `gh pr create`.
+- STOP fan-out: `python -m memory.supervisor stop` and Control Plane `POST /actions/stop` write hub `.agent/STOP` and each worktree listed in `streams_state.json` / leases. Current adapter turn still finishes (up to `role_timeout_s`); no ThreadPool cancel.
+- Control Plane Streams page (`GET /streams` on `:8112`): per-stream status, worktree, heartbeat age, STOP.
+- Live CLI identity + persist stamp: `apply_stream_env` writes `AGENTIX_STREAM` / `AGENTIX_OWNED_PATHS` / `AGENTIX_WORKTREE` on the child env dict once per spawn (concurrent path still does not patch process-global `os.environ`). `persist_role_handoff` stamps `stream` / `owned_paths` / `worktree` from ContextVar. Role prompts under `use_stream` include an English stream fence (kept after compress).
+- Remaining `.agent/` writers (`audit`, `playbooks`, `questions`, `ledger`) take `agent_lock` on the parent of the file being written. Playbooks and ledger accept `agent_dir=`.
+- Hub-safe integration merge in a dedicated integration worktree (steady-state never `git checkout` of hub `HEAD`). `gh pr create` runs with `cwd` = integration worktree (`--base main`). Supervisor still never merges `main`.
+- Design spec: [`docs/superpowers/specs/2026-08-26-conflict-free-parallel-sessions-design.md`](docs/superpowers/specs/2026-08-26-conflict-free-parallel-sessions-design.md)
+
+### Changed
+- `VERSION` → 3.11.0
+- ROADMAP: milestone v3.11.0; Future leftovers unchanged (Hub SaaS, MCP, i18n, embeddings, P8-12, P8-13, messenger, NG11 harvester DI)
+
+Minor 3.11: wizard default and `proxy.mode=required` unchanged; serial remains default; streams still never merge `main`.
+
 ## [3.10.1] - 2026-08-26
 
 ### Added
