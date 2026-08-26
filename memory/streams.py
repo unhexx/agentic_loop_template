@@ -113,6 +113,9 @@ def _owned_covers(a: str, b: str) -> bool:
     return False
 
 
+owned_covers = _owned_covers
+
+
 def validate_stream_plans(plans: Sequence[StreamPlan]) -> None:
     """Reject overlapping owned_paths across streams (hard fail)."""
     if len(plans) < 1:
