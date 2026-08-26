@@ -21,6 +21,10 @@ def _write_json(path: Path, data: Any) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def _wt_root(tmp_path: Path) -> Path:
+    return tmp_path / "agentic-loop-worktrees"
+
+
 def _make_wt(root: Path, name: str) -> Path:
     wt = root / name
     (wt / ".agent").mkdir(parents=True)
@@ -36,7 +40,9 @@ def _layout(
 ):
     hub = tmp_path / "hub"
     (hub / ".agent").mkdir(parents=True)
-    wts: List[Path] = [_make_wt(tmp_path, n) for n in ("wt-a", "wt-b", "wt-c")[:n_fake]]
+    wts: List[Path] = [
+        _make_wt(_wt_root(tmp_path), n) for n in ("wt-a", "wt-b", "wt-c")[:n_fake]
+    ]
     if streams is None and n_fake:
         names = ("harness", "docs", "ops")
         streams = {names[i]: str(wts[i]) for i in range(n_fake)}
@@ -101,7 +107,7 @@ def test_stream_worktrees_from_hub_missing_files_empty(tmp_path: Path) -> None:
 
 def test_fanout_union_state_and_leases(tmp_path: Path) -> None:
     hub, wts = _layout(tmp_path, n_fake=2)
-    wt_c = _make_wt(tmp_path, "wt-c")
+    wt_c = _make_wt(_wt_root(tmp_path), "wt-c")
     _write_json(
         hub / ".agent" / "streams_state.json",
         {
@@ -185,10 +191,44 @@ def test_malformed_json_hub_only(tmp_path: Path, caplog) -> None:
     assert any("streams_state.json" in w for w in warnings)
 
 
+def test_non_utf8_json_hub_only(tmp_path: Path, caplog) -> None:
+    hub, wts = _layout(tmp_path, n_fake=2)
+    (hub / ".agent" / "streams_state.json").write_bytes(b"\xff\xfe\x00garbage")
+    with caplog.at_level(logging.WARNING, logger="memory.stream_stop"):
+        found = stream_worktrees_from_hub(hub)
+        written = fanout_stop(hub)
+    assert found == []
+    assert [p.resolve() for p in written] == [_stop(hub).resolve()]
+    assert _stop(hub).read_text(encoding="utf-8") == "1"
+    assert not _stop(wts[0]).exists()
+    assert not _stop(wts[1]).exists()
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert warnings, "ожидали WARNING на не-UTF-8 JSON"
+    assert any("streams_state.json" in w for w in warnings)
+
+
+def test_binary_state_still_reads_leases(tmp_path: Path, caplog) -> None:
+    hub, wts = _layout(tmp_path, n_fake=2)
+    (hub / ".agent" / "streams_state.json").write_bytes(b"\xff")
+    _write_json(
+        hub / ".agent" / "stream_leases.json",
+        {"leases": {"docs": {"worktree": str(wts[1]), "pid": 4}}},
+    )
+    with caplog.at_level(logging.WARNING, logger="memory.stream_stop"):
+        found = stream_worktrees_from_hub(hub)
+        written = fanout_stop(hub)
+    assert [p.resolve() for p in found] == [wts[1].resolve()]
+    assert _stop(hub).is_file()
+    assert _stop(wts[1]).is_file()
+    assert not _stop(wts[0]).exists()
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert any("streams_state.json" in w for w in warnings)
+
+
 def test_leases_only(tmp_path: Path) -> None:
     hub = tmp_path / "hub"
     (hub / ".agent").mkdir(parents=True)
-    wt = _make_wt(tmp_path, "leased")
+    wt = _make_wt(_wt_root(tmp_path), "leased")
     _write_json(
         hub / ".agent" / "stream_leases.json",
         {"leases": {"ops": {"worktree": str(wt), "pid": 4}}},
@@ -204,7 +244,7 @@ def test_leases_only(tmp_path: Path) -> None:
 def test_streams_list_shape(tmp_path: Path) -> None:
     hub = tmp_path / "hub"
     (hub / ".agent").mkdir(parents=True)
-    wt = _make_wt(tmp_path, "listed")
+    wt = _make_wt(_wt_root(tmp_path), "listed")
     _write_json(
         hub / ".agent" / "streams_state.json",
         {"streams": [{"name": "docs", "worktree": str(wt)}]},
@@ -234,6 +274,57 @@ def test_skips_empty_and_root_worktree(tmp_path: Path) -> None:
     assert not Path("/.agent/STOP").exists()
 
 
+def test_escaped_parent_and_tmp_not_written(tmp_path: Path, caplog) -> None:
+    hub, wts = _layout(tmp_path, n_fake=1)
+    parent_stop = tmp_path / ".agent" / "STOP"
+    tmp_stop = Path("/tmp/.agent/STOP")
+    had_tmp_stop = tmp_stop.exists()
+    _write_json(
+        hub / ".agent" / "streams_state.json",
+        {
+            "streams": {
+                "up": {"worktree": ".."},
+                "tmp": {"worktree": "/tmp"},
+                "ok": {"worktree": str(wts[0])},
+            }
+        },
+    )
+    with caplog.at_level(logging.WARNING, logger="memory.stream_stop"):
+        found = stream_worktrees_from_hub(hub)
+        written = fanout_stop(hub)
+    assert [p.resolve() for p in found] == [wts[0].resolve()]
+    assert _stop(hub).is_file()
+    assert _stop(hub).read_text(encoding="utf-8") == "1"
+    assert _stop(wts[0]).is_file()
+    assert not parent_stop.exists()
+    assert tmp_stop.exists() is had_tmp_stop
+    warnings = [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+    assert warnings, "ожидали WARNING на пути вне allowlist"
+    assert any(w.endswith(str(tmp_path.resolve())) for w in warnings)
+    assert any(w.endswith(str(Path("/tmp").resolve())) for w in warnings)
+
+
+def test_extra_roots_allows_custom_wt_base(tmp_path: Path) -> None:
+    hub = tmp_path / "hub"
+    (hub / ".agent").mkdir(parents=True)
+    custom = tmp_path / "custom-wts"
+    wt = _make_wt(custom, "stream-a")
+    _write_json(
+        hub / ".agent" / "streams_state.json",
+        {"streams": {"harness": {"worktree": str(wt)}}},
+    )
+    assert stream_worktrees_from_hub(hub) == []
+    found = stream_worktrees_from_hub(hub, extra_roots=[custom])
+    assert [p.resolve() for p in found] == [wt.resolve()]
+    written = fanout_stop(hub, extra_roots=[custom])
+    assert _stop(hub).is_file()
+    assert _stop(wt).is_file()
+    assert len(written) == 2
+    n = clear_fanout(hub, extra_roots=[custom])
+    assert n == 2
+    assert not _stop(wt).exists()
+
+
 def test_relative_worktree_resolved_against_hub(tmp_path: Path) -> None:
     hub = tmp_path / "hub"
     (hub / ".agent").mkdir(parents=True)
@@ -250,7 +341,7 @@ def test_relative_worktree_resolved_against_hub(tmp_path: Path) -> None:
 
 def test_missing_worktree_dir_skipped(tmp_path: Path, caplog) -> None:
     hub, wts = _layout(tmp_path, n_fake=1)
-    ghost = tmp_path / "ghost-wt"
+    ghost = _wt_root(tmp_path) / "ghost-wt"
     _write_json(
         hub / ".agent" / "streams_state.json",
         {
@@ -301,3 +392,5 @@ def test_source_does_not_import_supervisor() -> None:
         elif isinstance(node, ast.ImportFrom):
             mod = node.module or ""
             assert "supervisor" not in mod.split(".")
+            for alias in node.names:
+                assert "supervisor" not in alias.name.split(".")

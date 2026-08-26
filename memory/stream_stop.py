@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Iterable, Optional, Sequence
 
 from memory.logutil import get_logger
 
@@ -17,6 +17,7 @@ log = get_logger("memory.stream_stop")
 STOP_BODY = "1"
 _STREAMS_STATE = "streams_state.json"
 _LEASES = "stream_leases.json"
+_DEFAULT_WT_DIR = "agentic-loop-worktrees"
 
 
 def _agent(hub: Path) -> Path:
@@ -43,8 +44,9 @@ def _load_json(path: Path) -> Any:
     if not path.is_file():
         return None
     try:
+        # UnicodeError: бинарный/latin-1 мусор не должен валить весь fan-out.
         raw = path.read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeError) as exc:
         log.warning("stream_stop: cannot read %s: %s", path, exc)
         return None
     if not raw.strip():
@@ -56,7 +58,47 @@ def _load_json(path: Path) -> Any:
         return None
 
 
-def _normalize_worktree(raw: Any, hub: Path) -> Optional[Path]:
+def _default_wt_base(hub: Path) -> Path:
+    return Path(hub).resolve().parent / _DEFAULT_WT_DIR
+
+
+def _allowed_roots(hub: Path, extra_roots: Sequence[Path] = ()) -> list[Path]:
+    hub_r = Path(hub).resolve()
+    roots = [hub_r, _default_wt_base(hub_r)]
+    for raw in extra_roots:
+        p = Path(raw).expanduser()
+        try:
+            p = p.resolve()
+        except OSError:
+            pass
+        if _is_fs_root(p):
+            continue
+        roots.append(p)
+    return roots
+
+
+def _is_allowed(path: Path, hub: Path, extra_roots: Sequence[Path] = ()) -> bool:
+    """Хаб, внутри хаба, default sibling wt_base, либо extra_roots (wt_base из конфига)."""
+    try:
+        resolved = path.resolve()
+    except OSError:
+        resolved = path
+    if _is_fs_root(resolved):
+        return False
+    for root in _allowed_roots(hub, extra_roots):
+        try:
+            if resolved == root or resolved.is_relative_to(root):
+                return True
+        except (ValueError, TypeError, OSError):
+            continue
+    return False
+
+
+def _normalize_worktree(
+    raw: Any,
+    hub: Path,
+    extra_roots: Sequence[Path] = (),
+) -> Optional[Path]:
     if raw is None:
         return None
     s = str(raw).strip()
@@ -71,6 +113,9 @@ def _normalize_worktree(raw: Any, hub: Path) -> Optional[Path]:
         pass
     if _is_fs_root(p):
         return None
+    if not _is_allowed(p, hub, extra_roots):
+        log.warning("STOP fan-out skip worktree outside allowlist %s", p)
+        return None
     return p
 
 
@@ -82,13 +127,17 @@ def _records(container: Any) -> Iterable[Any]:
     return ()
 
 
-def _worktrees_from_container(container: Any, hub: Path) -> list[Path]:
+def _worktrees_from_container(
+    container: Any,
+    hub: Path,
+    extra_roots: Sequence[Path] = (),
+) -> list[Path]:
     out: list[Path] = []
     seen: set[str] = set()
     for rec in _records(container):
         if not isinstance(rec, dict):
             continue
-        p = _normalize_worktree(rec.get("worktree"), hub)
+        p = _normalize_worktree(rec.get("worktree"), hub, extra_roots)
         if p is None:
             continue
         key = str(p)
@@ -99,7 +148,11 @@ def _worktrees_from_container(container: Any, hub: Path) -> list[Path]:
     return out
 
 
-def stream_worktrees_from_hub(hub: Path) -> list[Path]:
+def stream_worktrees_from_hub(
+    hub: Path,
+    *,
+    extra_roots: Sequence[Path] = (),
+) -> list[Path]:
     """Пути worktree из streams_state.json и stream_leases.json. Нет файлов → []."""
     hub = Path(hub).expanduser().resolve()
     agent = _agent(hub)
@@ -109,7 +162,7 @@ def stream_worktrees_from_hub(hub: Path) -> list[Path]:
         data = _load_json(agent / filename)
         if not isinstance(data, dict):
             continue
-        for p in _worktrees_from_container(data.get(key), hub):
+        for p in _worktrees_from_container(data.get(key), hub, extra_roots):
             k = str(p)
             if k in seen:
                 continue
@@ -138,26 +191,38 @@ def _unlink_stop(root: Path) -> bool:
         return False
 
 
-def _iter_targets(hub: Path) -> list[Path]:
-    """Хаб первым, затем уникальные worktree (тот же путь в state и leases — один раз)."""
+def _discover_worktrees(hub: Path, extra_roots: Sequence[Path] = ()) -> list[Path]:
+    """Сбой чтения JSON не должен блокировать хаб: тогда список пустой."""
+    try:
+        return stream_worktrees_from_hub(hub, extra_roots=extra_roots)
+    except Exception as exc:
+        log.warning("STOP fan-out discovery failed: %s", exc)
+        return []
+
+
+def fanout_stop(
+    hub: Path,
+    *,
+    extra_roots: Sequence[Path] = (),
+) -> list[Path]:
+    """Пишет hub/.agent/STOP и STOP каждого известного worktree (байты ``1``).
+
+    Хаб пишется первым, до разбора JSON: битый state не отменяет STOP на хабе.
+    """
     hub = Path(hub).expanduser().resolve()
+    written: list[Path] = []
+    try:
+        written.append(_write_stop(hub))
+    except OSError as exc:
+        log.warning("STOP fan-out failed for %s: %s", hub, exc)
+
     seen = {str(hub)}
-    targets = [hub]
-    for wt in stream_worktrees_from_hub(hub):
-        key = str(wt)
+    for root in _discover_worktrees(hub, extra_roots):
+        key = str(root)
         if key in seen:
             continue
         seen.add(key)
-        targets.append(wt)
-    return targets
-
-
-def fanout_stop(hub: Path) -> list[Path]:
-    """Пишет hub/.agent/STOP и STOP каждого известного worktree (байты ``1``)."""
-    hub = Path(hub).expanduser().resolve()
-    written: list[Path] = []
-    for root in _iter_targets(hub):
-        if root != hub and not root.is_dir():
+        if not root.is_dir():
             log.warning("STOP fan-out skip missing worktree %s", root)
             continue
         try:
@@ -172,11 +237,22 @@ def fanout_stop(hub: Path) -> list[Path]:
     return written
 
 
-def clear_fanout(hub: Path) -> int:
+def clear_fanout(
+    hub: Path,
+    *,
+    extra_roots: Sequence[Path] = (),
+) -> int:
     """Снимает STOP на хабе и известных worktree. Возвращает число удалённых файлов."""
     hub = Path(hub).expanduser().resolve()
     removed = 0
-    for root in _iter_targets(hub):
+    seen = {str(hub)}
+    if _unlink_stop(hub):
+        removed += 1
+    for root in _discover_worktrees(hub, extra_roots):
+        key = str(root)
+        if key in seen:
+            continue
+        seen.add(key)
         if _unlink_stop(root):
             removed += 1
     return removed
