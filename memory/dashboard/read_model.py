@@ -205,27 +205,44 @@ class DashboardStore:
         return out
 
     def _wt_base_extra_roots(self) -> List[Path]:
-        """wt_base из project_config супервизора, не DashboardConfig (там host/port)."""
+        """wt_base из project_config супервизора, не DashboardConfig (там host/port).
+
+        Сбой загрузки не должен блокировать STOP: хаб и default sibling
+        уже в allowlist stream_stop.
+        """
         import importlib
 
-        # прямой import supervisor тянет runner в sidecar; нужен только load_config.
-        load_project_config = importlib.import_module("memory.supervisor").load_config
-        cfg = load_project_config(self.workdir)
-        par = (cfg.get("supervisor") or {}) if isinstance(cfg.get("supervisor"), dict) else {}
-        par = (par.get("parallel") or {}) if isinstance(par.get("parallel"), dict) else {}
-        raw_wt = par.get("wt_base")
-        extra: List[Path] = []
-        if isinstance(raw_wt, str) and raw_wt.strip():
-            p = Path(raw_wt).expanduser()
-            try:
-                p = p.resolve()
-            except OSError:
-                pass
-            if _is_fs_root(p):
-                log.warning("wt_base is filesystem root, ignored")
-            else:
-                extra.append(p)
-        return extra
+        try:
+            # AST-тест дашборда запрещает Import/ImportFrom supervisor;
+            # runtime всё равно исполнит supervisor.py при первом вызове.
+            load_project_config = importlib.import_module("memory.supervisor").load_config
+            cfg = load_project_config(self.workdir)
+            par = (
+                (cfg.get("supervisor") or {})
+                if isinstance(cfg.get("supervisor"), dict)
+                else {}
+            )
+            par = (
+                (par.get("parallel") or {})
+                if isinstance(par.get("parallel"), dict)
+                else {}
+            )
+            raw_wt = par.get("wt_base")
+            extra: List[Path] = []
+            if isinstance(raw_wt, str) and raw_wt.strip():
+                p = Path(raw_wt).expanduser()
+                try:
+                    p = p.resolve()
+                except OSError:
+                    pass
+                if _is_fs_root(p):
+                    log.warning("wt_base is filesystem root, ignored")
+                else:
+                    extra.append(p)
+            return extra
+        except Exception as exc:
+            log.warning("wt_base config load failed: %s", exc)
+            return []
 
     def _heartbeat_allowed_roots(self, extra: Sequence[Path]) -> List[Path]:
         hub = self.workdir

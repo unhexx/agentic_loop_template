@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Callable, List, Sequence
 
 import pytest
 
@@ -14,6 +16,15 @@ pytest.importorskip("fastapi")
 
 from memory.dashboard.read_model import DashboardStore
 from memory.dashboard.watcher import WATCHED_FILES, Watcher
+
+_FORBIDDEN_ROOT_IO = frozenset(
+    {
+        "/supervisor.heartbeat",
+        "/.agent/supervisor.heartbeat",
+        "/etc",
+        "/etc/passwd",
+    }
+)
 
 
 def _write_json(path: Path, data) -> None:
@@ -37,6 +48,50 @@ def _csrf_header(client) -> dict:
     token = client.cookies.get("agentix_csrf")
     assert token
     return {"X-CSRF-Token": token}
+
+
+def _as_path_str(arg: object) -> str:
+    try:
+        raw = os.fspath(arg)  # type: ignore[arg-type]
+    except TypeError:
+        return str(arg)
+    if isinstance(raw, bytes):
+        return raw.decode("utf-8", "surrogateescape")
+    return str(raw)
+
+
+def _is_forbidden_root_io(s: str, extra: Sequence[str] = ()) -> bool:
+    n = os.path.normpath(s)
+    if n in _FORBIDDEN_ROOT_IO or n.startswith("/etc/"):
+        return True
+    extras = {os.path.normpath(p) for p in extra}
+    return n in extras
+
+
+def _install_fs_spy(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    extra_forbidden: Sequence[str] = (),
+) -> List[str]:
+    """Ловим реальные вызовы pathlib 3.14: os.stat / isfile / isdir / realpath."""
+    seen: List[str] = []
+
+    def wrap(orig: Callable, label: str):
+        def inner(path, *args, **kwargs):
+            s = _as_path_str(path)
+            seen.append(s)
+            if _is_forbidden_root_io(s, extra_forbidden):
+                raise AssertionError(f"{label} outside allowlist: {s}")
+            return orig(path, *args, **kwargs)
+
+        return inner
+
+    monkeypatch.setattr(os, "stat", wrap(os.stat, "os.stat"))
+    monkeypatch.setattr(os, "lstat", wrap(os.lstat, "os.lstat"))
+    monkeypatch.setattr(os.path, "isfile", wrap(os.path.isfile, "os.path.isfile"))
+    monkeypatch.setattr(os.path, "isdir", wrap(os.path.isdir, "os.path.isdir"))
+    monkeypatch.setattr(os.path, "realpath", wrap(os.path.realpath, "os.path.realpath"))
+    return seen
 
 
 def test_watcher_includes_streams_state():
@@ -122,24 +177,15 @@ def test_dashboard_heartbeat_rejects_root(tmp_path: Path, monkeypatch, caplog):
         },
     )
     store = DashboardStore(hub)
-    seen: list[str] = []
-    orig_stat = Path.stat
+    seen = _install_fs_spy(monkeypatch)
     orig_read = Path.read_text
-
-    def spy_stat(self, *args, **kwargs):
-        s = str(self)
-        seen.append(s)
-        if s in ("/supervisor.heartbeat", "/.agent/supervisor.heartbeat", "/etc", "/etc/passwd") or s.startswith("/etc/"):
-            raise AssertionError(f"stat outside tmp: {s}")
-        return orig_stat(self, *args, **kwargs)
 
     def spy_read(self, *args, **kwargs):
         s = str(self)
-        if s in ("/supervisor.heartbeat", "/.agent/supervisor.heartbeat") or s.startswith("/etc"):
+        if _is_forbidden_root_io(s):
             raise AssertionError(f"read outside tmp: {s}")
         return orig_read(self, *args, **kwargs)
 
-    monkeypatch.setattr(Path, "stat", spy_stat)
     monkeypatch.setattr(Path, "read_text", spy_read)
     with caplog.at_level(logging.WARNING, logger="memory.dashboard.read_model"):
         rows = store.stream_heartbeats()
@@ -149,8 +195,56 @@ def test_dashboard_heartbeat_rejects_root(tmp_path: Path, monkeypatch, caplog):
     warnings = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
     assert warnings, "ожидали WARNING на worktree вне allowlist"
     assert any("outside allowlist" in w for w in warnings)
-    assert not any(p.endswith("/supervisor.heartbeat") and "/hub/" not in p for p in seen)
-    assert not any(p == "/etc" or p.startswith("/etc/") for p in seen)
+    hub_state = str((hub / ".agent" / "streams_state.json").resolve())
+    assert seen, "ожидали реальный FS-IO к хабу"
+    assert any(
+        os.path.normpath(p) == hub_state or p.endswith("streams_state.json")
+        for p in seen
+    ), f"ожидали IO к hub streams_state, seen={seen!r}"
+    assert not any(
+        os.path.normpath(p).endswith("/supervisor.heartbeat")
+        and "/hub/" not in os.path.normpath(p)
+        for p in seen
+    )
+    assert not any(
+        os.path.normpath(p) == "/etc" or os.path.normpath(p).startswith("/etc/")
+        for p in seen
+    )
+
+
+def test_dashboard_heartbeat_requires_agent_dir(tmp_path: Path, monkeypatch, caplog):
+    hub = tmp_path / "hub"
+    (hub / ".agent").mkdir(parents=True)
+    wt = tmp_path / "agentic-loop-worktrees" / "wt-no-agent"
+    wt.mkdir(parents=True)
+    decoy = wt / "supervisor.heartbeat"
+    _write_json(decoy, {"pid": 7, "role": "Coder", "ts": _fresh_ts()})
+    _write_json(
+        hub / ".agent" / "streams_state.json",
+        {
+            "streams": {
+                "ghost": {"status": "RUNNING", "worktree": str(wt)},
+            }
+        },
+    )
+    extra_forbidden = (
+        str(decoy.resolve()),
+        str((wt / ".agent" / "supervisor.heartbeat").resolve()),
+    )
+    seen = _install_fs_spy(monkeypatch, extra_forbidden=extra_forbidden)
+    store = DashboardStore(hub)
+    with caplog.at_level(logging.WARNING, logger="memory.dashboard.read_model"):
+        rows = store.stream_heartbeats()
+    assert len(rows) == 1
+    assert rows[0]["name"] == "ghost"
+    assert rows[0]["heartbeat"]["status"] == "unknown"
+    warnings = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+    assert warnings, "ожидали WARNING на отсутствие .agent"
+    assert any("no .agent dir" in w for w in warnings)
+    assert seen, "ожидали реальный FS-IO к хабу / worktree"
+    assert not any(
+        os.path.normpath(p).endswith("supervisor.heartbeat") for p in seen
+    ), f"heartbeat не должны трогать, seen={seen!r}"
 
 
 def test_dashboard_heartbeat_null_wt_base_uses_default(tmp_path: Path, monkeypatch, caplog):
@@ -244,6 +338,28 @@ def test_dashboard_stop_fanout(dashboard_client, tmp_path: Path):
     assert r2.status_code == 204
     assert not (tmp_path / ".agent" / "STOP").exists()
     assert not (wt / ".agent" / "STOP").exists()
+
+
+def test_write_stop_hub_written_if_wt_base_load_fails(
+    tmp_path: Path, monkeypatch, caplog
+):
+    hub = tmp_path / "hub"
+    (hub / ".agent").mkdir(parents=True)
+    import memory.supervisor as sup_mod
+
+    def boom(_workdir):
+        raise RuntimeError("runner boom")
+
+    monkeypatch.setattr(sup_mod, "load_config", boom)
+    store = DashboardStore(hub)
+    with caplog.at_level(logging.WARNING, logger="memory.dashboard.read_model"):
+        path = store.write_stop()
+    assert path == hub / ".agent" / "STOP"
+    assert path.is_file()
+    assert path.read_text(encoding="utf-8") == "1"
+    warnings = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+    assert warnings, "ожидали WARNING на сбой загрузки wt_base"
+    assert any("wt_base config load failed" in w for w in warnings)
 
 
 def test_write_stop_passes_extra_roots_for_custom_wt_base(tmp_path: Path, monkeypatch):
