@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [3.10.1] - 2026-08-26
+
+### Added
+- P8-14 configurable supervisor caps: `context_budget.prompt_body_chars` / `snap_json_chars` / `knowledge_budget_tokens` / `prompt_token_cap` (defaults 8000 / 4000 / 800 / 8000). Env overrides: `AGENTIX_PROMPT_BODY_CHARS`, `AGENTIX_SNAP_JSON_CHARS`, `AGENTIX_KNOWLEDGE_BUDGET_TOKENS`, `AGENTIX_PROMPT_TOKEN_CAP`. Invalid values fall back per key. `_maybe_compress_prompt` passes `model=` / `encoding=` from `context_budget` into `estimate_tokens`.
+- Design spec: [`docs/superpowers/specs/2026-08-26-p8-14-context-budgets-design.md`](docs/superpowers/specs/2026-08-26-p8-14-context-budgets-design.md)
+
+### Changed
+- `VERSION` → 3.10.1
+- ROADMAP: P8-14 configurable context budgets removed from Future
+
+Patch, not 3.11.0: no wizard default change, no new CLI/product surface; operators already had `compress_when_over`. Module constants remain the defaults.
+
 ## [3.10.0] - 2026-08-26
 
 ### Added

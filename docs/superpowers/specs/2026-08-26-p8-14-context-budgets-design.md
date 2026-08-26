@@ -3,7 +3,7 @@
 **Title:** P8-14 Configurable supervisor caps (`prompt_body_chars`, `snap_json_chars`, `knowledge_budget_tokens`, `prompt_token_cap`)  
 **Author:** Agentix SSOT cycle fire  
 **Date:** 2026-08-26  
-**Status:** Implementing this fire  
+**Status:** Implemented on main (this fire; VERSION 3.10.1)  
 **Repo / home:** `agentic_loop_template` (Agentix harness), package `memory`  
 **Baseline:** VERSION **3.10.0**, `main` `5dc0303` (P8-11 concurrent fan-out).  
 **Target version:** **3.10.1** (patch: operators already had `compress_when_over`; no new product surface — not 3.11.0)  

@@ -1,10 +1,10 @@
 # Agentix Public Roadmap
 
-[![Version](https://img.shields.io/badge/version-3.10.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.10.1-blue?style=flat-square)](CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](README.md)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen?style=flat-square)](docs/README.md)
 
-**Status Date:** 2026-08-26 · **Initiative:** Business Efficiency — **COMPLETE** · **v3.9 Harness Hardening** — **COMPLETE** · **v3.10 Concurrent fan-out** — **COMPLETE** · **Next:** Future
+**Status Date:** 2026-08-26 · **Initiative:** Business Efficiency — **COMPLETE** · **v3.9 Harness Hardening** — **COMPLETE** · **v3.10 Concurrent fan-out** — **COMPLETE** · **v3.10.1 supervisor caps** — **COMPLETE** · **Next:** Future
 
 ---
 
@@ -43,7 +43,7 @@ Shipped 2026-08-24. Criteria:
 | P8-06 | `validate_handoff` ↔ `schemas/handoff.schema.json` | Done |
 | P8-07 | CI pytest + mock O→C→T→R on `pull_request` | Done |
 
-Leftover nice-to-haves (docs i18n, concurrency, …) moved to Future.
+Leftover nice-to-haves (docs i18n, embeddings, …) moved to Future.
 
 ---
 
@@ -55,7 +55,6 @@ Leftover nice-to-haves (docs i18n, concurrency, …) moved to Future.
 - Playbook embeddings ranking (P8-10)
 - Modularize large modules (`meta_harvester`, `experience_harvester`, Init.ps1) (P8-12)
 - MultiLLM* dataclasses: use or extract (P8-13)
-- Configurable context budgets (`_PROMPT_BODY_CAP`, `_KNOWLEDGE_BUDGET`) (P8-14)
 - Mobile / non-MCP major rewrites (out of scope)
 
 ---
@@ -64,6 +63,7 @@ Leftover nice-to-haves (docs i18n, concurrency, …) moved to Future.
 
 | Version | Highlight |
 |---------|-----------|
+| **v3.10.1** | Configurable supervisor context caps from `context_budget` / env (P8-14) |
 | **v3.10.0** | Opt-in `run-parallel --concurrent` + stdlib `.agent/` lock (P8-11) |
 | **v3.9.4** | Token estimate: tiktoken extra, per-model encoding, chars/4 fallback |
 | **v3.9.3** | Harvest/reflect skill split (experience-accumulation vs loop-self-improve) |

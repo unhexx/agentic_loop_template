@@ -31,10 +31,10 @@
 
 ## Tasks (implementer, sibling stream)
 
-- [ ] `memory/prompt_caps.py` + `memory/test_prompt_caps.py` (G1–G3)
-- [ ] Supervisor helpers + `memory/test_supervisor_prompt_caps.py` + observability `**kwargs` (G4–G6)
-- [ ] `.agent/project_config.example.json` four keys with defaults
-- [ ] VERSION **3.10.1** + changelog/roadmap/README in the **release** commit only (G7)
+- [x] `memory/prompt_caps.py` + `memory/test_prompt_caps.py` (G1–G3)
+- [x] Supervisor helpers + `memory/test_supervisor_prompt_caps.py` + observability `**kwargs` (G4–G6)
+- [x] `.agent/project_config.example.json` four keys with defaults
+- [x] VERSION **3.10.1** + changelog/roadmap/README in the **release** commit only (G7)
 
 ## Pytest
 
