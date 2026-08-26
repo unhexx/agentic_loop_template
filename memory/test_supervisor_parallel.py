@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import subprocess
+import sys
 import threading
 from pathlib import Path
 
@@ -285,7 +286,10 @@ def test_run_parallel_concurrent_blocks_skips_merge(tmp_path, monkeypatch):
 
     monkeypatch.setattr("memory.supervisor_parallel.merge_stream_branch", fake_merge)
 
+    barrier = threading.Barrier(2, timeout=5)
+
     def fake_run_loop(**kwargs):
+        barrier.wait()
         wd = str(kwargs.get("workdir") or "")
         if Path(wd).name == "wt-a":
             return {"terminal": Terminal.BLOCKED, "exit_code": 1}
@@ -307,6 +311,11 @@ def test_run_parallel_concurrent_blocks_skips_merge(tmp_path, monkeypatch):
     assert result["terminal"] in (Terminal.BLOCKED, "BLOCKED")
     assert result["mode"] == "concurrent"
     assert set(result["streams"]) == {"harness", "docs"}
+    # wait-all: предзаполнение RUNNING не должно маскировать fail-fast
+    assert result["streams"]["harness"]["status"] == "BLOCKED"
+    assert result["streams"]["docs"]["status"] == "STREAM_READY"
+    assert "loop" in result["streams"]["docs"]
+    assert "loop" in result["streams"]["harness"]
 
 
 def test_stream_context_isolated_per_thread():
@@ -431,10 +440,13 @@ def test_maybe_create_pr_uses_integration_workdir(tmp_path, monkeypatch):
     import memory.streams as streams_mod
 
     monkeypatch.setattr(streams_mod, "list_changed_files", lambda workdir, base_ref="main": [])
-    monkeypatch.setattr(
-        "memory.supervisor_parallel.merge_stream_branch",
-        lambda **kwargs: {"ok": True, "skipped": True},
-    )
+    merge_seen: dict = {}
+
+    def spy_merge(**kwargs):
+        merge_seen.update(kwargs)
+        return {"ok": True, "skipped": True}
+
+    monkeypatch.setattr("memory.supervisor_parallel.merge_stream_branch", spy_merge)
     monkeypatch.setattr(
         "memory.supervisor_parallel.run_loop",
         lambda **kwargs: {"terminal": Terminal.PR_READY_LOCAL, "exit_code": 0},
@@ -470,6 +482,9 @@ def test_maybe_create_pr_uses_integration_workdir(tmp_path, monkeypatch):
     assert _abbrev(hub) == hub_head == "main"
     assert _sha(hub) == hub_sha
     assert Path(result["integration_worktree"]).resolve() == expected
+    assert Path(merge_seen["integration_workdir"]).resolve() == expected
+    assert Path(merge_seen["hub_workdir"]).resolve() == hub.resolve()
+    assert merge_seen["integration_workdir"] != merge_seen["hub_workdir"]
 
 
 def test_create_pr_push_precondition(tmp_path, monkeypatch):
@@ -496,14 +511,6 @@ def test_create_pr_push_precondition(tmp_path, monkeypatch):
 
     monkeypatch.setattr("memory.supervisor_parallel.merge_stream_branch", fake_merge)
 
-    ensure_n = {"n": 0}
-
-    def fake_ensure(*a, **k):
-        ensure_n["n"] += 1
-        return tmp_path / "integ"
-
-    monkeypatch.setattr("memory.supervisor_parallel.ensure_integration_worktree", fake_ensure)
-
     pr_n = {"n": 0}
 
     def spy_pr(workdir, sup):
@@ -512,10 +519,24 @@ def test_create_pr_push_precondition(tmp_path, monkeypatch):
 
     monkeypatch.setattr("memory.supervisor_parallel.maybe_create_pr", spy_pr)
 
-    monkeypatch.setattr(
-        "memory.supervisor_parallel.push_branch",
-        lambda workdir, *, branch, remote="origin": {"ok": False, "error": "auth failed"},
-    )
+    integ = tmp_path / "integ"
+    ensure_n = {"n": 0}
+
+    def fake_ensure(*a, **k):
+        ensure_n["n"] += 1
+        return integ
+
+    monkeypatch.setattr("memory.supervisor_parallel.ensure_integration_worktree", fake_ensure)
+
+    push_calls: list[tuple[str, str]] = []
+
+    def fake_push(workdir, *, branch, remote="origin"):
+        push_calls.append((str(Path(workdir).resolve()), branch))
+        if branch == INTEGRATION or Path(workdir).resolve() == integ.resolve():
+            return {"ok": False, "error": "auth failed"}
+        return {"ok": True, "branch": branch, "remote": remote}
+
+    monkeypatch.setattr("memory.supervisor_parallel.push_branch", fake_push)
 
     result = run_parallel(
         hub_workdir=hub,
@@ -528,10 +549,14 @@ def test_create_pr_push_precondition(tmp_path, monkeypatch):
     )
     assert result["exit_code"] == 1
     assert result["terminal"] in (Terminal.BLOCKED, "BLOCKED")
-    assert "push failed" in str(result.get("reason"))
+    reason = str(result.get("reason"))
+    assert "push failed" in reason
+    assert INTEGRATION in reason
     assert pr_n["n"] == 0
-    assert merge_n["n"] == 0
-    assert ensure_n["n"] == 0
+    assert merge_n["n"] == 1
+    assert ensure_n["n"] == 1
+    assert any(branch == "feature/c-harness" for _, branch in push_calls)
+    assert any(branch == INTEGRATION for _, branch in push_calls)
 
 
 def test_ensure_wt_error_maps_to_blocked(tmp_path, monkeypatch):
@@ -704,6 +729,70 @@ def test_run_parallel_renews_leases(tmp_path, monkeypatch):
     assert len(renews) >= 2
     st = lease_status(hub)
     assert st.get("leases") == {}
+
+
+def test_live_foreign_lease_blocks_skips_provision(tmp_path, monkeypatch):
+    hub = tmp_path / "hub"
+    hub.mkdir()
+    (hub / ".agent").mkdir()
+    a = _stream_workdir(tmp_path, "wt-a")
+    b = _stream_workdir(tmp_path, "wt-b")
+    plans = [
+        StreamPlan(name="harness", owned_paths=["memory/"], worktree=str(a), branch="feature/c-harness"),
+        StreamPlan(name="docs", owned_paths=["docs/"], worktree=str(b), branch="feature/c-docs"),
+    ]
+    proc = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(120)"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        (hub / ".agent" / "stream_leases.json").write_text(
+            json.dumps(
+                {
+                    "leases": {
+                        "other": {
+                            "owned_paths": ["docs/"],
+                            "worktree": "/abs/other",
+                            "pid": proc.pid,
+                            "claimed_at": "2026-08-26T12:00:00Z",
+                            "expires_at": "2099-01-01T00:00:00Z",
+                            "branch": "feature/other",
+                        }
+                    }
+                }
+            ),
+            encoding="utf-8",
+        )
+        prov = {"n": 0}
+
+        def fake_provision(**kwargs):
+            prov["n"] += 1
+            return kwargs.get("plans") or []
+
+        monkeypatch.setattr(
+            "memory.supervisor_parallel.provision_stream_worktrees", fake_provision
+        )
+        result = run_parallel(
+            hub_workdir=hub,
+            plans=plans,
+            adapter_name="mock",
+            max_cycles_per_stream=1,
+            create_pr=False,
+            skip_provision=False,
+        )
+        assert result["terminal"] in (Terminal.BLOCKED, "BLOCKED")
+        reason = str(result.get("reason"))
+        assert "lease overlap" in reason
+        assert "overlap between streams" in reason
+        assert prov["n"] == 0
+        leases = lease_status(hub).get("leases") or {}
+        assert "harness" not in leases
+        assert "docs" not in leases
+        assert leases["other"]["pid"] == proc.pid
+    finally:
+        proc.kill()
+        proc.wait(timeout=5)
 
 
 def test_config_concurrent_without_flag(tmp_path, monkeypatch):

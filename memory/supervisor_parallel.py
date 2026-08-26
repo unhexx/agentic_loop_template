@@ -264,7 +264,7 @@ def run_parallel(
                     branch=plan.branch,
                 )
             except ValueError as exc:
-                return _fail_blocked(f"lease overlap {exc}")
+                return _fail_blocked(f"lease overlap: {exc}")
             claimed.append(plan.name)
 
         if not skip_provision:
