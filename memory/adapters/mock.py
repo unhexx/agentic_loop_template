@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from memory.stream_context import owned_paths_csv, stream_name, worktree_path
 
 from .persist import persist_role_handoff
 
@@ -52,13 +53,13 @@ class MockAdapter:
         r, to, phase, status = seq[self._step]
         self._step += 1
         data = _base(r, to, phase, status)
-        stream = os.environ.get("AGENTIX_STREAM")
+        stream = stream_name()
         if stream:
             data["stream"] = stream
-        owned = os.environ.get("AGENTIX_OWNED_PATHS")
+        owned = owned_paths_csv()
         if owned:
             data["owned_paths"] = [p.strip() for p in owned.split(",") if p.strip()]
-        wt = os.environ.get("AGENTIX_WORKTREE")
+        wt = worktree_path()
         if wt:
             data["worktree"] = wt
         data.setdefault("merge_gate", "after-tests-green")

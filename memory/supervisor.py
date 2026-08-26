@@ -682,6 +682,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         action="store_true",
         help="Use plans only for worktrees already present (testing)",
     )
+    par_p.add_argument(
+        "--concurrent",
+        action="store_true",
+        help="Run disjoint streams overlapping in time (default serial)",
+    )
 
     args = parser.parse_args(argv)
     workdir = Path(args.workdir).resolve() if getattr(args, "workdir", None) else Path.cwd()
@@ -712,6 +717,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             wt_base=args.wt_base,
             skip_provision=args.skip_provision,
             integration_branch=args.integration_branch,
+            concurrent=args.concurrent,
         )
         print(json.dumps(res, ensure_ascii=False, default=str, indent=2))
         return int(res.get("exit_code", 1))
