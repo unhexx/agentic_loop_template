@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Optional, Union
 from memory.handoff_io import save_handoff
 from memory.logutil import get_logger
 from memory.prompt_caps import resolve_prompt_caps
+from memory.stream_fence import fence_block
 
 log = get_logger("memory.supervisor")
 
@@ -323,7 +324,8 @@ def build_role_prompt(
         "Use tools/select.py for tools (do not inline full tool docs).\n\n"
         f"{body}\n{prev}\n## State snapshot\n{snap}\n{knowledge}"
     )
-    return _maybe_compress_prompt(prompt, workdir)
+    # Забор после compress: иначе компрессор его выкинет. Запас — FENCE_OVERHEAD_CHARS.
+    return _maybe_compress_prompt(prompt, workdir) + fence_block()
 
 
 def maybe_create_pr(workdir: Path, sup: dict) -> Terminal:
@@ -671,7 +673,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     status_p = sub.add_parser("status", help="Print LOOP_STATE snapshot JSON")
     status_p.add_argument("--workdir", type=Path, default=None)
 
-    stop_p = sub.add_parser("stop", help="Write .agent/STOP cooperative stop flag")
+    stop_p = sub.add_parser(
+        "stop",
+        help="Write .agent/STOP on hub and known stream worktrees",
+    )
     stop_p.add_argument("--workdir", type=Path, default=None)
 
     par_p = sub.add_parser(
@@ -702,6 +707,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         "--concurrent",
         action="store_true",
         help="Run disjoint streams overlapping in time (default serial)",
+    )
+    par_p.add_argument(
+        "--push",
+        action="store_true",
+        help="Push stream and integration branches to origin (never main)",
     )
 
     args = parser.parse_args(argv)
@@ -734,6 +744,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             skip_provision=args.skip_provision,
             integration_branch=args.integration_branch,
             concurrent=args.concurrent,
+            push=args.push,
         )
         print(json.dumps(res, ensure_ascii=False, default=str, indent=2))
         return int(res.get("exit_code", 1))
@@ -758,13 +769,17 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     if args.cmd == "stop":
-        agent = workdir / ".agent"
-        agent.mkdir(parents=True, exist_ok=True)
-        stop_path = agent / "STOP"
-        stop_path.write_text("1", encoding="utf-8")
+        from memory.stream_stop import fanout_stop
+
+        written = fanout_stop(workdir)
+        stop_flag = str(written[0]) if written else str(workdir / ".agent" / "STOP")
         print(
             json.dumps(
-                {"ok": True, "stop_flag": str(stop_path)},
+                {
+                    "ok": True,
+                    "stop_flag": stop_flag,
+                    "written": [str(p) for p in written],
+                },
                 ensure_ascii=False,
                 indent=2,
             )
