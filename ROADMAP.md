@@ -1,10 +1,10 @@
 # Agentix Public Roadmap
 
-[![Version](https://img.shields.io/badge/version-3.9.3-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.9.4-blue?style=flat-square)](CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](README.md)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen?style=flat-square)](docs/README.md)
 
-**Status Date:** 2026-08-24 · **Initiative:** Business Efficiency — **COMPLETE** · **v3.9 Harness Hardening** — **COMPLETE** · **Next:** Future
+**Status Date:** 2026-08-25 · **Initiative:** Business Efficiency — **COMPLETE** · **v3.9 Harness Hardening** — **COMPLETE** · **Next:** Future
 
 ---
 
@@ -43,7 +43,7 @@ Shipped 2026-08-24. Criteria:
 | P8-06 | `validate_handoff` ↔ `schemas/handoff.schema.json` | Done |
 | P8-07 | CI pytest + mock O→C→T→R on `pull_request` | Done |
 
-Leftover nice-to-haves (token estimate, docs i18n, concurrency, …) moved to Future.
+Leftover nice-to-haves (docs i18n, concurrency, …) moved to Future.
 
 ---
 
@@ -52,7 +52,6 @@ Leftover nice-to-haves (token estimate, docs i18n, concurrency, …) moved to Fu
 - Hosted Agentix Hub SaaS (optional)
 - Full MCP skills for Linear/Jira/Slack
 - True concurrent fan-out / shared `.agent/` locking (P8-11; `run-parallel` stays serial)
-- Token estimate (tiktoken / per-model) (P8-08)
 - Docs i18n / dual-language public guides (P8-09)
 - Playbook embeddings ranking (P8-10)
 - Modularize large modules (`meta_harvester`, `experience_harvester`, Init.ps1) (P8-12)
@@ -66,6 +65,7 @@ Leftover nice-to-haves (token estimate, docs i18n, concurrency, …) moved to Fu
 
 | Version | Highlight |
 |---------|-----------|
+| **v3.9.4** | Token estimate: tiktoken extra, per-model encoding, chars/4 fallback |
 | **v3.9.3** | Harvest/reflect skill split (experience-accumulation vs loop-self-improve) |
 | **v3.9.2** | Blackbox AI CLI adapter hardening (WM collision, hermetic tests, probe) |
 | **v3.9.1** | Opt-in `git-commit-to-jira-tasks` skill (disabled by default; never `--intent git`) |

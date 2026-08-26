@@ -2,8 +2,17 @@
 
 ## [Unreleased]
 
+## [3.9.4] - 2026-08-25
+
 ### Added
-- Optional host recipe for Antigravity CLI (`agy`) + second pxpipe: `scripts/pxpipe-agy/` shim and `agy-pxpipe` wrapper, systemd examples `pxpipe-agy*.service.example`. Images `gemini-3.7-flash-high` / `-medium` without touching the Grok imager on `:8100`. README + `docs/proxy.md` Foreign CLIs.
+- P8-08 token estimate: per-model encoding (`gpt-4o`/`o1`/`o3` → `o200k_base`, default `cl100k_base`), `describe_estimate` / CLI `--model` `--encoding`, extras `tokens` and tiktoken pin on `dev`. Fallback remains `max(1, len//4)` when tiktoken is missing.
+- Optional host recipe for Antigravity CLI (`agy`) + second pxpipe: `scripts/pxpipe-agy/` shim and `agy-pxpipe` wrapper, systemd examples `pxpipe-agy*.service.example`. Images `gemini-3.7-flash-high` / `-medium` without touching the Grok imager on `:8100`. README + `docs/proxy.md` Foreign CLIs. (Landed on main in `103976c`; changelog catch-up.)
+
+### Changed
+- `VERSION` → 3.9.4
+- ROADMAP: P8-08 token estimate removed from Future
+
+Patch, not 3.10.0: no wizard default change, no new product surface, estimator + extra only.
 
 ## [3.9.3] - 2026-08-25
 
