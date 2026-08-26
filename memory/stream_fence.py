@@ -8,8 +8,8 @@ from __future__ import annotations
 
 from memory.stream_context import owned_paths_csv, stream_name, worktree_path
 
-# Компрессор не резервирует эти символы: забор клеим после сжатия тела.
-FENCE_OVERHEAD_CHARS = 512
+# Полный забор клеим после сжатия; запас сверх prompt_token_cap, текст не режем.
+FENCE_OVERHEAD_CHARS = 1024
 
 
 def fence_block() -> str:

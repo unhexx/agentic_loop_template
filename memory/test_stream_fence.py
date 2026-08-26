@@ -112,25 +112,28 @@ def test_fence_does_not_mutate_os_environ(no_stream_env) -> None:
 
 
 def test_fence_overhead_constant() -> None:
-    assert FENCE_OVERHEAD_CHARS == 512
+    assert FENCE_OVERHEAD_CHARS == 1024
     assert isinstance(FENCE_OVERHEAD_CHARS, int)
 
 
-def test_typical_fence_static_fits_overhead(no_stream_env) -> None:
+def test_realistic_fence_fits_overhead(no_stream_env) -> None:
     name = "harness"
-    owned = "memory/,tools/"
-    wt = "/tmp/wt-harness"
+    owned = (
+        "memory/stream_context.py,memory/adapters/grok.py,"
+        "memory/adapters/blackbox.py,memory/adapters/cursor.py,"
+        "memory/adapters/proc.py,memory/adapters/persist.py,"
+        "memory/test_stream_context.py"
+    )
+    wt = (
+        "/home/unhex/.grok/worktrees/project-agentic-loop-template/"
+        "subagent-01a03fae-b45f-7850-b58d-3a478d80d707"
+    )
     with use_stream(name=name, owned_paths=owned, worktree=wt):
         text = fence_block()
-    static = (
-        len(text)
-        - len(name)
-        - len(owned)
-        - len(wt)
-    )
-    assert static > 0
-    assert static < FENCE_OVERHEAD_CHARS
-    assert len(text) > 0
+    assert len(text) <= FENCE_OVERHEAD_CHARS
+    assert f"`{name}`" in text
+    assert owned in text
+    assert wt in text
     assert text.startswith("\n## Stream fence (mandatory)\n")
     assert text.endswith("\n")
 
@@ -145,6 +148,8 @@ def test_stream_fence_source_does_not_import_supervisor() -> None:
         elif isinstance(node, ast.ImportFrom):
             mod = node.module or ""
             assert "supervisor" not in mod.split(".")
+            for alias in node.names:
+                assert "supervisor" not in alias.name.split(".")
 
 
 def test_fence_thread_isolation(no_stream_env) -> None:
