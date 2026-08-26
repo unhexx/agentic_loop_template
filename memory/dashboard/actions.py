@@ -31,6 +31,7 @@ def register_actions(app: FastAPI) -> None:
     @app.post("/actions/stop")
     async def action_stop(request: Request) -> Response:
         store: DashboardStore = request.app.state.store
+        # fan-out в write_stop: иначе POST останавливает только хаб.
         path = store.write_stop()
         await _after_write(
             request,
@@ -43,6 +44,7 @@ def register_actions(app: FastAPI) -> None:
     @app.post("/actions/clear-stop")
     async def action_clear_stop(request: Request) -> Response:
         store: DashboardStore = request.app.state.store
+        # иначе worktree остаются с STOP после снятия флага на хабе
         store.clear_stop()
         await _after_write(
             request,

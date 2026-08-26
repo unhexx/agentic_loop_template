@@ -23,6 +23,7 @@ WATCHED_FILES: Tuple[str, ...] = (
     "PLAN.md",
     "TODO.md",
     "supervisor.heartbeat",
+    "streams_state.json",
 )
 
 POLL_INTERVAL_S = 1.0
@@ -137,6 +138,8 @@ class Watcher:
             return {"type": "plan:changed", "path": name}
         if name == "supervisor.heartbeat":
             return {"type": "liveness:changed", "path": name}
+        if name == "streams_state.json":
+            return {"type": "streams:changed", "path": name}
         return {"type": "file:changed", "path": name}
 
     def _peek_json(self, name: str) -> dict[str, Any]:

@@ -8,9 +8,14 @@ import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Sequence, Set
 
+from memory.logutil import get_logger
+from memory.stream_stop import clear_fanout, fanout_stop
 from memory.workspace import get_workspace_id
+
+log = get_logger("memory.dashboard.read_model")
+_DEFAULT_WT_DIR = "agentic-loop-worktrees"
 
 
 # last_handoff пишется write_text, не tmp+replace — порванный JSON реален.
@@ -35,7 +40,7 @@ class DashboardStore:
     """Проекция LOOP_STATE / last_handoff / STOP / jsonl / ledger / playbooks / audit.
 
     PLAN/TODO и выдержка памяти — тоже только чтение. Не раннер, не chdir.
-    STOP пишем явно в workdir/.agent/STOP (те же байты, что CLI stop).
+    STOP пишем через fan-out: хаб и worktree из streams_state (как CLI stop).
     """
 
     def __init__(self, workdir: Path) -> None:
@@ -63,20 +68,18 @@ class DashboardStore:
         return (self.agent / "STOP").is_file()
 
     def write_stop(self) -> Path:
-        """Кооперативный STOP: содержимое ``1``, как у ``supervisor stop``."""
-        self.agent.mkdir(parents=True, exist_ok=True)
-        path = self.agent / "STOP"
-        path.write_text("1", encoding="utf-8")
-        return path
+        """Кооперативный STOP: хаб и worktree из streams_state, байты ``1``."""
+        # Иначе UI гасит только хаб, а потоки в worktree продолжают ход.
+        extra = self._wt_base_extra_roots()
+        fanout_stop(self.workdir, extra_roots=extra)
+        return self.agent / "STOP"
 
     def clear_stop(self) -> bool:
-        """Снять флаг, если есть. Петлю не запускаем."""
-        path = self.agent / "STOP"
-        try:
-            path.unlink()
-            return True
-        except FileNotFoundError:
-            return False
+        """Снять STOP на хабе и известных worktree. True, если на хабе файл был."""
+        extra = self._wt_base_extra_roots()
+        had = (self.agent / "STOP").is_file()
+        clear_fanout(self.workdir, extra_roots=extra)
+        return had
 
     def open_questions(self) -> List[Dict[str, Any]]:
         """Открытые вопросы из QUESTIONS_POOL.json по явному пути."""
@@ -152,6 +155,111 @@ class DashboardStore:
             "role": role,
             "ts": ts_raw,
         }
+
+    def streams_state(self) -> Dict[str, Any]:
+        """Снимок hub streams_state.json; порванный JSON — как LOOP_STATE."""
+        data = self._read_json(self.agent / "streams_state.json", default={})
+        return data if isinstance(data, dict) else {}
+
+    def stream_heartbeats(self) -> List[Dict[str, Any]]:
+        """Пульс каждого потока: allowlist §6, ``.agent/`` обязателен до stat heartbeat."""
+        state = self.streams_state()
+        extra = self._wt_base_extra_roots()
+        roots = self._heartbeat_allowed_roots(extra)
+        out: List[Dict[str, Any]] = []
+        for name, rec in _stream_records(state):
+            raw_wt = rec.get("worktree")
+            row: Dict[str, Any] = {
+                "name": name,
+                "status": rec.get("status") or "",
+                "worktree": "" if raw_wt is None else str(raw_wt),
+                "branch": rec.get("branch") or "",
+                "stop": False,
+                "heartbeat": {
+                    "status": "unknown",
+                    "label": "liveness unknown",
+                },
+                "age_s": None,
+            }
+            wt = self._allowlisted_worktree(raw_wt, roots)
+            if wt is None:
+                out.append(row)
+                continue
+            agent_dir = wt / ".agent"
+            try:
+                has_agent = agent_dir.is_dir()
+            except OSError:
+                has_agent = False
+            if not has_agent:
+                log.warning("stream heartbeat skip %s: no .agent dir", wt)
+                out.append(row)
+                continue
+            hb = DashboardStore(wt).heartbeat()
+            row["heartbeat"] = hb
+            row["age_s"] = _age_s(hb.get("ts"))
+            try:
+                row["stop"] = (agent_dir / "STOP").is_file()
+            except OSError:
+                row["stop"] = False
+            out.append(row)
+        return out
+
+    def _wt_base_extra_roots(self) -> List[Path]:
+        """wt_base из project_config супервизора, не DashboardConfig (там host/port)."""
+        import importlib
+
+        # прямой import supervisor тянет runner в sidecar; нужен только load_config.
+        load_project_config = importlib.import_module("memory.supervisor").load_config
+        cfg = load_project_config(self.workdir)
+        par = (cfg.get("supervisor") or {}) if isinstance(cfg.get("supervisor"), dict) else {}
+        par = (par.get("parallel") or {}) if isinstance(par.get("parallel"), dict) else {}
+        raw_wt = par.get("wt_base")
+        extra: List[Path] = []
+        if isinstance(raw_wt, str) and raw_wt.strip():
+            p = Path(raw_wt).expanduser()
+            try:
+                p = p.resolve()
+            except OSError:
+                pass
+            if _is_fs_root(p):
+                log.warning("wt_base is filesystem root, ignored")
+            else:
+                extra.append(p)
+        return extra
+
+    def _heartbeat_allowed_roots(self, extra: Sequence[Path]) -> List[Path]:
+        hub = self.workdir
+        roots: List[Path] = [hub, hub.parent / _DEFAULT_WT_DIR]
+        for raw in extra:
+            p = Path(raw)
+            try:
+                p = p.resolve()
+            except OSError:
+                pass
+            if _is_fs_root(p):
+                continue
+            roots.append(p)
+        return roots
+
+    def _allowlisted_worktree(
+        self, raw: Any, roots: Sequence[Path]
+    ) -> Optional[Path]:
+        if raw is None:
+            return None
+        s = str(raw).strip()
+        if not s:
+            return None
+        p = Path(s).expanduser()
+        if not p.is_absolute():
+            p = self.workdir / p
+        try:
+            p = p.resolve()
+        except OSError:
+            pass
+        if _is_fs_root(p) or not _path_under_roots(p, roots):
+            log.warning("stream heartbeat skip worktree outside allowlist %s", p)
+            return None
+        return p
 
     def snapshot(self) -> Dict[str, Any]:
         """Полоса Loop + три ключа last_handoff_*. Не надмножество state.snapshot()."""
@@ -478,6 +586,43 @@ def _copy_default(default: Any) -> Any:
     if isinstance(default, dict):
         return dict(default)
     return default
+
+
+def _is_fs_root(path: Path) -> bool:
+    """True для '/' — отравленный JSON не должен читать корень ФС."""
+    try:
+        resolved = path.resolve()
+    except OSError:
+        resolved = path
+    try:
+        return resolved == Path(resolved.anchor)
+    except (OSError, ValueError):
+        return str(resolved) in ("/", "\\")
+
+
+def _path_under_roots(path: Path, roots: Sequence[Path]) -> bool:
+    for root in roots:
+        try:
+            if path == root or path.is_relative_to(root):
+                return True
+        except (ValueError, TypeError, OSError):
+            continue
+    return False
+
+
+def _stream_records(state: Dict[str, Any]) -> List[tuple]:
+    raw = state.get("streams") if isinstance(state, dict) else None
+    if isinstance(raw, dict):
+        return [(str(k), v) for k, v in raw.items() if isinstance(v, dict)]
+    if isinstance(raw, list):
+        out: List[tuple] = []
+        for i, item in enumerate(raw):
+            if not isinstance(item, dict):
+                continue
+            name = item.get("name")
+            out.append((str(name) if name else f"stream-{i}", item))
+        return out
+    return []
 
 
 def _memory_root() -> Path:

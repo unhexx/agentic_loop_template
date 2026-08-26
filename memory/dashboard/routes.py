@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 
-from memory.dashboard.read_model import PLAYBOOK_ID_RE, DashboardStore
+from memory.dashboard.read_model import HEARTBEAT_FRESH_S, PLAYBOOK_ID_RE, DashboardStore
 from memory.dashboard.render import render_page, render_partial
 
 
@@ -36,6 +36,15 @@ _HANDOFF_STATUS_CLASS = {
 
 _LOOP_STATUS_NOTE = {
     "PR_READY_LOCAL": "local only — gh missing or failed",
+}
+
+_STREAM_STATUS_CLASS = {
+    "PENDING": "bg-zinc-800 text-zinc-300",
+    "RUNNING": "bg-emerald-900 text-emerald-300",
+    "STREAM_READY": "bg-emerald-900 text-emerald-300",
+    "BLOCKED": "bg-red-900 text-red-300",
+    "MERGED": "bg-zinc-800 text-zinc-300",
+    "IN_PROGRESS": "bg-emerald-900 text-emerald-300",
 }
 
 # Поля last_handoff в порядке схемы, не сырой dump.
@@ -78,13 +87,28 @@ def register_routes(app: FastAPI) -> None:
         snap = store.snapshot()
         html = render_page(
             "loop.html",
-            **_chrome(request.app),
+            **_chrome(request.app, nav_active="loop"),
             loop_strip_html=render_loop_strip(snap),
             handoff_card_html=render_handoff_card(snap),
             stop_banner_html=render_stop_banner(store),
             deltas_html=render_deltas(snap),
         )
         return HTMLResponse(html)
+
+    @app.get("/streams")
+    async def streams_page(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        html = render_page(
+            "streams.html",
+            **_chrome(request.app, title="Streams", nav_active="streams"),
+            streams_table_html=render_streams_table(store),
+        )
+        return HTMLResponse(html)
+
+    @app.get("/partials/streams")
+    async def streams_partial(request: Request) -> HTMLResponse:
+        store: DashboardStore = request.app.state.store
+        return HTMLResponse(render_streams_table(store))
 
     @app.get("/partials/loop-strip")
     async def loop_strip(request: Request) -> HTMLResponse:
@@ -107,7 +131,7 @@ def register_routes(app: FastAPI) -> None:
         ho = store.last_handoff()
         html = render_page(
             "handoff.html",
-            **_chrome(request.app, title="Handoff"),
+            **_chrome(request.app, title="Handoff", nav_active="handoff"),
             fields_html=render_handoff_fields(ho),
             handoff_json=_handoff_json_text(ho),
             history_html=render_history_list(store.history_tail()),
@@ -119,7 +143,7 @@ def register_routes(app: FastAPI) -> None:
         store: DashboardStore = request.app.state.store
         html = render_page(
             "ledger.html",
-            **_chrome(request.app, title="Ledger"),
+            **_chrome(request.app, title="Ledger", nav_active="ledger"),
             ledger_rows_html=render_ledger_rows(store),
         )
         return HTMLResponse(html)
@@ -134,7 +158,7 @@ def register_routes(app: FastAPI) -> None:
         store: DashboardStore = request.app.state.store
         html = render_page(
             "playbooks.html",
-            **_chrome(request.app, title="Playbooks"),
+            **_chrome(request.app, title="Playbooks", nav_active="playbooks"),
             playbooks_list_html=render_playbooks_list(store),
         )
         return HTMLResponse(html)
@@ -157,7 +181,7 @@ def register_routes(app: FastAPI) -> None:
         store: DashboardStore = request.app.state.store
         html = render_page(
             "audit.html",
-            **_chrome(request.app, title="Audit"),
+            **_chrome(request.app, title="Audit", nav_active="audit"),
             audit_rows_html=render_audit_rows(store),
         )
         return HTMLResponse(html)
@@ -172,7 +196,7 @@ def register_routes(app: FastAPI) -> None:
         store: DashboardStore = request.app.state.store
         html = render_page(
             "plan.html",
-            **_chrome(request.app, title="Plan"),
+            **_chrome(request.app, title="Plan", nav_active="plan"),
             plan_body_html=render_plan_body(store),
         )
         return HTMLResponse(html)
@@ -187,7 +211,7 @@ def register_routes(app: FastAPI) -> None:
         store: DashboardStore = request.app.state.store
         html = render_page(
             "memory.html",
-            **_chrome(request.app, title="Memory"),
+            **_chrome(request.app, title="Memory", nav_active="memory"),
             memory_excerpt_html=render_memory_excerpt(store),
         )
         return HTMLResponse(html)
@@ -202,7 +226,7 @@ def register_routes(app: FastAPI) -> None:
         store: DashboardStore = request.app.state.store
         html = render_page(
             "questions.html",
-            **_chrome(request.app, title="Questions"),
+            **_chrome(request.app, title="Questions", nav_active="questions"),
             questions_table_html=render_questions_table(store),
         )
         return HTMLResponse(html)
@@ -228,10 +252,11 @@ def register_routes(app: FastAPI) -> None:
         return HTMLResponse(render_stop_banner(store))
 
 
-def _chrome(app: FastAPI, title: str = "Loop") -> Dict[str, str]:
+def _chrome(app: FastAPI, title: str = "Loop", nav_active: str = "loop") -> Dict[str, str]:
     wd = app.state.workdir
     return {
         "title": title,
+        "nav_active": nav_active,
         "csrf": str(getattr(app.state, "csrf_token", "") or ""),
         "year": str(datetime.now(timezone.utc).year),
         "conn_dot": "WS: polling",
@@ -658,6 +683,68 @@ def render_memory_excerpt(store: DashboardStore) -> str:
         workspace_id=_str(info.get("workspace_id")),
         body_html=body_html,
     )
+
+
+def render_streams_table(store: DashboardStore) -> str:
+    rows = store.stream_heartbeats()
+    if not rows:
+        rows_html = (
+            '<tr><td colspan="6" class="py-3 text-zinc-500">'
+            "No streams.</td></tr>"
+        )
+    else:
+        parts = []
+        for row in rows:
+            name = _str(row.get("name"))
+            status = _str(row.get("status"))
+            status_class = _STREAM_STATUS_CLASS.get(status, "bg-zinc-800 text-zinc-300")
+            hb = row.get("heartbeat") or {}
+            if not isinstance(hb, dict):
+                hb = {}
+            hb_status = _str(hb.get("status") or "unknown")
+            age = row.get("age_s")
+            if isinstance(age, (int, float)):
+                age_bit = f"{int(age)}s"
+                if age > HEARTBEAT_FRESH_S:
+                    age_bit = f"stale {age_bit}"
+            else:
+                age_bit = "—"
+            hb_cell = f"{hb_status} · {age_bit}"
+            stop_label = "present" if row.get("stop") else "absent"
+            status_disp = status or "—"
+            wt_disp = _str(row.get("worktree"))
+            branch_disp = _str(row.get("branch"))
+            cells = [
+                f'<td class="py-1 pr-3 whitespace-nowrap">{escape(name, quote=True)}</td>',
+                (
+                    f'<td class="py-1 pr-3 whitespace-nowrap">'
+                    f'<span class="text-[10px] px-1.5 py-0.5 rounded {status_class}">'
+                    f"{escape(status_disp, quote=True)}</span></td>"
+                ),
+                (
+                    f'<td class="py-1 pr-3 font-mono text-[10px] max-w-xs truncate" '
+                    f'title="{escape(wt_disp, quote=True)}">'
+                    f"{escape(wt_disp, quote=True)}</td>"
+                ),
+                f'<td class="py-1 pr-3 whitespace-nowrap">{escape(branch_disp, quote=True)}</td>',
+                (
+                    f'<td class="py-1 pr-3 whitespace-nowrap" '
+                    f'data-hb="{escape(hb_status, quote=True)}">'
+                    f"{escape(hb_cell, quote=True)}</td>"
+                ),
+                (
+                    f'<td class="py-1 pr-3 whitespace-nowrap" '
+                    f'data-stop="{escape(stop_label, quote=True)}">'
+                    f"{escape(stop_label, quote=True)}</td>"
+                ),
+            ]
+            parts.append(
+                f'<tr class="border-b border-zinc-800/80" data-stream="{escape(name, quote=True)}">'
+                + "".join(cells)
+                + "</tr>"
+            )
+        rows_html = "".join(parts)
+    return render_partial("streams_table.html", rows_html=rows_html)
 
 
 def render_stop_banner(store: DashboardStore) -> str:

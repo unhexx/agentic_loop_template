@@ -1,0 +1,8 @@
+<section class="space-y-6">
+  <h1 class="text-2xl font-semibold tracking-tight">{{title}}</h1>
+  <span class="hidden bg-emerald-900 text-emerald-300 bg-amber-900 text-amber-300 bg-red-900 text-red-300 bg-zinc-800 text-zinc-300"></span>
+  <div id="streams-table"
+       hx-get="/partials/streams"
+       hx-trigger="load, every 5s, ws-refresh from:body"
+       hx-swap="innerHTML">{{streams_table_html}}</div>
+</section>

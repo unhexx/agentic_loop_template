@@ -25,6 +25,20 @@ _CHROME_KEYS = (
     "workdir_path",
 )
 
+_NAV_IDLE = "hover:bg-zinc-800 text-zinc-400"
+_NAV_ACTIVE = "nav-active"
+_NAV_ITEMS = (
+    "loop",
+    "streams",
+    "handoff",
+    "ledger",
+    "playbooks",
+    "audit",
+    "questions",
+    "plan",
+    "memory",
+)
+
 
 def _sub(raw: str, ctx: Dict[str, object]) -> str:
     def repl(m: Match[str]) -> str:
@@ -51,4 +65,7 @@ def render_page(name: str, **ctx: object) -> str:
     chrome = {k: ctx[k] for k in _CHROME_KEYS if k in ctx}
     chrome["body_html"] = body
     chrome.setdefault("title", ctx.get("title") or "Agentix")
+    nav_active = str(ctx.get("nav_active") or "loop")
+    for item in _NAV_ITEMS:
+        chrome[f"nav_{item}_class"] = _NAV_ACTIVE if nav_active == item else _NAV_IDLE
     return redact_html(_sub(base, chrome))

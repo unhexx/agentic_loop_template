@@ -26,14 +26,15 @@
       </div>
       <div id="conn-dot" class="text-xs px-2 py-0.5 rounded bg-amber-900 text-amber-300 mb-6">{{conn_dot}}</div>
       <nav class="space-y-1 text-sm">
-        <a href="/" class="block px-3 py-2 rounded nav-active">Loop</a>
-        <a href="/handoff" class="block px-3 py-2 rounded hover:bg-zinc-800 text-zinc-400">Handoff</a>
-        <a href="/ledger" class="block px-3 py-2 rounded hover:bg-zinc-800 text-zinc-400">Ledger</a>
-        <a href="/playbooks" class="block px-3 py-2 rounded hover:bg-zinc-800 text-zinc-400">Playbooks</a>
-        <a href="/audit" class="block px-3 py-2 rounded hover:bg-zinc-800 text-zinc-400">Audit</a>
-        <a href="/questions" class="block px-3 py-2 rounded hover:bg-zinc-800 text-zinc-400">Questions</a>
-        <a href="/plan" class="block px-3 py-2 rounded hover:bg-zinc-800 text-zinc-400">Plan</a>
-        <a href="/memory" class="block px-3 py-2 rounded hover:bg-zinc-800 text-zinc-400">Memory</a>
+        <a href="/" class="block px-3 py-2 rounded {{nav_loop_class}}">Loop</a>
+        <a href="/streams" class="block px-3 py-2 rounded {{nav_streams_class}}">Streams</a>
+        <a href="/handoff" class="block px-3 py-2 rounded {{nav_handoff_class}}">Handoff</a>
+        <a href="/ledger" class="block px-3 py-2 rounded {{nav_ledger_class}}">Ledger</a>
+        <a href="/playbooks" class="block px-3 py-2 rounded {{nav_playbooks_class}}">Playbooks</a>
+        <a href="/audit" class="block px-3 py-2 rounded {{nav_audit_class}}">Audit</a>
+        <a href="/questions" class="block px-3 py-2 rounded {{nav_questions_class}}">Questions</a>
+        <a href="/plan" class="block px-3 py-2 rounded {{nav_plan_class}}">Plan</a>
+        <a href="/memory" class="block px-3 py-2 rounded {{nav_memory_class}}">Memory</a>
       </nav>
       <div class="mt-auto pt-8 text-[10px] text-zinc-500">{{year}}</div>
     </aside>
