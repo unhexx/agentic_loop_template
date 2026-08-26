@@ -39,6 +39,11 @@ Each role: **PLAN → ACT (≤3 tool calls) → REFLECT → handoff JSON**.
 | Resume | `memory/resume.py` | Crash recovery (P7) |
 | Request proxy | `memory/proxy/` | Loopback `:8110` gateway → host pxpipe `:8100` ([docs/proxy.md](proxy.md)) |
 | Control Plane | `memory.dashboard` | operator HTMX UI, not the runner |
+| Stream identity | `memory/stream_context.py` | ContextVar then `AGENTIX_*` env; `apply_stream_env` copies into the child dict **once** per spawn |
+| Agent lock | `memory/agent_lock.py` | stdlib `O_EXCL` + PID on `.agent/<name>.lock`; stale-PID recovery; named locks for state / handoff / streams / leases / writers |
+| Stream leases | `memory/stream_lease.py` | Exclusive `owned_paths` claim (`python -m memory.stream_lease`); **live PID is never stolen**; TTL display-only |
+| Stream git | `memory/stream_git.py` | Dedicated integration worktree; `--no-ff` merge; opt-in push to `origin`; never checkout hub `HEAD`; never `main` |
+| Streams page | `memory.dashboard` `/streams` | Per-stream status, worktree, heartbeat age, STOP; Control Plane STOP fans out |
 
 ---
 
@@ -96,3 +101,7 @@ flowchart TD
 - [memory/README.md](../memory/README.md) — memory layer API
 - [Agents Dashboard design](superpowers/specs/2026-08-21-agents-dashboard-design.md) — Control Plane spec (shipped `:8112` / 3.8.0)
 - [P8 Harness Hardening](superpowers/specs/2026-08-24-p8-harness-hardening-design.md) — packaging, observability, extract, init parity, state DI, CI (3.9.0)
+- [P8-11 concurrent fan-out](superpowers/specs/2026-08-26-p8-11-concurrent-fanout-design.md) — `--concurrent` + `agent_lock` (3.10.0)
+- [P8-14 context budgets](superpowers/specs/2026-08-26-p8-14-context-budgets-design.md) — supervisor caps from `context_budget` (3.10.1)
+- [Conflict-free parallel sessions](superpowers/specs/2026-08-26-conflict-free-parallel-sessions-design.md) — leases, `--push`, STOP fan-out, Streams page (target 3.11.0)
+- [PARALLEL_PROTOCOL.md](../PARALLEL_PROTOCOL.md) — operator session recipe, leases, never-merge-`main`

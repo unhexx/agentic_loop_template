@@ -326,7 +326,8 @@ python -m memory.playbooks export --format hub
 | `bash scripts/demo-loop.sh` | One-command smoke demo |
 | `agentix` / `python -m memory` | Console script after `pip install -e .` (same `_cli`; no PYTHONPATH) |
 | `python -m memory.supervisor run --adapter mock --max-cycles 1 --no-pr` | Unattended role loop (mock CI path); adapters: mock/grok/cursor/blackbox |
-| `python -m memory.supervisor run-parallel --stream name:paths/` | Disjoint streams (serial default; `--concurrent` overlaps in time), then one integration PR; never merges `main` |
+| `python -m memory.supervisor run-parallel --stream name:paths/` | Disjoint streams (serial default; `--concurrent` overlaps in time; `--push` sends stream + integration branches to `origin`, never `main`), then one integration PR from the integration worktree; never merges `main` |
+| `python -m memory.stream_lease claim\|renew\|release\|status` | Exclusive `owned_paths` leases for operator parallel sessions; live PID is never stolen; TTL is display-only |
 | `scripts/agentix-supervisor run ...` | Bash shim for the same supervisor CLI |
 | `python -m memory.dashboard serve --workdir PATH` | Operator Control Plane (HTMX UI, not the runner); loopback `:8112` |
 | `scripts/agentix-dashboard serve --workdir PATH` | Bash shim for the same dashboard CLI |

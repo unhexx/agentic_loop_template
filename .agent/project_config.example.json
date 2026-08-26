@@ -120,7 +120,10 @@
       "integration_branch": "feature/integration-parallel",
       "wt_base": null,
       "require_owned_paths": true,
-      "serial": true
+      "serial": true,
+      "concurrent": false,
+      "push": false,
+      "lease_ttl_s": 7200
     }
   }
 }
