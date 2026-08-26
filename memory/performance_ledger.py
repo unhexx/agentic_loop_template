@@ -14,47 +14,62 @@ Usage (inside proper .venv):
   python -m agentic_loop_template.memory.performance_ledger report --recent 5
 """
 
+from __future__ import annotations
+
 import json
 import os
 import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Optional
+
+from memory.agent_lock import agent_lock
 
 AGENT_DIR = Path(".agent")
 LEDGER_JSON = AGENT_DIR / "PERFORMANCE_LEDGER.json"
 LEDGER_MD = AGENT_DIR / "PERFORMANCE_LEDGER.md"
 
 
-def _ensure_agent_dir():
-    AGENT_DIR.mkdir(parents=True, exist_ok=True)
+def _ledger_json(agent_dir: Optional[Path] = None) -> Path:
+    """Явный каталог .agent или модульный путь — иначе параллельные сессии пишут в cwd хаба."""
+    return Path(agent_dir) / "PERFORMANCE_LEDGER.json" if agent_dir is not None else LEDGER_JSON
 
 
-def _atomic_write_json(path: Path, data: dict):
+def _ledger_md(agent_dir: Optional[Path] = None) -> Path:
+    return Path(agent_dir) / "PERFORMANCE_LEDGER.md" if agent_dir is not None else LEDGER_MD
+
+
+def _ensure_agent_dir(agent_dir: Optional[Path] = None) -> None:
+    _ledger_json(agent_dir).parent.mkdir(parents=True, exist_ok=True)
+
+
+def _atomic_write_json(path: Path, data: dict) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     tmp.replace(path)
 
 
-def _load_ledger():
-    _ensure_agent_dir()
-    if LEDGER_JSON.exists():
+def _load_ledger(agent_dir: Optional[Path] = None) -> dict:
+    _ensure_agent_dir(agent_dir)
+    path = _ledger_json(agent_dir)
+    if path.exists():
         try:
-            with open(LEDGER_JSON, encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
             pass
     return {"cycles": [], "summary": {"total_cycles": 0, "last_updated": None}}
 
 
-def _save_ledger(data: dict):
+def _save_ledger(data: dict, agent_dir: Optional[Path] = None) -> None:
     data["summary"]["last_updated"] = datetime.now(timezone.utc).isoformat()
-    _atomic_write_json(LEDGER_JSON, data)
-    _render_md_view(data)
+    _atomic_write_json(_ledger_json(agent_dir), data)
+    _render_md_view(data, agent_dir=agent_dir)
 
 
-def _render_md_view(data: dict):
+def _render_md_view(data: dict, agent_dir: Optional[Path] = None) -> None:
     lines = [
         "# .agent/PERFORMANCE_LEDGER.md — Cycle Performance & ROI Tracking",
         "",
@@ -74,47 +89,55 @@ def _render_md_view(data: dict):
     lines.append(f"- Last updated: {s.get('last_updated')}")
     lines.append("")
     lines.append("See memory/performance_ledger.py and integration in meta_harvester / AGENT_ROLES.")
-    with open(LEDGER_MD, "w", encoding="utf-8") as f:
+    md = _ledger_md(agent_dir)
+    md.parent.mkdir(parents=True, exist_ok=True)
+    with open(md, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
 
 
-def append_cycle(**kwargs):
-    """Append a cycle record. Called by Reviewer / meta on DONE."""
-    ledger = _load_ledger()
-    record = {
-        "cycle": kwargs.get("cycle"),
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "outcome": kwargs.get("outcome", "DONE"),
-        "elapsed_minutes": kwargs.get("elapsed_minutes", 0.0),
-        "tool_calls": kwargs.get("tool_calls", 0),
-        "tokens_est": kwargs.get("tokens_est", 0),
-        "confidence": kwargs.get("confidence", 0.0),
-        "tests_total": kwargs.get("tests_total", 0),
-        "tests_failed": kwargs.get("tests_failed", 0),
-        "violations": kwargs.get("violations", 0),
-        "meta_generated": kwargs.get("meta_generated", 0),
-        "meta_applied": kwargs.get("meta_applied", 0),
-        "success_patterns": kwargs.get("success_patterns", []),
-        "notes": kwargs.get("notes", ""),
-        "proxy_stats": kwargs.get("proxy_stats"),
-        "details": kwargs.get("details"),
-    }
-    ledger["cycles"].append(record)
-    ledger["summary"]["total_cycles"] = len(ledger["cycles"])
-    # Simple compaction: keep last 50
-    if len(ledger["cycles"]) > 50:
-        ledger["cycles"] = ledger["cycles"][-50:]
-    _save_ledger(ledger)
-    return record
+def append_cycle(*, agent_dir: Optional[Path] = None, **kwargs: Any) -> dict:
+    """Дописать цикл в ledger. Вызывается из Reviewer / meta на DONE.
+
+    agent_dir=None — модульные LEDGER_JSON/LEDGER_MD (CLI и meta_harvester без kwargs).
+    Явный путь нужен параллельным сессиям, чтобы не писать в cwd хаба.
+    """
+    # Лок на родителе реального JSON, не cwd/.agent: иначе патч LEDGER_JSON уезжает мимо.
+    with agent_lock(_ledger_json(agent_dir).parent, name="ledger"):
+        ledger = _load_ledger(agent_dir=agent_dir)
+        record = {
+            "cycle": kwargs.get("cycle"),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "outcome": kwargs.get("outcome", "DONE"),
+            "elapsed_minutes": kwargs.get("elapsed_minutes", 0.0),
+            "tool_calls": kwargs.get("tool_calls", 0),
+            "tokens_est": kwargs.get("tokens_est", 0),
+            "confidence": kwargs.get("confidence", 0.0),
+            "tests_total": kwargs.get("tests_total", 0),
+            "tests_failed": kwargs.get("tests_failed", 0),
+            "violations": kwargs.get("violations", 0),
+            "meta_generated": kwargs.get("meta_generated", 0),
+            "meta_applied": kwargs.get("meta_applied", 0),
+            "success_patterns": kwargs.get("success_patterns", []),
+            "notes": kwargs.get("notes", ""),
+            "proxy_stats": kwargs.get("proxy_stats"),
+            "details": kwargs.get("details"),
+        }
+        ledger["cycles"].append(record)
+        ledger["summary"]["total_cycles"] = len(ledger["cycles"])
+        # Simple compaction: keep last 50
+        if len(ledger["cycles"]) > 50:
+            ledger["cycles"] = ledger["cycles"][-50:]
+        _save_ledger(ledger, agent_dir=agent_dir)
+        return record
 
 
-def get_recent(n: int = 5):
-    ledger = _load_ledger()
+def get_recent(n: int = 5, *, agent_dir: Optional[Path] = None) -> list:
+    ledger = _load_ledger(agent_dir=agent_dir)
     return list(reversed(ledger.get("cycles", [])))[:n]
 
 
-def generate_report(recent: int = 5):
-    cycles = get_recent(recent)
+def generate_report(recent: int = 5, *, agent_dir: Optional[Path] = None):
+    cycles = get_recent(recent, agent_dir=agent_dir)
     if not cycles:
         return "No cycles recorded yet."
     total_elapsed = sum(c.get("elapsed_minutes", 0) for c in cycles)
