@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from memory.proxy.policy import ProxyNotReady, assert_ready
+from memory.stream_context import apply_stream_env
 from memory.validate_handoff import validate_handoff
 
 from .persist import persist_role_handoff
@@ -164,6 +165,7 @@ class GrokAdapter:
             raise
         except Exception as exc:
             raise ProxyNotReady(f"proxy env: {exc}") from exc
+        env = apply_stream_env(env)
         # grok --help: -p/--single PROMPT for single-turn stdout; cwd via subprocess
         cmd = [self.command, "-p", prompt]
         r = subprocess.run(

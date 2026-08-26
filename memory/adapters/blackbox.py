@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 from memory.logutil import get_logger
+from memory.stream_context import apply_stream_env
 
 from .grok import extract_handoff
 from .persist import persist_role_handoff
@@ -189,7 +190,7 @@ def _child_env(workdir: Path) -> dict[str, str]:
     env.setdefault("TERM", "dumb")
     env.setdefault("NO_COLOR", "1")
     env.setdefault("PYTHONIOENCODING", "utf-8")
-    return env
+    return apply_stream_env(env)
 
 
 class BlackboxAdapter:

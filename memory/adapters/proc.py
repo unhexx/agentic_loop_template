@@ -11,6 +11,8 @@ import time
 from pathlib import Path
 from typing import Mapping, Optional, Sequence
 
+from memory.stream_context import apply_stream_env
+
 # пауза SIGTERM → SIGKILL; бюджет роли уже исчерпан timeout_s
 _KILL_GRACE_S = 2.0
 
@@ -91,7 +93,10 @@ def run_cli(
     """
     if timeout_s <= 0:
         raise ValueError("timeout_s должен быть положительным")
-    child_env = os.environ.copy() if env is None else dict(env)
+    if env is None:
+        child_env = apply_stream_env(os.environ.copy())
+    else:
+        child_env = dict(env)
     kwargs: dict = {
         "stdin": subprocess.DEVNULL,  # иначе Node CLI зависает на запросе ключа
         "stdout": subprocess.PIPE,

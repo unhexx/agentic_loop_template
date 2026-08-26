@@ -48,3 +48,22 @@ def worktree_path() -> Optional[str]:
     if v is not None:
         return v
     return os.environ.get("AGENTIX_WORKTREE")
+
+
+def apply_stream_env(env: dict[str, str]) -> dict[str, str]:
+    """Копирует env и подставляет AGENTIX_STREAM / OWNED_PATHS / WORKTREE.
+
+    Источник: ContextVar, затем уже существующие ключи env, затем пропуск.
+    Не трогает os.environ.
+    """
+    out = dict(env)
+    name = stream_name()
+    if name:
+        out["AGENTIX_STREAM"] = name
+    owned = owned_paths_csv()
+    if owned:
+        out["AGENTIX_OWNED_PATHS"] = owned
+    wt = worktree_path()
+    if wt:
+        out["AGENTIX_WORKTREE"] = wt
+    return out

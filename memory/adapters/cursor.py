@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Optional
+
+from memory.stream_context import apply_stream_env
 
 from .grok import extract_handoff
 from .persist import persist_role_handoff
@@ -32,12 +35,14 @@ class CursorAdapter:
         if not shutil.which(str(self.command)):
             raise RuntimeError(f"{self.command} not on PATH")
         cmd = [str(self.command), "-p", prompt]
+        env = apply_stream_env(os.environ.copy())
         r = subprocess.run(
             cmd,
             cwd=str(workdir),
             capture_output=True,
             text=True,
             timeout=timeout_s,
+            env=env,
         )
         combined = (r.stdout or "") + "\n" + (r.stderr or "")
         if r.returncode != 0 and not combined.strip():
