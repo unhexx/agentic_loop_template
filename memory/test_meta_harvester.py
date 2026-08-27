@@ -33,6 +33,7 @@ def test_basic():
     # Создаём временный handoff для теста harvest
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
+        agent = tmp_path / ".agent"
         handoff = tmp_path / "test_handoff.json"
         handoff.write_text(json.dumps({
             "role": "Reviewer",
@@ -45,28 +46,22 @@ def test_basic():
             "last_commit": "Улучшил верификацию с маркером SYNC_DONE"
         }, ensure_ascii=False), encoding="utf-8")
 
-        # Временно подменим пути хранения на tmp, чтобы не трогать реальный .agent
-        orig_index = mh.TRAJECTORIES_INDEX
-        orig_md = mh.META_PROPOSALS_MD
-        mh.TRAJECTORIES_INDEX = tmp_path / "TRAJECTORIES.json"
-        mh.META_PROPOSALS_MD = tmp_path / "META_PROPOSALS.md"
-
-        tid = mh.harvest_from_handoff(handoff, cycle=42, outcome="DONE")
+        tid = mh.harvest_from_handoff(handoff, cycle=42, outcome="DONE", agent_dir=agent)
         print("✓ harvest вернул id:", tid)
         assert tid is not None
 
-        recent = mh.get_recent_trajectories(1)
+        recent = mh.get_recent_trajectories(1, agent_dir=agent)
         assert len(recent) == 1
         print("✓ get_recent_trajectories OK")
 
-        props = mh.analyze_for_proposals(recent=1, min_confidence=0.8)
+        props = mh.analyze_for_proposals(recent=1, min_confidence=0.8, agent_dir=agent)
         print("✓ analyze_for_proposals сгенерировал", len(props), "предложений")
 
-        n = mh.apply_safe_proposals(dry_run=True)
+        n = mh.apply_safe_proposals(dry_run=True, agent_dir=agent)
         print("✓ apply_safe_proposals (dry) обработал", n)
 
         sft = tmp_path / "train.jsonl"
-        report = mh.export_sft(out=sft, min_confidence=0.85)
+        report = mh.export_sft(out=sft, min_confidence=0.85, agent_dir=agent)
         assert report["written"] >= 1
         line = sft.read_text(encoding="utf-8").splitlines()[0]
         rec = json.loads(line)
@@ -75,17 +70,13 @@ def test_basic():
         print("✓ export_sft wrote", report["written"])
 
         # Тест новых функций (seed + ledger)
-        seeded = mh.seed_example_trajectory()
+        seeded = mh.seed_example_trajectory(agent_dir=agent)
         print("✓ seed_example_trajectory создал", seeded)
 
-        mh.update_performance_ledger("P-DEMO-001", "demo impact on compression")
-        ledger = Path(".agent/LOOP_PERFORMANCE.md")
+        mh.update_performance_ledger("P-DEMO-001", "demo impact on compression", agent_dir=agent)
+        ledger = agent / "LOOP_PERFORMANCE.md"
         assert ledger.exists()
         print("✓ update_performance_ledger записал метрику")
-
-        # Восстанавливаем пути
-        mh.TRAJECTORIES_INDEX = orig_index
-        mh.META_PROPOSALS_MD = orig_md
 
     print("=== Все базовые тесты пройдены ===")
 
