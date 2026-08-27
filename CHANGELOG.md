@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [3.11.3] - 2026-08-27
+
+### Added
+- Extracted MultiLLM ontology into `memory/llm_ontology.py` (types + CRUD). `agent_lock(name="llm_ontology")`, optional `base_dir=` for tests. Tests in `memory/test_llm_ontology.py`.
+- Design spec: [`docs/superpowers/specs/2026-08-27-p8-13-multillm-extract-design.md`](docs/superpowers/specs/2026-08-27-p8-13-multillm-extract-design.md)
+
+### Changed
+- `VERSION` → 3.11.3
+- `memory.schema` / `memory.store` re-export the extracted types and CRUD (import compatibility).
+- ROADMAP: P8-13 Future bullet removed; milestone v3.11.3
+
+Patch, not 3.12.0: no new CLI, supervisor/dashboard/wizard unchanged. MultiLLM is not wired into the loop.
+
 ## [3.11.2] - 2026-08-27
 
 ### Added

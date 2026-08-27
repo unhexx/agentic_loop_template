@@ -11,6 +11,23 @@ from typing import Any, Iterator
 
 from .schema import MemoryState, Pattern, normalize, parse_markdown, render_markdown
 from .workspace import memory_paths
+from .llm_ontology import (
+    CrossModelToolCall,
+    Decision,
+    LLMProvider,
+    ModelComparisonResult,
+    MultiLLMSession,
+    PromptVariant,
+    create_llm_provider,
+    create_llm_session,
+    create_multi_llm_session,
+    get_llm_ontology_snapshot,
+    query_llm_sessions,
+    record_cross_model_tool_call,
+    record_cross_tool_call,
+    record_decision,
+    record_model_comparison,
+)
 
 MAX_PATTERNS_PER_CATEGORY = 30
 MAX_DISTILLATIONS = 20
@@ -184,133 +201,4 @@ def update_from_json_payload(payload: str, cwd: Path | None = None) -> dict[str,
     return update_memory(new_patterns=patterns, distillation=distillation, cwd=cwd)
 
 
-# Полноценный CRUD для онтологии параллельных сессий.
-# Смежный json-файл с устойчивым хранением (через механизм рабочей области).
-# Атомарная запись, блокировки, обработка ошибок, дефолты.
-# Интеграция со снимком памяти проекта.
-
-from pathlib import Path as _Path
-from .schema import (
-    LLMProvider, MultiLLMSession, PromptVariant,
-    ModelComparisonResult, CrossModelToolCall, Decision
-)
-
-_LLM_STATE_FILE = "llm_ontology.json"
-
-
-def _get_llm_paths(cwd: _Path | None = None) -> dict[str, _Path]:
-    # Используем memory_paths чтобы смежный файл жил в постоянной директории рабочей области.
-    # Имя файла с префиксом wid — изоляция между разными рабочими областями.
-    mp = memory_paths(cwd=cwd)
-    wid = mp["workspace_id"]
-    base_dir: _Path = mp["dir"]
-    llm_file = base_dir / f"{wid}.{_LLM_STATE_FILE}"
-    lock_file = base_dir / f"{wid}.llm.lock"
-    return {"file": llm_file, "lock": lock_file}
-
-
-def _read_llm_state(cwd: _Path | None = None) -> dict[str, Any]:
-    paths = _get_llm_paths(cwd)
-    f = paths["file"]
-    if not f.exists():
-        return {"providers": [], "sessions": [], "comparisons": [], "tool_calls": [], "decisions": []}
-    try:
-        data = json.loads(f.read_text(encoding="utf-8"))
-        if not isinstance(data, dict):
-            data = {}
-        data.setdefault("providers", [])
-        data.setdefault("sessions", [])
-        data.setdefault("comparisons", [])
-        data.setdefault("tool_calls", [])
-        data.setdefault("decisions", [])
-        return data
-    except Exception:
-        return {"providers": [], "sessions": [], "comparisons": [], "tool_calls": [], "decisions": []}
-
-
-def _write_llm_state(state: dict[str, Any], cwd: _Path | None = None) -> None:
-    paths = _get_llm_paths(cwd)
-    f = paths["file"]
-    f.parent.mkdir(parents=True, exist_ok=True)
-    tmp = f.with_suffix(".tmp")
-    tmp.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp.replace(f)
-
-
-def create_llm_provider(provider: LLMProvider, cwd: _Path | None = None) -> dict[str, Any]:
-    """Создание записи в онтологии. Атомарно под блокировкой."""
-    paths = _get_llm_paths(cwd)
-    lock_file: _Path = paths.get("lock", paths["file"].with_suffix(".lock"))
-    with _file_lock(lock_file):
-        state = _read_llm_state(cwd)
-        state.setdefault("providers", []).append(provider.to_dict())
-        _write_llm_state(state, cwd)
-    return {"created": provider.id, "file": str(paths["file"])}
-
-
-def create_llm_session(session: MultiLLMSession, cwd: _Path | None = None) -> dict[str, Any]:
-    """Создание сессии в онтологии. Атомарно под блокировкой, с возвратом статуса."""
-    paths = _get_llm_paths(cwd)
-    lock_file: _Path = paths.get("lock", paths["file"].with_suffix(".lock"))
-    with _file_lock(lock_file):
-        state = _read_llm_state(cwd)
-        state.setdefault("sessions", []).append(session.to_dict())
-        _write_llm_state(state, cwd)
-    return {"created": session.session_id, "file": str(paths["file"])}
-
-
-# Псевдоним для совместимости с предыдущими вызовами.
-create_multi_llm_session = create_llm_session
-
-
-def record_model_comparison(result: ModelComparisonResult, cwd: _Path | None = None) -> dict[str, Any]:
-    """Запись результата сравнения. Под блокировкой, атомарно."""
-    paths = _get_llm_paths(cwd)
-    lock_file: _Path = paths.get("lock", paths["file"].with_suffix(".lock"))
-    with _file_lock(lock_file):
-        state = _read_llm_state(cwd)
-        state.setdefault("comparisons", []).append(result.to_dict())
-        _write_llm_state(state, cwd)
-    return {"recorded": result.result_id, "session": result.session_id, "file": str(paths["file"])}
-
-
-def record_decision(decision: Decision, cwd: _Path | None = None) -> dict[str, Any]:
-    """Запись human approval decision. Атомарно под блокировкой."""
-    paths = _get_llm_paths(cwd)
-    lock_file: _Path = paths.get("lock", paths["file"].with_suffix(".lock"))
-    with _file_lock(lock_file):
-        state = _read_llm_state(cwd)
-        state.setdefault("decisions", []).append(decision.to_dict())
-        _write_llm_state(state, cwd)
-    return {"recorded": decision.decision_id, "session": decision.session_id, "file": str(paths["file"])}
-
-
-def record_cross_tool_call(call: CrossModelToolCall, cwd: _Path | None = None) -> dict[str, Any]:
-    """Запись кросс-вызова. Атомарная запись под блокировкой."""
-    paths = _get_llm_paths(cwd)
-    lock_file: _Path = paths.get("lock", paths["file"].with_suffix(".lock"))
-    with _file_lock(lock_file):
-        state = _read_llm_state(cwd)
-        state.setdefault("tool_calls", []).append(call.to_dict())
-        _write_llm_state(state, cwd)
-    return {"recorded": call.call_id, "file": str(paths["file"])}
-
-
-# Псевдоним для совместимости.
-record_cross_model_tool_call = record_cross_tool_call
-
-
-def query_llm_sessions(task_id: str | None = None, model: str | None = None, cwd: _Path | None = None) -> list[dict[str, Any]]:
-    """Запрос сессий. Фильтр по task_id и источнику (если указан). Чтение без блокировки."""
-    state = _read_llm_state(cwd)
-    items = state.get("sessions", [])
-    if task_id:
-        items = [s for s in items if s.get("task_id") == task_id]
-    if model:
-        items = [s for s in items if model in (s.get("models_used") or [])]
-    return items
-
-
-def get_llm_ontology_snapshot(cwd: _Path | None = None) -> dict[str, Any]:
-    """Снимок для включения в общий снимок памяти."""
-    return _read_llm_state(cwd)
+# Реэкспорт онтологии MultiLLM из memory.llm_ontology (совместимость импортов).

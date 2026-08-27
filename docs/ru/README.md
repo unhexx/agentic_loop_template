@@ -2,7 +2,7 @@
 
 **Language:** [English](../README.md) · [Русский](README.md)
 
-[![Version](https://img.shields.io/badge/version-3.11.2-blue?style=flat-square)](../../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.11.3-blue?style=flat-square)](../../CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](../../README.ru.md)
 
 Каноническая документация шаблона агентного цикла разработки Agentix.
@@ -77,4 +77,4 @@
 
 ## Версия
 
-Согласовано с **Agentix 3.11.2** (2026-08-27). Русские соседние файлы Path 1. NG11 `agent_dir=` на harvest/eval/resume. Конфликт-free параллельные сессии: `stream_lease`, `run-parallel --push`, STOP fan-out, страница Streams в Control Plane, живая CLI-идентичность + persist stamp, оставшиеся локи `.agent/`, hub-safe merge интеграций. Лимиты промпта супервизора из `context_budget` / env (P8-14). Опциональный `run-parallel --concurrent` и stdlib-лок `.agent/` (P8-11). Разделение навыков harvest/reflect (`experience-accumulation` vs `loop-self-improve`). Укрепление адаптера Blackbox AI CLI. Опциональный навык `git-commit-to-jira-tasks` (только явная загрузка). P8 Harness Hardening закрыт. Business Efficiency Initiative (P0–P7) закрыта. Control Plane (`memory.dashboard`) на loopback `:8112`. Живой Grok по умолчанию через pxpipe. Параллельные потоки: `python -m memory.supervisor run-parallel` (по умолчанию serial).
+Согласовано с **Agentix 3.11.3** (2026-08-27). Онтология MultiLLM в `memory/llm_ontology.py` (P8-13). Русские соседние файлы Path 1. NG11 `agent_dir=` на harvest/eval/resume. Конфликт-free параллельные сессии: `stream_lease`, `run-parallel --push`, STOP fan-out, страница Streams в Control Plane, живая CLI-идентичность + persist stamp, оставшиеся локи `.agent/`, hub-safe merge интеграций. Лимиты промпта супервизора из `context_budget` / env (P8-14). Опциональный `run-parallel --concurrent` и stdlib-лок `.agent/` (P8-11). Разделение навыков harvest/reflect (`experience-accumulation` vs `loop-self-improve`). Укрепление адаптера Blackbox AI CLI. Опциональный навык `git-commit-to-jira-tasks` (только явная загрузка). P8 Harness Hardening закрыт. Business Efficiency Initiative (P0–P7) закрыта. Control Plane (`memory.dashboard`) на loopback `:8112`. Живой Grok по умолчанию через pxpipe. Параллельные потоки: `python -m memory.supervisor run-parallel` (по умолчанию serial).
