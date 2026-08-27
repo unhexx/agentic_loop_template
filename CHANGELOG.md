@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [3.11.1] - 2026-08-27
+
+### Added
+- Additive `agent_dir=` on `memory.meta_harvester`, `memory.eval_harness`, `memory.resume`. Named `agent_lock` on harvester writers: `trajectories` (`TRAJECTORIES.json` + `META_PROPOSALS.md`), `sft` (default `sft/train.jsonl`), `ledger` (`LOOP_PERFORMANCE.md`). tmp+replace for the JSON/MD indexes. `update_performance_ledger` passes `agent_dir` into `append_cycle` after releasing the md lock.
+- Design spec: [`docs/superpowers/specs/2026-08-27-ng11-agent-dir-harvester-di-design.md`](docs/superpowers/specs/2026-08-27-ng11-agent-dir-harvester-di-design.md)
+
+### Changed
+- `VERSION` → 3.11.1
+- ROADMAP: NG11 Future bullet removed; milestone v3.11.1
+
+Patch, not 3.12.0: no `--agent-dir`, wizard/proxy/`--concurrent` default unchanged, dashboard and supervisor not wired.
+
 ## [3.11.0] - 2026-08-27
 
 ### Added

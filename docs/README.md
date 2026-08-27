@@ -1,6 +1,6 @@
 # Agentix Documentation
 
-[![Version](https://img.shields.io/badge/version-3.11.0-blue?style=flat-square)](../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.11.1-blue?style=flat-square)](../CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](../README.md)
 
 Canonical documentation for the Agentix agentic development loop template.
@@ -73,4 +73,4 @@ Canonical documentation for the Agentix agentic development loop template.
 
 ## Version
 
-Aligned with **Agentix 3.11.0** (2026-08-27). Conflict-free parallel sessions: `stream_lease`, `run-parallel --push`, STOP fan-out, Control Plane Streams page, live CLI identity + persist stamp, remaining `.agent/` locks, hub-safe integration merge. Supervisor prompt caps from `context_budget` / env (P8-14). Opt-in `run-parallel --concurrent` plus stdlib `.agent/` lock (P8-11). Harvest/reflect skill split (`experience-accumulation` vs `loop-self-improve`). Blackbox AI CLI adapter hardening. Opt-in skill `git-commit-to-jira-tasks` (explicit load only). P8 Harness Hardening complete. Business Efficiency Initiative (P0–P7) complete. Control Plane (`memory.dashboard`) on loopback `:8112`. Live Grok uses pxpipe by default. Parallel streams: `python -m memory.supervisor run-parallel` (serial default).
+Aligned with **Agentix 3.11.1** (2026-08-27). NG11 `agent_dir=` landed on harvest/eval/resume. Conflict-free parallel sessions: `stream_lease`, `run-parallel --push`, STOP fan-out, Control Plane Streams page, live CLI identity + persist stamp, remaining `.agent/` locks, hub-safe integration merge. Supervisor prompt caps from `context_budget` / env (P8-14). Opt-in `run-parallel --concurrent` plus stdlib `.agent/` lock (P8-11). Harvest/reflect skill split (`experience-accumulation` vs `loop-self-improve`). Blackbox AI CLI adapter hardening. Opt-in skill `git-commit-to-jira-tasks` (explicit load only). P8 Harness Hardening complete. Business Efficiency Initiative (P0–P7) complete. Control Plane (`memory.dashboard`) on loopback `:8112`. Live Grok uses pxpipe by default. Parallel streams: `python -m memory.supervisor run-parallel` (serial default).
