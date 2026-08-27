@@ -22,6 +22,18 @@ def _session(**kwargs) -> ont.MultiLLMSession:
     return ont.MultiLLMSession(**base)
 
 
+def _patch_memory_paths(monkeypatch, tmp_path: Path, wid: str = "snap-test") -> dict:
+    paths = {
+        "workspace_id": wid,
+        "dir": tmp_path,
+        "file": tmp_path / f"{wid}.md",
+        "lock": tmp_path / f"{wid}.lock",
+    }
+    monkeypatch.setattr(store_mod, "memory_paths", lambda cwd=None: paths)
+    monkeypatch.setattr(ont, "memory_paths", lambda cwd=None: paths)
+    return paths
+
+
 def test_provider_roundtrip_ignores_extra():
     src = {
         "id": "p1",
@@ -56,15 +68,105 @@ def test_session_roundtrip_nested_variant():
     assert "extra" not in dumped["prompt_variants"][0]
 
 
+def test_remaining_types_drop_extra_keys():
+    cmp = ont.ModelComparisonResult.from_dict(
+        {
+            "result_id": "r1",
+            "session_id": "s1",
+            "model_a": "a",
+            "model_b": "b",
+            "junk": 1,
+        }
+    )
+    assert cmp.metrics == {}
+    assert "junk" not in cmp.to_dict()
+    dec = ont.Decision.from_dict(
+        {
+            "decision_id": "d1",
+            "session_id": "s1",
+            "approved_model": "grok",
+            "approved_output": "ok",
+            "extra": True,
+        }
+    )
+    assert dec.rationale == ""
+    assert "extra" not in dec.to_dict()
+    call = ont.CrossModelToolCall.from_dict(
+        {
+            "call_id": "c1",
+            "session_id": "s1",
+            "tool_name": "read",
+            "model": "grok",
+            "noise": "x",
+        }
+    )
+    assert call.latency_ms == 0.0
+    assert "noise" not in call.to_dict()
+    variant = ont.PromptVariant.from_dict(
+        {"variant_id": "v1", "base_prompt": "hi", "unknown": 2}
+    )
+    assert variant.token_estimate == 0
+    assert "unknown" not in variant.to_dict()
+
+
+def test_from_dict_helper_drops_unknown():
+    got = ont._from_dict(
+        ont.LLMProvider,
+        {"id": "p1", "type": "openai", "base_url": "u", "unknown": 1},
+    )
+    assert got.id == "p1"
+    assert "unknown" not in got.to_dict()
+
+
 def test_create_session_and_query(tmp_path: Path):
     ont.create_llm_session(_session(), base_dir=tmp_path)
     by_task = ont.query_llm_sessions(task_id="t1", base_dir=tmp_path)
     assert len(by_task) == 1
+    assert isinstance(by_task[0], dict)
     assert by_task[0]["session_id"] == "s1"
     by_model = ont.query_llm_sessions(model="grok", base_dir=tmp_path)
     assert len(by_model) == 1
     none = ont.query_llm_sessions(model="claude", base_dir=tmp_path)
     assert none == []
+
+
+def test_crud_roundtrip(tmp_path: Path):
+    created = ont.create_llm_provider(_provider(), base_dir=tmp_path)
+    assert created["created"] == "p1"
+    assert Path(created["file"]).parent == tmp_path
+    sess = ont.create_multi_llm_session(_session(), base_dir=tmp_path)
+    assert sess["created"] == "s1"
+    cmp = ont.record_model_comparison(
+        ont.ModelComparisonResult(
+            result_id="r1", session_id="s1", model_a="grok", model_b="gpt"
+        ),
+        base_dir=tmp_path,
+    )
+    assert cmp["recorded"] == "r1"
+    assert cmp["session"] == "s1"
+    dec = ont.record_decision(
+        ont.Decision(
+            decision_id="d1",
+            session_id="s1",
+            approved_model="grok",
+            approved_output="ok",
+        ),
+        base_dir=tmp_path,
+    )
+    assert dec["recorded"] == "d1"
+    call = ont.record_cross_model_tool_call(
+        ont.CrossModelToolCall(
+            call_id="c1", session_id="s1", tool_name="read", model="grok"
+        ),
+        base_dir=tmp_path,
+    )
+    assert call["recorded"] == "c1"
+    snap = ont.get_llm_ontology_snapshot(base_dir=tmp_path)
+    assert snap["providers"][0]["id"] == "p1"
+    assert snap["sessions"][0]["session_id"] == "s1"
+    assert snap["comparisons"][0]["result_id"] == "r1"
+    assert snap["decisions"][0]["decision_id"] == "d1"
+    assert snap["tool_calls"][0]["call_id"] == "c1"
 
 
 def test_snapshot_collections(tmp_path: Path):
@@ -83,28 +185,13 @@ def test_corrupt_json_returns_empty(tmp_path: Path):
     assert snap["sessions"] == []
 
 
-def test_store_snapshot_includes_ontology(monkeypatch):
-    monkeypatch.setattr(
-        store_mod,
-        "get_llm_ontology_snapshot",
-        lambda cwd=None: {"providers": [{"id": "stub"}]},
-    )
-    monkeypatch.setattr(
-        store_mod,
-        "read_memory",
-        lambda cwd=None: type(
-            "S",
-            (),
-            {"to_snapshot_dict": lambda self: {"patterns": {}, "recent_distillations": []}},
-        )(),
-    )
-    monkeypatch.setattr(
-        store_mod,
-        "memory_paths",
-        lambda cwd=None: {"workspace_id": "w", "file": "/tmp/x.md"},
-    )
+def test_store_snapshot_includes_ontology(tmp_path: Path, monkeypatch):
+    _patch_memory_paths(monkeypatch, tmp_path)
+    ont.create_llm_provider(_provider(), base_dir=tmp_path)
     snap = store_mod.snapshot()
-    assert snap["llm_ontology"]["providers"][0]["id"] == "stub"
+    assert snap["llm_ontology"]["providers"][0]["id"] == "p1"
+    assert snap["workspace_id"] == "snap-test"
+    assert "patterns" in snap
 
 
 def test_schema_and_store_reexports():
@@ -118,6 +205,8 @@ def test_schema_and_store_reexports():
     assert store_mod.create_multi_llm_session is ont.create_llm_session
     assert store_mod.get_llm_ontology_snapshot is ont.get_llm_ontology_snapshot
     assert store_mod.record_cross_model_tool_call is ont.record_cross_tool_call
+    assert ont.create_multi_llm_session is ont.create_llm_session
+    assert ont.record_cross_model_tool_call is ont.record_cross_tool_call
 
 
 def test_lock_file_during_write(tmp_path: Path, monkeypatch):

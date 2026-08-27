@@ -160,7 +160,7 @@ def snapshot(cwd: Path | None = None) -> dict[str, Any]:
         "file": str(paths["file"]),
         **state.to_snapshot_dict(),
     }
-    # CROSS-MEMORY-002: включаем снимок онтологии (без нарушения совместимости)
+    # Ключ llm_ontology для совместимости; состав снимка — в llm_ontology.
     try:
         base["llm_ontology"] = get_llm_ontology_snapshot(cwd=cwd)
     except Exception:

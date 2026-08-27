@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """Онтология MultiLLM: типы, CRUD, снимок. Файл {wid}.llm_ontology.json."""
+
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, TypeVar
 
 from .agent_lock import agent_lock
 from .workspace import memory_paths
@@ -21,9 +22,45 @@ _EMPTY_STATE: dict[str, list] = {
     "decisions": [],
 }
 
+T = TypeVar("T")
+
+
+def _from_dict(
+    cls: type[T],
+    d: dict[str, Any] | None,
+    *,
+    nested: dict[str, Any] | None = None,
+) -> T:
+    """Лишние ключи JSON отбрасываем — на диске могут быть поля более новой версии."""
+    src = d if isinstance(d, dict) else {}
+    nested = nested or {}
+    kwargs: dict[str, Any] = {}
+    for f in fields(cls):
+        if f.name not in src:
+            continue
+        val = src[f.name]
+        ncls = nested.get(f.name)
+        if ncls is not None and isinstance(val, list):
+            val = [ncls.from_dict(x) if isinstance(x, dict) else x for x in val]
+        elif ncls is not None and isinstance(val, dict):
+            val = ncls.from_dict(val)
+        kwargs[f.name] = val
+    return cls(**kwargs)
+
+
+class _SerdeMixin:
+    """Общая serde, чтобы не копировать to_dict/from_dict в каждом типе."""
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any] | None) -> Any:
+        return _from_dict(cls, d)
+
 
 @dataclass
-class LLMProvider:
+class LLMProvider(_SerdeMixin):
     """Провайдер внешнего сервиса."""
 
     id: str
@@ -32,31 +69,9 @@ class LLMProvider:
     capabilities: dict = field(default_factory=dict)
     cost_profile: dict = field(default_factory=dict)
 
-    def to_dict(self) -> dict[str, Any]:
-        # Явная сериализация для контроля состава полей и совместимости.
-        return {
-            "id": self.id,
-            "type": self.type,
-            "base_url": self.base_url,
-            "capabilities": self.capabilities,
-            "cost_profile": self.cost_profile,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "LLMProvider":
-        # Явная сборка: игнорируем лишние ключи, подставляем дефолты для опциональных.
-        d = d or {}
-        return cls(
-            id=d["id"],
-            type=d["type"],
-            base_url=d["base_url"],
-            capabilities=d.get("capabilities", {}),
-            cost_profile=d.get("cost_profile", {}),
-        )
-
 
 @dataclass
-class PromptVariant:
+class PromptVariant(_SerdeMixin):
     """Вариант формулировки запроса."""
 
     variant_id: str
@@ -64,27 +79,9 @@ class PromptVariant:
     model_specific_adaptations: dict = field(default_factory=dict)
     token_estimate: int = 0
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "variant_id": self.variant_id,
-            "base_prompt": self.base_prompt,
-            "model_specific_adaptations": self.model_specific_adaptations,
-            "token_estimate": self.token_estimate,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "PromptVariant":
-        d = d or {}
-        return cls(
-            variant_id=d["variant_id"],
-            base_prompt=d["base_prompt"],
-            model_specific_adaptations=d.get("model_specific_adaptations", {}),
-            token_estimate=d.get("token_estimate", 0),
-        )
-
 
 @dataclass
-class MultiLLMSession:
+class MultiLLMSession(_SerdeMixin):
     """Сессия параллельной работы с несколькими источниками."""
 
     session_id: str
@@ -94,32 +91,14 @@ class MultiLLMSession:
     prompt_variants: list[PromptVariant] = field(default_factory=list)
     created_at: Optional[str] = None
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "session_id": self.session_id,
-            "task_id": self.task_id,
-            "models_used": list(self.models_used),
-            "shared_context_ref": self.shared_context_ref,
-            "prompt_variants": [v.to_dict() for v in self.prompt_variants],
-            "created_at": self.created_at,
-        }
-
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "MultiLLMSession":
-        d = d or {}
-        variants = [PromptVariant.from_dict(v) for v in d.get("prompt_variants", [])]
-        return cls(
-            session_id=d["session_id"],
-            task_id=d.get("task_id"),
-            models_used=d.get("models_used", []),
-            shared_context_ref=d.get("shared_context_ref"),
-            prompt_variants=variants,
-            created_at=d.get("created_at"),
-        )
+    def from_dict(cls, d: dict[str, Any] | None) -> MultiLLMSession:
+        # asdict разворачивает вложенные датаклассы, обратно их нужно собрать вручную.
+        return _from_dict(cls, d, nested={"prompt_variants": PromptVariant})
 
 
 @dataclass
-class ModelComparisonResult:
+class ModelComparisonResult(_SerdeMixin):
     """Результат сравнения в сессии."""
 
     result_id: str
@@ -130,34 +109,10 @@ class ModelComparisonResult:
     winner: Optional[str] = None
     rationale: str = ""
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "result_id": self.result_id,
-            "session_id": self.session_id,
-            "model_a": self.model_a,
-            "model_b": self.model_b,
-            "metrics": self.metrics,
-            "winner": self.winner,
-            "rationale": self.rationale,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "ModelComparisonResult":
-        d = d or {}
-        return cls(
-            result_id=d["result_id"],
-            session_id=d["session_id"],
-            model_a=d["model_a"],
-            model_b=d["model_b"],
-            metrics=d.get("metrics", {}),
-            winner=d.get("winner"),
-            rationale=d.get("rationale", ""),
-        )
-
 
 @dataclass
-class Decision:
-    """Human approval decision for multi-model workspace results."""
+class Decision(_SerdeMixin):
+    """Решение человека по результатам сессии."""
 
     decision_id: str
     session_id: str
@@ -167,33 +122,9 @@ class Decision:
     policy: Optional[str] = None
     timestamp: Optional[str] = None
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "decision_id": self.decision_id,
-            "session_id": self.session_id,
-            "approved_model": self.approved_model,
-            "approved_output": self.approved_output,
-            "rationale": self.rationale,
-            "policy": self.policy,
-            "timestamp": self.timestamp,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "Decision":
-        d = d or {}
-        return cls(
-            decision_id=d["decision_id"],
-            session_id=d["session_id"],
-            approved_model=d["approved_model"],
-            approved_output=d["approved_output"],
-            rationale=d.get("rationale", ""),
-            policy=d.get("policy"),
-            timestamp=d.get("timestamp"),
-        )
-
 
 @dataclass
-class CrossModelToolCall:
+class CrossModelToolCall(_SerdeMixin):
     """Вызов инструмента в контексте кросс-сессии."""
 
     call_id: str
@@ -204,32 +135,6 @@ class CrossModelToolCall:
     output: Optional[str] = None
     latency_ms: float = 0.0
     policy_decision: Optional[str] = None
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "call_id": self.call_id,
-            "session_id": self.session_id,
-            "tool_name": self.tool_name,
-            "model": self.model,
-            "input": self.input,
-            "output": self.output,
-            "latency_ms": self.latency_ms,
-            "policy_decision": self.policy_decision,
-        }
-
-    @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "CrossModelToolCall":
-        d = d or {}
-        return cls(
-            call_id=d["call_id"],
-            session_id=d["session_id"],
-            tool_name=d["tool_name"],
-            model=d["model"],
-            input=d.get("input", {}),
-            output=d.get("output"),
-            latency_ms=d.get("latency_ms", 0.0),
-            policy_decision=d.get("policy_decision"),
-        )
 
 
 def _get_llm_paths(
@@ -298,6 +203,19 @@ def _append(
     return paths["file"]
 
 
+def _persist(
+    bucket: str,
+    obj: Any,
+    cwd: Path | None = None,
+    *,
+    base_dir: Path | None = None,
+    **meta: Any,
+) -> dict[str, Any]:
+    """Общая запись: публичные функции отличаются только ключами ответа."""
+    path = _append(bucket, obj.to_dict(), cwd, base_dir=base_dir)
+    return {**meta, "file": str(path)}
+
+
 def create_llm_provider(
     provider: LLMProvider,
     cwd: Path | None = None,
@@ -305,8 +223,7 @@ def create_llm_provider(
     base_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Создание записи в онтологии. Атомарно под блокировкой."""
-    path = _append("providers", provider.to_dict(), cwd, base_dir=base_dir)
-    return {"created": provider.id, "file": str(path)}
+    return _persist("providers", provider, cwd, base_dir=base_dir, created=provider.id)
 
 
 def create_llm_session(
@@ -316,8 +233,9 @@ def create_llm_session(
     base_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Создание сессии в онтологии. Атомарно под блокировкой."""
-    path = _append("sessions", session.to_dict(), cwd, base_dir=base_dir)
-    return {"created": session.session_id, "file": str(path)}
+    return _persist(
+        "sessions", session, cwd, base_dir=base_dir, created=session.session_id
+    )
 
 
 create_multi_llm_session = create_llm_session
@@ -330,8 +248,14 @@ def record_model_comparison(
     base_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Запись результата сравнения. Под блокировкой, атомарно."""
-    path = _append("comparisons", result.to_dict(), cwd, base_dir=base_dir)
-    return {"recorded": result.result_id, "session": result.session_id, "file": str(path)}
+    return _persist(
+        "comparisons",
+        result,
+        cwd,
+        base_dir=base_dir,
+        recorded=result.result_id,
+        session=result.session_id,
+    )
 
 
 def record_decision(
@@ -340,13 +264,15 @@ def record_decision(
     *,
     base_dir: Path | None = None,
 ) -> dict[str, Any]:
-    """Запись human approval decision. Атомарно под блокировкой."""
-    path = _append("decisions", decision.to_dict(), cwd, base_dir=base_dir)
-    return {
-        "recorded": decision.decision_id,
-        "session": decision.session_id,
-        "file": str(path),
-    }
+    """Запись решения человека. Атомарно под блокировкой."""
+    return _persist(
+        "decisions",
+        decision,
+        cwd,
+        base_dir=base_dir,
+        recorded=decision.decision_id,
+        session=decision.session_id,
+    )
 
 
 def record_cross_tool_call(
@@ -356,8 +282,7 @@ def record_cross_tool_call(
     base_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Запись кросс-вызова. Атомарная запись под блокировкой."""
-    path = _append("tool_calls", call.to_dict(), cwd, base_dir=base_dir)
-    return {"recorded": call.call_id, "file": str(path)}
+    return _persist("tool_calls", call, cwd, base_dir=base_dir, recorded=call.call_id)
 
 
 record_cross_model_tool_call = record_cross_tool_call
@@ -370,7 +295,7 @@ def query_llm_sessions(
     *,
     base_dir: Path | None = None,
 ) -> list[dict[str, Any]]:
-    """Запрос сессий. Фильтр по task_id и источнику (если указан). Чтение без блокировки."""
+    """Запрос сессий. Фильтр по task_id и источнику. Чтение без блокировки; словари как в JSON."""
     state = _read_llm_state(cwd, base_dir=base_dir)
     items = state.get("sessions", [])
     if task_id:
