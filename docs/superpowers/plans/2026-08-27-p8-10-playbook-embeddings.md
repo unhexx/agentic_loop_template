@@ -1,5 +1,7 @@
 # P8-10 Playbook embeddings ranking Implementation Plan
 
+**Status:** landed on `main` as Agentix **3.12.0** (`c578845`, 2026-08-27). Fast-forward from `feature/v3.12.0-p8-10-playbook-embeddings`. Tests: `memory/test_playbooks_embed.py` 23 passed. Steps below are checked after the fact.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Ship P8-10 as Agentix **3.12.0**: hybrid playbook ranking wraps the 0.2 relevance term with optional HTTP OpenAI-compatible embeddings; empty `embeddings` extra; `playbooks.relevance=substring|embed`; fail-open to substring; cache `.agent/PLAYBOOKS.embeddings.json` under `agent_lock(name="playbooks")`.
@@ -12,7 +14,7 @@
 
 **Out of scope:** Hub SaaS, MCP, messenger, P8-12 loaders, MultiLLM product wiring, ACE curate/dedup embeddings, CLI `--rank`, `rank=` kwarg, local GPU extra, fail-closed ranking, new lock name `playbooks_embed`.
 
-**House rules:** comments and commit messages in natural Russian (`DEVELOPMENT_STANDARDS.md` §1). Public names English. Do not mention AI/agents in commits. Do not commit live `.agent/` (HUB_INDEX, PLAYBOOKS, ledger, leases). `VERSION` stays **3.11.4** until the last commit of this plan. Dual remotes: `github` default proxy; `origin` `env -u http_proxy -u https_proxy -u ALL_PROXY`.
+**House rules:** comments and commit messages in natural Russian (`DEVELOPMENT_STANDARDS.md` §1). Public names English. Do not mention AI/agents in commits. Do not commit live `.agent/` (HUB_INDEX, PLAYBOOKS, ledger, leases). Dual remotes: `github` default proxy; `origin` `env -u http_proxy -u https_proxy -u ALL_PROXY`. `VERSION` is **3.12.0**.
 
 ---
 
@@ -94,7 +96,7 @@ Model: config `embedding_model` or `"text-embedding-3-small"`.
 **Files:**
 - Create: `memory/test_playbooks_embed.py`
 
-- [ ] **Step 1: Write helper tests** (must fail until `memory/playbooks_embed.py` exists)
+- [x] **Step 1: Write helper tests** (must fail until `memory/playbooks_embed.py` exists)
 
 ```python
 # -*- coding: utf-8 -*-
@@ -387,7 +389,7 @@ def test_vectors_lock_held_during_cache_replace(
     assert not lp.exists()
 ```
 
-- [ ] **Step 2: Run helper tests (expect FAIL)**
+- [x] **Step 2: Run helper tests (expect FAIL)**
 
 ```bash
 PYTHONPATH=. python -m pytest memory/test_playbooks_embed.py -q
@@ -404,7 +406,7 @@ Do not implement production code in this task.
 **Files:**
 - Create: `memory/playbooks_embed.py`
 
-- [ ] **Step 3: Write the module** (complete file)
+- [x] **Step 3: Write the module** (complete file)
 
 HTTP happens **outside** the lock. After a successful embed of misses: acquire `agent_lock(parent, name="playbooks")`, re-read cache, merge, tmp+replace, release. Do not call `_load_index` / `_save_index`. Do not catch `TimeoutError` from `agent_lock`. Do not log query text, `Authorization`, or API keys. Logger name is `memory.playbooks` so fail-open WARNING tests share one logger.
 
@@ -642,7 +644,7 @@ def vectors_for_texts(
     return query_vec, by_text
 ```
 
-- [ ] **Step 4: Re-run helper tests (expect PASS)**
+- [x] **Step 4: Re-run helper tests (expect PASS)**
 
 ```bash
 PYTHONPATH=. python -m pytest memory/test_playbooks_embed.py -q
@@ -650,7 +652,7 @@ PYTHONPATH=. python -m pytest memory/test_playbooks_embed.py -q
 
 Expected: PASS (helper tests only; integration tests are Task 3).
 
-- [ ] **Step 5: Commit PR1**
+- [x] **Step 5: Commit PR1**
 
 ```bash
 git add memory/playbooks_embed.py memory/test_playbooks_embed.py
@@ -666,7 +668,7 @@ Do not add live `.agent/`. Do not bump `VERSION`.
 **Files:**
 - Modify: `memory/test_playbooks_embed.py` (append below the helper tests)
 
-- [ ] **Step 6: Append G1–G8 integration tests**
+- [x] **Step 6: Append G1–G8 integration tests**
 
 Keep the imports and `_isolate_embed_env` / `_FakeResp` from Task 1. Append:
 
@@ -1069,7 +1071,7 @@ def test_playbooks_py_under_1000_lines() -> None:
     assert text.count("\n") < 1000
 ```
 
-- [ ] **Step 7: Run integration tests (expect FAIL on embed path)**
+- [x] **Step 7: Run integration tests (expect FAIL on embed path)**
 
 ```bash
 PYTHONPATH=. python -m pytest memory/test_playbooks_embed.py -q
@@ -1085,7 +1087,7 @@ Expected: helper tests PASS; `test_embed_uses_cosine` / `test_embed_unconfigured
 - Modify: `memory/playbooks.py` (`load_config`, `_score_bullet`, `select_bullets`)
 - Modify: `.agent/project_config.example.json` (playbooks section)
 
-- [ ] **Step 8: Extend `load_config` defaults and copy loop**
+- [x] **Step 8: Extend `load_config` defaults and copy loop**
 
 In `load_config`, add keys to the default dict:
 
@@ -1115,7 +1117,7 @@ Change the copy loop to:
                         cfg[k] = pb[k]
 ```
 
-- [ ] **Step 9: Wrap the 0.2 term; fail-open in `select_bullets`**
+- [x] **Step 9: Wrap the 0.2 term; fail-open in `select_bullets`**
 
 Keep `_score_bullet` for the default path. Add `_relevance` and a process-level warn flag. Lazy-import `playbooks_embed` only when `relevance == "embed"`. Catch `TimeoutError` from the lock and re-raise; any other exception → substring + WARNING `embed_http` once. Do not log the query or the key.
 
@@ -1261,7 +1263,7 @@ def select_bullets(
 
 Need `List` already imported; add nothing to the CLI. `curate_from_reflection` / `seed_initial_playbooks` unchanged.
 
-- [ ] **Step 10: Example config**
+- [x] **Step 10: Example config**
 
 In `.agent/project_config.example.json`, inside `"playbooks"`, add `"relevance": "substring"` after `"min_effectiveness"`. Do **not** add URL/key fields (JSON has no comments; secrets stay out of the example). Document them in CHANGELOG in Task 5.
 
@@ -1271,7 +1273,7 @@ In `.agent/project_config.example.json`, inside `"playbooks"`, add `"relevance":
     "scopes": ["global", "role:*", "tool:*", "phase:*"]
 ```
 
-- [ ] **Step 11: Tests green**
+- [x] **Step 11: Tests green**
 
 ```bash
 PYTHONPATH=. python -m pytest memory/test_playbooks_embed.py memory/test_playbooks_lock.py -q
@@ -1287,7 +1289,7 @@ PYTHONPATH=. python -m pytest -q memory/
 
 Expected: PASS (ignore unrelated proxy flakes; retry `memory/test_playbooks_embed.py` must stay green). Confirm `wc -l memory/playbooks.py` is still well under 1000.
 
-- [ ] **Step 12: Commit PR2**
+- [x] **Step 12: Commit PR2**
 
 ```bash
 git add memory/playbooks.py memory/test_playbooks_embed.py .agent/project_config.example.json
@@ -1308,7 +1310,7 @@ Do not add live `.agent/` indexes. Do not bump `VERSION`.
 - Modify: `README.md`, `README.ru.md`, `docs/README.md`, `docs/ru/README.md` (badges)
 - Modify: `docs/architecture.md` (one Playbooks-row clause)
 
-- [ ] **Step 13: Failing extra assertion — add to `memory/test_playbooks_embed.py`**
+- [x] **Step 13: Failing extra assertion — add to `memory/test_playbooks_embed.py`**
 
 ```python
 def test_embeddings_extra_is_empty_marker() -> None:
@@ -1318,7 +1320,7 @@ def test_embeddings_extra_is_empty_marker() -> None:
 
 Run `PYTHONPATH=. python -m pytest memory/test_playbooks_embed.py::test_embeddings_extra_is_empty_marker -q` — expect FAIL.
 
-- [ ] **Step 14: `pyproject.toml` extra**
+- [x] **Step 14: `pyproject.toml` extra**
 
 Under `[project.optional-dependencies]`, after `tokens`, add:
 
@@ -1328,7 +1330,7 @@ embeddings = []
 
 Keep `dev` / `tokens` / `dashboard` unchanged. Do not add numpy/tiktoken to `embeddings`. Do not add an import-check of the extra.
 
-- [ ] **Step 15: VERSION, CHANGELOG, ROADMAP, badges, architecture row**
+- [x] **Step 15: VERSION, CHANGELOG, ROADMAP, badges, architecture row**
 
 `VERSION` → `3.12.0`.
 
@@ -1370,7 +1372,7 @@ Minor, not a 3.11.5 patch: new extra + config keys. Default omit/`substring` sco
 
 One docs sentence for operators (already in CHANGELOG): `pip install "agentix[embeddings]"` plus `playbooks.relevance=embed` and `AGENTIX_EMBED_BASE` / API key. Do not rewrite architecture beyond that row.
 
-- [ ] **Step 16: Full memory pytest + line cap**
+- [x] **Step 16: Full memory pytest + line cap**
 
 ```bash
 PYTHONPATH=. python -m pytest memory/test_playbooks_embed.py memory/test_playbooks_lock.py -q
@@ -1379,7 +1381,7 @@ PYTHONPATH=. python -m pytest -q memory/
 
 Expected: PASS. `test_embeddings_extra_is_empty_marker` PASS. `test_playbooks_py_under_1000_lines` PASS.
 
-- [ ] **Step 17: Commit PR3 (release only)**
+- [x] **Step 17: Commit PR3 (release only)**
 
 ```bash
 git add pyproject.toml VERSION CHANGELOG.md ROADMAP.md README.md README.ru.md docs/README.md docs/ru/README.md docs/architecture.md memory/test_playbooks_embed.py
