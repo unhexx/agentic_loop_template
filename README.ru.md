@@ -378,7 +378,7 @@ v1 **не** слушает IP tailnet. TeleGrok 0.1.0 не поставляет 
 | **Несколько фронтендов** | Адаптеры Grok (по умолчанию), Cursor, Claude Code, Blackbox |
 | **Harvest опыта** | Скан соседних `AGENTS.md` / playbook; `audit` + `cycle` self-improve |
 | **Продуктизация** | сайт `docs/`, consumer-starter, Agentix Hub |
-| **Enterprise** | Audit log, образцы policy, триггер GitHub Actions |
+| **Enterprise** | Audit log, образцы policy, GitHub Actions / Jenkinsfile |
 | **DX** | Мастер онбординга, stack-шаблоны, рекомендации расширений VS Code |
 | **MCP** | Расширяемый реестр инструментов для shell, GUI, vision, fleet, интеграций |
 

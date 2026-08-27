@@ -28,7 +28,7 @@ Canonical documentation for the Agentix agentic development loop template.
 1. [Metrics & ROI](metrics-roi.md) — ledger proof
 2. [Hub](hub/README.md) — playbook export and discovery
 3. [Enterprise Governance](enterprise-governance.md) — audit + policy
-4. [Integrations](integrations.md) — GitHub Actions, trackers, Slack
+4. [Integrations](integrations.md) — GitHub Actions, Jenkins, trackers, Slack
 
 ### Path 4 — Evidence (20 min)
 
@@ -54,7 +54,7 @@ Path 1 public pages (`README.md`, `docs/getting-started.md`, this index) have Ru
 | [Hub API Schema](hub/api-schema.json) | Web-ready JSON schema |
 | [Pro Tier](pro-tier.md) | Free vs Pro matrix |
 | [Enterprise Governance](enterprise-governance.md) | Policy, audit, approvals |
-| [Integrations](integrations.md) | CI, Linear/Jira, Slack |
+| [Integrations](integrations.md) | GitHub Actions, Jenkins, Linear/Jira, Slack |
 | [Onboarding Wizard](onboarding-wizard.md) | Interactive setup |
 | [Case Study](case-study.md) | Dogfood results |
 

@@ -17,6 +17,12 @@ The `harness` job does an editable install (`pip install -e ".[dev,dashboard]"`)
 gh workflow run agentix-loop.yml -f cycle_goal="P5-governance"
 ```
 
+## Jenkins (Bitbucket)
+
+Pipeline: [`Jenkinsfile`](../Jenkinsfile) at the repository root. Bitbucket **Test configuration** looks for that exact name on the default branch (`main`). A missing file is the warning `Missing Jenkinsfile in the main branch for Jenkins`.
+
+The Jenkinsfile mirrors `agentix-loop.yml` (harness + stdlib-collect) on a Linux/macOS agent with Python 3.10+ (prefers 3.12). Use a **Multibranch Pipeline** (Bitbucket Branch Source). Script Path: `Jenkinsfile`. After the first push to `main`, scan the job in Jenkins and re-run Test configuration.
+
 ## Linear / Jira (MCP Pattern)
 
 Add an MCP skill that:

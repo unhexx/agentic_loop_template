@@ -28,7 +28,7 @@
 1. [Metrics & ROI](../metrics-roi.md) (English) — доказательства из ledger
 2. [Hub](../hub/README.md) (English) — экспорт и поиск playbook
 3. [Enterprise Governance](../enterprise-governance.md) (English) — audit + policy
-4. [Integrations](../integrations.md) (English) — GitHub Actions, трекеры, Slack
+4. [Integrations](../integrations.md) (English) — GitHub Actions, Jenkins, трекеры, Slack
 
 ### Path 4 — Доказательства (20 мин)
 
@@ -54,7 +54,7 @@
 | [Hub API Schema](../hub/api-schema.json) (English) | JSON-схема для веба |
 | [Pro Tier](../pro-tier.md) (English) | Матрица Free vs Pro |
 | [Enterprise Governance](../enterprise-governance.md) (English) | Policy, audit, согласования |
-| [Integrations](../integrations.md) (English) | CI, Linear/Jira, Slack |
+| [Integrations](../integrations.md) (English) | GitHub Actions, Jenkins, Linear/Jira, Slack |
 | [Onboarding Wizard](../onboarding-wizard.md) (English) | Интерактивная настройка |
 | [Case Study](../case-study.md) (English) | Результаты dogfood |
 

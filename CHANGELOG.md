@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- Root `Jenkinsfile` mirroring GitHub Actions harness + stdlib-collect (Bitbucket Jenkins Test configuration). Contract: `memory/test_ci_parity.py`.
+
 ## [3.12.0] - 2026-08-27
 
 ### Added

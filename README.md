@@ -378,7 +378,7 @@ v1 does **not** listen on a tailnet IP. TeleGrok 0.1.0 does not ship runtime Tai
 | **Multi-frontend** | Grok (default), Cursor, Claude Code, Blackbox adapters |
 | **Experience harvest** | Scan sibling `AGENTS.md` / playbooks; `audit` + `cycle` self-improve |
 | **Productization** | `docs/` site, consumer-starter, Agentix Hub |
-| **Enterprise** | Audit log, policy samples, GitHub Actions trigger |
+| **Enterprise** | Audit log, policy samples, GitHub Actions / Jenkinsfile |
 | **DX** | Onboarding wizard, stack templates, VS Code extension recommendations |
 | **MCP** | Extensible tool registry for shell, GUI, vision, fleet, integrations |
 
