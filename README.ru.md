@@ -1,6 +1,6 @@
 # Agentix
 
-[![Version](https://img.shields.io/badge/version-3.11.3-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.11.4-blue?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](docs/ru/getting-started.md)
 [![Platform](https://img.shields.io/badge/platform-Linux_%7C_macOS_%7C_Windows-lightgrey?style=flat-square)](docs/cross-platform.md)
@@ -463,4 +463,4 @@ Dogfood на этом репозитории за **50+ циклов** (Business
 
 ## Лицензия
 
-[MIT](LICENSE) · **Agentix 3.11.3** · Поддерживается **exception.expert**
+[MIT](LICENSE) · **Agentix 3.11.4** · Поддерживается **exception.expert**

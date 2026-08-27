@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+## [3.11.4] - 2026-08-27
+
+### Added
+- Split `meta_harvester` / `experience_harvester` into ACE job packages (`memory/meta/{store,generator,reflector,curator}`, `memory/experience/{seeds,extract,scan,audit}`) behind the same public modules. Init.ps1 dotsources `scripts/windows/Init-Python.ps1` and `scripts/windows/Init-Prompt.ps1`.
+- Design spec: [`docs/superpowers/specs/2026-08-27-p8-12-module-split-design.md`](docs/superpowers/specs/2026-08-27-p8-12-module-split-design.md)
+
+### Changed
+- `VERSION` → 3.11.4
+- Deleted unused `_save_index` from the meta tree; curator imports `append_cycle` as a normal submodule.
+- ROADMAP: P8-12 Future bullet removed; milestone v3.11.4
+
+Patch, not 3.12.0: public `python -m memory.meta_harvester` / `python -m memory.experience_harvester` / `.\Agent-Init.ps1` unchanged.
+
 ## [3.11.3] - 2026-08-27
 
 ### Added

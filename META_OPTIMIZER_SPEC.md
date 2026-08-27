@@ -1,5 +1,7 @@
 # Meta-Optimizer & Trajectory Harvesting — Specification (v3.x)
 
+Implementation: `memory/meta/` behind the public module `python -m memory.meta_harvester` (commands unchanged).
+
 **Status:** Draft for implementation in agentic_loop_template  
 **Version:** 3.2 (extension of self-learning)  
 **Goal:** Turn the loop's own execution traces into a systematic source of improvements for the *harness itself* (prompts, standards, compression examples, strategies).  

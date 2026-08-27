@@ -31,7 +31,7 @@ Each role: **PLAN → ACT (≤3 tool calls) → REFLECT → handoff JSON**.
 | Context budget | `memory/context_budget.py` | tiktoken extra (`dev`/`tokens`); fallback chars/4; per-model encoding; supervisor caps from `context_budget` (`prompt_body_chars`, `snap_json_chars`, `knowledge_budget_tokens`, `prompt_token_cap`) |
 | Roles & prompts | `AGENT_ROLES.md`, `prompts/` | Per-role discipline |
 | Handoffs | `HANDOFF_SCHEMA.md` | State transfer contract |
-| Memory | `memory/` | questions_collector, meta_harvester, playbooks, ledger |
+| Memory | `memory/` | questions_collector, meta_harvester (impl. `memory/meta/`), experience_harvester (impl. `memory/experience/`), playbooks, ledger |
 | Planning | `.agent/PLAN.md`, `.agent/TODO.md` | Iteration continuity |
 | Playbooks | `.agent/PLAYBOOKS.json` | Knowledge bullets (ACE scoring) |
 | Hub | `.agent/HUB_INDEX.json` | Exportable discovery index |
