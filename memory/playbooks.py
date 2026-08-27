@@ -108,6 +108,10 @@ def load_config(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
         "default_k": DEFAULT_K,
         "min_effectiveness": DEFAULT_MIN_EFFECT,
         "scopes": ["global", "role:*", "tool:*", "phase:*"],
+        "relevance": "substring",
+        "embedding_base_url": None,
+        "embedding_model": "text-embedding-3-small",
+        "embedding_api_key": None,
     }
 
     cfg_path = _project_config_path(agent_dir)
@@ -116,7 +120,17 @@ def load_config(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
             raw = json.loads(cfg_path.read_text(encoding="utf-8"))
             pb = raw.get("playbooks", {}) or {}
             if isinstance(pb, dict):
-                for k in ("enabled", "auto_curate", "max_bullets_per_playbook", "default_k", "min_effectiveness"):
+                for k in (
+                    "enabled",
+                    "auto_curate",
+                    "max_bullets_per_playbook",
+                    "default_k",
+                    "min_effectiveness",
+                    "relevance",
+                    "embedding_base_url",
+                    "embedding_model",
+                    "embedding_api_key",
+                ):
                     if k in pb:
                         cfg[k] = pb[k]
                 if "scopes" in pb and isinstance(pb["scopes"], list):
@@ -212,16 +226,57 @@ def _write_human_views(data: Dict[str, Any], agent_dir: Optional[Path] = None) -
         (views_dir / f"{pid}.md").write_text("\n".join(pb_lines), encoding="utf-8")
 
 
-def _score_bullet(bullet: Dict[str, Any], query_lower: str, now_ts: str) -> float:
-    """ACE-style scoring: 0.5 effectiveness + 0.3 recency + 0.2 relevance."""
-    eff = float(bullet.get("effectiveness", 0.5))
-    # recency (простая)
-    last = bullet.get("last_used") or "1970-01-01T00:00:00+00:00"
-    recency = 0.7 if last > now_ts[:10] else 0.3   # очень грубо, достаточно для старта
-    # relevance
+_EMBED_FALLBACK_WARNED = False
+
+
+def _warn_embed_fallback(reason: str) -> None:
+    """Один WARNING на процесс: только код причины, без запроса и ключа."""
+    global _EMBED_FALLBACK_WARNED
+    if _EMBED_FALLBACK_WARNED:
+        return
+    _EMBED_FALLBACK_WARNED = True
+    log.warning("playbooks relevance fallback to substring: %s", reason)
+
+
+def _substring_relevance(query_lower: str, bullet: Dict[str, Any]) -> float:
     content = (bullet.get("content") or "").lower()
     tags = " ".join(bullet.get("tags", [])).lower()
-    relevance = 0.9 if query_lower in content or query_lower in tags else 0.3
+    return 0.9 if query_lower in content or query_lower in tags else 0.3
+
+
+def _relevance(
+    query_lower: str,
+    bullet: Dict[str, Any],
+    *,
+    mode: str,
+    query_vec: Optional[List[float]],
+    vec: Optional[List[float]],
+) -> float:
+    if mode == "embed" and query_vec is not None and vec is not None:
+        from memory.playbooks_embed import cosine_01
+
+        mapped = cosine_01(query_vec, vec)
+        if mapped is not None:
+            return mapped
+    return _substring_relevance(query_lower, bullet)
+
+
+def _score_bullet(
+    bullet: Dict[str, Any],
+    query_lower: str,
+    now_ts: str,
+    *,
+    mode: str = "substring",
+    query_vec: Optional[List[float]] = None,
+    vec: Optional[List[float]] = None,
+) -> float:
+    """ACE-style scoring: 0.5 effectiveness + 0.3 recency + 0.2 relevance."""
+    eff = float(bullet.get("effectiveness", 0.5))
+    last = bullet.get("last_used") or "1970-01-01T00:00:00+00:00"
+    recency = 0.7 if last > now_ts[:10] else 0.3
+    relevance = _relevance(
+        query_lower, bullet, mode=mode, query_vec=query_vec, vec=vec
+    )
     return 0.5 * eff + 0.3 * recency + 0.2 * relevance
 
 
@@ -242,17 +297,61 @@ def select_bullets(
     now = _now_iso()
     q = query.lower()
 
-    candidates: List[Tuple[float, Dict[str, Any], str]] = []
-
+    raw: List[Tuple[Dict[str, Any], str]] = []
     for pid, pb in pbs.items():
         pb_scope = pb.get("scope", "")
-        if scopes and not any(s in pb_scope or pb_scope.startswith(s.split(":")[0]) for s in scopes):
+        if scopes and not any(
+            s in pb_scope or pb_scope.startswith(s.split(":")[0]) for s in scopes
+        ):
             continue
         for b in pb.get("bullets", []):
             if float(b.get("effectiveness", 0)) < min_effect:
                 continue
-            score = _score_bullet(b, q, now)
-            candidates.append((score, b, pid))
+            raw.append((b, pid))
+
+    mode = str(cfg.get("relevance") or "substring").strip().lower()
+    if mode not in ("substring", "embed"):
+        _warn_embed_fallback("relevance_unknown")
+        mode = "substring"
+
+    query_vec: Optional[List[float]] = None
+    vec_by_text: Dict[str, Optional[List[float]]] = {}
+    if mode == "embed" and not (query or "").strip():
+        mode = "substring"
+    elif mode == "embed":
+        from memory.playbooks_embed import resolve_embed_settings, vectors_for_texts
+
+        settings = resolve_embed_settings(cfg)
+        if settings is None:
+            _warn_embed_fallback("embed_unconfigured")
+            mode = "substring"
+        else:
+            base_url, model, api_key = settings
+            texts = [str(b.get("content") or "") for b, _pid in raw]
+            try:
+                query_vec, vec_by_text = vectors_for_texts(
+                    query,
+                    texts,
+                    agent_dir=agent_dir,
+                    base_url=base_url,
+                    model=model,
+                    api_key=api_key,
+                )
+            except TimeoutError:
+                raise
+            except Exception:
+                _warn_embed_fallback("embed_http")
+                mode = "substring"
+                query_vec = None
+                vec_by_text = {}
+
+    candidates: List[Tuple[float, Dict[str, Any], str]] = []
+    for b, pid in raw:
+        vec = vec_by_text.get(str(b.get("content") or ""))
+        score = _score_bullet(
+            b, q, now, mode=mode, query_vec=query_vec, vec=vec
+        )
+        candidates.append((score, b, pid))
 
     candidates.sort(key=lambda x: x[0], reverse=True)
     result = []

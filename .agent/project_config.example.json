@@ -32,6 +32,7 @@
     "max_bullets_per_playbook": 50,
     "default_k": 5,
     "min_effectiveness": 0.5,
+    "relevance": "substring",
     "scopes": ["global", "role:*", "tool:*", "phase:*"]
   },
   "git": {
