@@ -199,19 +199,56 @@ class TestResume(unittest.TestCase):
 
 
 class TestEvalHarness(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.agent = Path(self.tmp.name) / ".agent"
+        self.agent.mkdir()
+        self._cwd = os.getcwd()
+
+    def tearDown(self):
+        os.chdir(self._cwd)
+        self.tmp.cleanup()
+
     def test_score_trajectory(self):
-        traj = {"id": "T-001", "cycle": 1, "confidence": 0.9, "tests_failed": 0,
-                "process_violations": 0, "elapsed_minutes": 1.5, "outcome": "DONE"}
+        traj = {
+            "id": "T-001",
+            "cycle": 1,
+            "confidence": 0.9,
+            "tests_failed": 0,
+            "process_violations": 0,
+            "elapsed_minutes": 1.5,
+            "outcome": "DONE",
+        }
         s = eval_harness.score_trajectory(traj)
         self.assertGreater(s["score"], 50)
         self.assertEqual(s["outcome"], "DONE")
 
     def test_replay_empty(self):
-        old = eval_harness.TRAJECTORIES
-        eval_harness.TRAJECTORIES = Path("/nonexistent/trajectories.json")
-        results = eval_harness.replay_recent(3)
+        results = eval_harness.replay_recent(3, agent_dir=self.agent)
         self.assertEqual(results, [])
-        eval_harness.TRAJECTORIES = old
+
+    def test_replay_recent_agent_dir_not_cwd(self):
+        index = {
+            "trajectories": [{
+                "id": "T-002",
+                "cycle": 2,
+                "confidence": 0.9,
+                "tests_failed": 0,
+                "process_violations": 0,
+                "elapsed_minutes": 1.0,
+                "outcome": "DONE",
+            }]
+        }
+        (self.agent / "TRAJECTORIES.json").write_text(
+            json.dumps(index), encoding="utf-8"
+        )
+        elsewhere = Path(self.tmp.name) / "cwd"
+        elsewhere.mkdir()
+        os.chdir(elsewhere)
+        results = eval_harness.replay_recent(5, agent_dir=self.agent)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["trajectory_id"], "T-002")
+        self.assertFalse((elsewhere / ".agent").exists())
 
 
 if __name__ == "__main__":

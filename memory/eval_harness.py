@@ -7,15 +7,21 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 TRAJECTORIES = Path(".agent/TRAJECTORIES.json")
 
 
-def _load_index() -> Dict[str, Any]:
-    if not TRAJECTORIES.exists():
+def _trajectories(agent_dir: Optional[Path] = None) -> Path:
+    """Явный каталог .agent или cwd-дефолт TRAJECTORIES."""
+    return Path(agent_dir) / "TRAJECTORIES.json" if agent_dir is not None else TRAJECTORIES
+
+
+def _load_index(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
+    path = _trajectories(agent_dir)
+    if not path.exists():
         return {"trajectories": []}
-    return json.loads(TRAJECTORIES.read_text(encoding="utf-8"))
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def score_trajectory(traj: Dict[str, Any]) -> Dict[str, Any]:
@@ -48,8 +54,8 @@ def score_trajectory(traj: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def replay_recent(limit: int = 5) -> List[Dict[str, Any]]:
-    index = _load_index()
+def replay_recent(limit: int = 5, *, agent_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
+    index = _load_index(agent_dir)
     trajs = index.get("trajectories", [])
     recent = trajs[-limit:] if trajs else []
     return [score_trajectory(t) for t in recent]
