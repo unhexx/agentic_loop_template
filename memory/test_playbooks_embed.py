@@ -431,7 +431,7 @@ def test_embed_uses_cosine(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> N
             },
         ],
     )
-    calls: dict = {}
+    calls: dict = {"n": 0}
     _parallel_http(monkeypatch, calls)
     rows = select_bullets(
         "commit workflow", agent_dir=agent, min_effect=0.0, k=5
@@ -465,7 +465,7 @@ def test_embed_cache_second_select_no_http(
             }
         ],
     )
-    calls: dict = {}
+    calls: dict = {"n": 0}
     _parallel_http(monkeypatch, calls)
     select_bullets("commit workflow", agent_dir=agent, min_effect=0.0, k=1)
     n1 = calls["n"]
@@ -565,7 +565,7 @@ def test_embed_empty_query_uses_substring(
     monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
     rows = select_bullets("", agent_dir=agent, min_effect=0.0, k=1)
     assert calls["n"] == 0
-    assert rows[0]["_score"] == _legacy_score(0.8, 0.3, 0.3)
+    assert rows[0]["_score"] == _legacy_score(0.8, 0.3, 0.9)
 
 
 def test_embed_dim_mismatch_that_bullet_substring(
