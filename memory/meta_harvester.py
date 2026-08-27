@@ -38,6 +38,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from memory.agent_lock import agent_lock
+from memory.logutil import get_logger
+
+log = get_logger("memory.meta_harvester")
+
 
 DEFAULT_FREQUENCY = "after_every_done_cycle"
 DEFAULT_MIN_CONFIDENCE = 0.85
@@ -53,19 +58,65 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _ensure_agent_dir() -> None:
-    """Гарантирует существование .agent/ и поддиректории траекторий."""
-    TRAJECTORIES_INDEX.parent.mkdir(parents=True, exist_ok=True)
-    TRAJECTORIES_DIR.mkdir(parents=True, exist_ok=True)
+def _trajectories_index(agent_dir: Optional[Path] = None) -> Path:
+    """Явный каталог .agent или cwd-дефолт индекса траекторий."""
+    return Path(agent_dir) / "TRAJECTORIES.json" if agent_dir is not None else TRAJECTORIES_INDEX
 
 
-def load_config() -> Dict[str, Any]:
+def _trajectories_dir(agent_dir: Optional[Path] = None) -> Path:
+    return Path(agent_dir) / "TRAJECTORIES" if agent_dir is not None else TRAJECTORIES_DIR
+
+
+def _meta_proposals_md(agent_dir: Optional[Path] = None) -> Path:
+    return Path(agent_dir) / "META_PROPOSALS.md" if agent_dir is not None else META_PROPOSALS_MD
+
+
+def _project_config_path(agent_dir: Optional[Path] = None) -> Path:
+    return Path(agent_dir) / "project_config.json" if agent_dir is not None else PROJECT_CONFIG
+
+
+def _sft_path(agent_dir: Optional[Path] = None) -> Path:
+    return Path(agent_dir) / "sft" / "train.jsonl" if agent_dir is not None else SFT_PATH
+
+
+def _loop_performance_md(agent_dir: Optional[Path] = None) -> Path:
+    return Path(agent_dir) / "LOOP_PERFORMANCE.md" if agent_dir is not None else Path(".agent/LOOP_PERFORMANCE.md")
+
+
+def _ensure_agent_dir(agent_dir: Optional[Path] = None) -> None:
+    """Гарантирует каталог индекса и TRAJECTORIES/."""
+    _trajectories_index(agent_dir).parent.mkdir(parents=True, exist_ok=True)
+    _trajectories_dir(agent_dir).mkdir(parents=True, exist_ok=True)
+
+
+def _trajectories_lock(agent_dir: Optional[Path] = None):
+    """Секция на родителе индекса — имя trajectories, не agent."""
+    return agent_lock(_trajectories_index(agent_dir).parent, name="trajectories")
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Пишет через *.tmp и os.replace, без усечения целевого файла."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.suffix == ".json":
+        tmp = path.with_suffix(".json.tmp")
+    elif path.suffix == ".md":
+        tmp = path.with_suffix(".md.tmp")
+    else:
+        tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(path)
+
+
+def load_config(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
     """
     Загружает настройки meta-оптимизатора.
 
     Приоритет:
     1. .agent/project_config.json -> meta_optimizer.{...}
     2. Дефолты (после every_done, высокие пороги качества, auto_apply только для безопасных типов).
+
+    agent_dir=None — файлы относительно cwd (CLI и старые тесты).
+    Иначе читаем ``agent_dir / project_config.json``. Без lock.
 
     Возвращает dict с ключами:
       enabled, frequency, min_quality, auto_apply_safe, max_proposals_per_cycle, last_harvested_cycle
@@ -83,9 +134,10 @@ def load_config() -> Dict[str, Any]:
         "last_harvested_cycle": 0,
     }
 
-    if PROJECT_CONFIG.exists():
+    cfg_path = _project_config_path(agent_dir)
+    if cfg_path.exists():
         try:
-            raw = json.loads(PROJECT_CONFIG.read_text(encoding="utf-8"))
+            raw = json.loads(cfg_path.read_text(encoding="utf-8"))
             mo = raw.get("meta_optimizer", {}) or raw.get("meta", {})
             if isinstance(mo, dict):
                 for k in ("enabled", "frequency", "auto_apply_safe", "max_proposals_per_cycle", "last_harvested_cycle"):
@@ -99,30 +151,47 @@ def load_config() -> Dict[str, Any]:
     return cfg
 
 
-def _load_index() -> Dict[str, Any]:
-    """Внутренняя загрузка индекса траекторий."""
-    _ensure_agent_dir()
-    if not TRAJECTORIES_INDEX.exists():
-        return {"trajectories": [], "proposals": [], "updated_at": _now_iso()}
+def _empty_index() -> Dict[str, Any]:
+    return {"trajectories": [], "proposals": [], "updated_at": _now_iso()}
+
+
+def _load_index_unlocked(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
+    """Чтение без lock: RMW уже держит секцию."""
+    _ensure_agent_dir(agent_dir)
+    path = _trajectories_index(agent_dir)
+    if not path.exists():
+        return _empty_index()
     try:
-        return json.loads(TRAJECTORIES_INDEX.read_text(encoding="utf-8"))
+        return json.loads(path.read_text(encoding="utf-8"))
     except Exception:
+        log.warning("trajectories index corrupt, renaming to bak: %s", path)
         try:
-            TRAJECTORIES_INDEX.rename(TRAJECTORIES_INDEX.with_suffix(".json.bak"))
+            path.rename(path.with_suffix(".json.bak"))
         except Exception:
             pass
-        return {"trajectories": [], "proposals": [], "updated_at": _now_iso()}
+        return _empty_index()
 
 
-def _save_index(data: Dict[str, Any]) -> None:
-    """Сохранение индекса + обновление человеческого отчёта."""
+def _write_index_unlocked(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
+    """tmp+replace JSON + md. Вызывающий уже в секции trajectories."""
     data["updated_at"] = _now_iso()
-    TRAJECTORIES_INDEX.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    _write_human_summary(data)
+    path = _trajectories_index(agent_dir)
+    _atomic_write_text(path, json.dumps(data, ensure_ascii=False, indent=2))
+    _write_human_summary(data, agent_dir=agent_dir)
 
 
-def _write_human_summary(data: Dict[str, Any]) -> None:
-    """Генерирует/перезаписывает .agent/META_PROPOSALS.md (и краткий обзор траекторий)."""
+def _load_index(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
+    with _trajectories_lock(agent_dir):
+        return _load_index_unlocked(agent_dir)
+
+
+def _save_index(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
+    with _trajectories_lock(agent_dir):
+        _write_index_unlocked(data, agent_dir)
+
+
+def _write_human_summary(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
+    """Генерирует/перезаписывает META_PROPOSALS.md (и краткий обзор траекторий)."""
     lines: List[str] = []
     lines.append("# META_PROPOSALS.md — Предложения Meta-Optimizer (Trajectory Harvesting)")
     lines.append("")
@@ -130,7 +199,7 @@ def _write_human_summary(data: Dict[str, Any]) -> None:
     lines.append("Полный формат и API — см. META_OPTIMIZER_SPEC.md и agentic_loop_template/memory/meta_harvester.py")
     lines.append("")
 
-    cfg = load_config()
+    cfg = load_config(agent_dir)
     lines.append(f"**Статус:** {'включен' if cfg.get('enabled') else 'отключен'} | частота: {cfg.get('frequency')}")
     lines.append(f"**Последний harvested cycle:** {cfg.get('last_harvested_cycle', 0)}")
     lines.append(f"**Обновлено:** {data.get('updated_at', '')}")
@@ -169,7 +238,7 @@ def _write_human_summary(data: Dict[str, Any]) -> None:
     lines.append("")
     lines.append("См. также: DEVELOPMENT_STANDARDS.md §12 (Meta-Optimizer), AGENT_ROLES.md (Reviewer duty).")
 
-    META_PROPOSALS_MD.write_text("\n".join(lines), encoding="utf-8")
+    _atomic_write_text(_meta_proposals_md(agent_dir), "\n".join(lines))
 
 
 def _next_traj_id(existing: List[Dict[str, Any]], cycle: int) -> str:
@@ -203,6 +272,7 @@ def harvest_from_handoff(
     cycle: int,
     outcome: str = "DONE",
     quality_signals: Optional[Dict[str, Any]] = None,
+    agent_dir: Optional[Path] = None,
 ) -> Optional[str]:
     """
     Забирает данные из handoff JSON и сохраняет компактную траекторию,
@@ -214,7 +284,7 @@ def harvest_from_handoff(
     if not handoff_path.exists():
         return None
 
-    cfg = load_config()
+    cfg = load_config(agent_dir)
     if not cfg.get("enabled"):
         return None
 
@@ -240,64 +310,62 @@ def harvest_from_handoff(
         # для начала собираем только успешные завершения; позже можно расширить на "BLOCKED с уроками"
         return None
 
-    index = _load_index()
-    trajs = index.setdefault("trajectories", [])
+    with _trajectories_lock(agent_dir):
+        index = _load_index_unlocked(agent_dir)
+        trajs = index.setdefault("trajectories", [])
 
-    # Дедуп по cycle + похожему summary
-    for existing in trajs:
-        if existing.get("cycle") == cycle and existing.get("outcome") == outcome:
-            return existing.get("id")
+        # Дедуп по cycle + похожему summary
+        for existing in trajs:
+            if existing.get("cycle") == cycle and existing.get("outcome") == outcome:
+                return existing.get("id")
 
-    tid = _next_traj_id(trajs, cycle)
+        tid = _next_traj_id(trajs, cycle)
 
-    # Собираем компактную траекторию (прототип формата — см. META_OPTIMIZER_SPEC.md)
-    trajectory = {
-        "id": tid,
-        "cycle": cycle,
-        "timestamp": _now_iso(),
-        "outcome": outcome,
-        "task_ref": data.get("summary", "")[:120],
-        "spec_ref": None,
-        "quality_signals": {
-            "confidence": conf,
-            "tests_total": handoff_metrics.get("tests_total", 0),
-            "tests_failed": tests_failed,
-            "coverage": handoff_metrics.get("coverage", 0.0),
-            "tool_calls": handoff_metrics.get("tool_calls", 0),
-            "elapsed_minutes": handoff_metrics.get("elapsed_minutes", 0.0),
-            "process_tags": proc_tags,
-        },
-        "compressed_handoff_chain": [
-            # Берём только самое важное из текущего handoff (Reviewer обычно последний)
-            {
-                "role": data.get("role", "Reviewer"),
-                "summary": data.get("summary", ""),
-                "context_delta": data.get("context_delta", ""),
-                "lessons": data.get("lessons_learned", [])[:3],
-            }
-        ],
-        "lessons_learned": data.get("lessons_learned", []),
-        "success_patterns": [],  # заполняется на этапе analyze или вручную Reviewer'ом
-        "git_evidence": {
-            "branch": data.get("git_branch", ""),
-            "last_commit": data.get("last_commit", ""),
-        },
-    }
+        # Собираем компактную траекторию (прототип формата — см. META_OPTIMIZER_SPEC.md)
+        trajectory = {
+            "id": tid,
+            "cycle": cycle,
+            "timestamp": _now_iso(),
+            "outcome": outcome,
+            "task_ref": data.get("summary", "")[:120],
+            "spec_ref": None,
+            "quality_signals": {
+                "confidence": conf,
+                "tests_total": handoff_metrics.get("tests_total", 0),
+                "tests_failed": tests_failed,
+                "coverage": handoff_metrics.get("coverage", 0.0),
+                "tool_calls": handoff_metrics.get("tool_calls", 0),
+                "elapsed_minutes": handoff_metrics.get("elapsed_minutes", 0.0),
+                "process_tags": proc_tags,
+            },
+            "compressed_handoff_chain": [
+                # Берём только самое важное из текущего handoff (Reviewer обычно последний)
+                {
+                    "role": data.get("role", "Reviewer"),
+                    "summary": data.get("summary", ""),
+                    "context_delta": data.get("context_delta", ""),
+                    "lessons": data.get("lessons_learned", [])[:3],
+                }
+            ],
+            "lessons_learned": data.get("lessons_learned", []),
+            "success_patterns": [],  # заполняется на этапе analyze или вручную Reviewer'ом
+            "git_evidence": {
+                "branch": data.get("git_branch", ""),
+                "last_commit": data.get("last_commit", ""),
+            },
+        }
 
-    # Если в будущем handoff будет содержать больше цепочки — здесь можно расширить.
-    # Пока intentionally минималистично.
+        # Если в будущем handoff будет содержать больше цепочки — здесь можно расширить.
+        # Пока intentionally минималистично.
 
-    trajs.append(trajectory)
-    _save_index(index)
-
-    # Обновляем last_harvested_cycle в конфиге (чтобы не собирать повторно)
-    # (в реальной жизни лучше писать обратно в project_config, но для простоты — только в индексе)
-    return tid
+        trajs.append(trajectory)
+        _write_index_unlocked(index, agent_dir)
+        return tid
 
 
-def get_recent_trajectories(limit: int = 5) -> List[Dict[str, Any]]:
+def get_recent_trajectories(limit: int = 5, *, agent_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
     """Возвращает последние N траекторий (для анализа и памяти)."""
-    index = _load_index()
+    index = _load_index(agent_dir)
     return list(reversed(index.get("trajectories", [])))[:limit]
 
 
@@ -344,27 +412,38 @@ def export_sft(
     out: Optional[Path] = None,
     min_confidence: float = DEFAULT_MIN_CONFIDENCE,
     recent: int = 100,
+    *,
+    agent_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """
     Локальный JSONL для дообучения. GPU/LoRA здесь нет — только экспорт.
     Файл в .agent/sft/ и должен быть в gitignore.
     """
-    dest = Path(out) if out is not None else SFT_PATH
+    dest = Path(out) if out is not None else _sft_path(agent_dir)
     dest.parent.mkdir(parents=True, exist_ok=True)
-    index = _load_index()
+    index = _load_index(agent_dir)
     trajs = list(index.get("trajectories") or [])
     if recent:
         trajs = trajs[-int(recent) :]
     written = 0
     skipped = 0
-    with dest.open("a", encoding="utf-8") as fh:
-        for traj in trajs:
-            if not _traj_qualifies(traj, min_confidence):
-                skipped += 1
-                continue
-            rec = _sft_record(traj)
-            fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
-            written += 1
+
+    def _append() -> None:
+        nonlocal written, skipped
+        with dest.open("a", encoding="utf-8") as fh:
+            for traj in trajs:
+                if not _traj_qualifies(traj, min_confidence):
+                    skipped += 1
+                    continue
+                rec = _sft_record(traj)
+                fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                written += 1
+
+    if out is None:
+        with agent_lock(dest.parent, name="sft"):
+            _append()
+    else:
+        _append()
     return {
         "written": written,
         "skipped": skipped,
@@ -373,7 +452,12 @@ def export_sft(
     }
 
 
-def analyze_for_proposals(recent: int = 5, min_confidence: float = 0.8) -> List[Dict[str, Any]]:
+def analyze_for_proposals(
+    recent: int = 5,
+    min_confidence: float = 0.8,
+    *,
+    agent_dir: Optional[Path] = None,
+) -> List[Dict[str, Any]]:
     """
     Простой детерминированный анализ недавних траекторий.
     Извлекает паттерны успеха и генерирует черновики предложений.
@@ -381,138 +465,144 @@ def analyze_for_proposals(recent: int = 5, min_confidence: float = 0.8) -> List[
     Настоящая версия — эвристики + заглушки. Позже можно добавить
     вызов модели с жёстким рубрикатором (только JSON на выходе).
     """
-    trajs = [t for t in get_recent_trajectories(recent) if t.get("quality_signals", {}).get("confidence", 0) >= min_confidence]
-    proposals: List[Dict[str, Any]] = []
+    with _trajectories_lock(agent_dir):
+        index = _load_index_unlocked(agent_dir)
+        trajs = list(reversed(index.get("trajectories", [])))[:recent]
+        trajs = [t for t in trajs if t.get("quality_signals", {}).get("confidence", 0) >= min_confidence]
+        proposals: List[Dict[str, Any]] = []
 
-    if not trajs:
+        if not trajs:
+            return proposals
+
+        # Эвристика 1: маркеры верификации -> few-shot в GUIDE
+        marker_mentions = 0
+        # Эвристика 2: хороший стиль коммитов
+        good_commit_style = 0
+        # Эвристика 3: уроки по компрессии / быстрым handoff
+        compression_wins = 0
+        # Эвристика 4: уроки -> кандидаты в permanent rules
+        rule_candidates = []
+        # Эвристика 5: P1 metrics/ledger в паттернах -> few-shot для handoff с метриками (full P4)
+        metrics_ledger_wins = 0
+        ledger_patterns = 0
+
+        for t in trajs:
+            text = json.dumps(t, ensure_ascii=False).lower()
+            if "marker" in text or "verifyonly" in text or "sync_done" in text:
+                marker_mentions += 1
+            commit_msg = (t.get("git_evidence", {}).get("last_commit") or "").lower()
+            if "улучшил" in commit_msg or "добавил" in commit_msg:
+                good_commit_style += 1
+            if t.get("compression_metrics") or "handoff" in text and "короче" in text:
+                compression_wins += 1
+            for lesson in t.get("lessons_learned", []):
+                if "всегда" in lesson.lower() or "обязательно" in lesson.lower():
+                    rule_candidates.append(lesson)
+            # New P4 full heuristics for metrics/ledger
+            if "performance" in text or "ledger" in text or "metrics" in text or "roi" in text:
+                metrics_ledger_wins += 1
+            sp = " ".join(t.get("success_patterns", [])).lower()
+            if "performance" in sp or "ledger" in sp or "metrics" in sp:
+                ledger_patterns += 1
+
+        existing_props = index.setdefault("proposals", [])
+
+        if marker_mentions >= 2:
+            pid = _next_prop_id(existing_props)
+            prop = {
+                "id": pid,
+                "from_trajectories": [t["id"] for t in trajs[-marker_mentions:]],
+                "target_file": "agentic_loop_template/PROMPT_COMPRESSION_GUIDE.md",
+                "change_type": "add_few_shot_example",
+                "title": "Добавить verified few-shot с явным machine-verifiable маркером (SYNC_DONE / VerifyOnly)",
+                "rationale": f"В {marker_mentions} высококачественных циклах успех коррелировал с явным маркером и ссылкой на него в сжатом handoff. Паттерн повторяется.",
+                "proposed_text": "```markdown\n**Good compressed handoff with verification marker (harvested from cycle 17+):**\n- Cycle goal: improve sync-worktree (VerifyOnly + SYNC_DONE).\n- Evidence: grep for SYNC_DONE marker in script + test.\n- Commit style: natural Russian, human dev voice.\n```",
+                "insertion_anchor": "После примера 'Good compressed handoff (delta + links + summary)'",
+                "safe_to_auto": True,
+                "confidence": 0.78,
+                "expected_impact": "Ускорение планирования на infra/sync задачах; снижение размера handoff",
+                "status": "pending",
+                "created_at": _now_iso(),
+            }
+            proposals.append(prop)
+            existing_props.append(prop)
+
+        if good_commit_style >= 1:
+            pid = _next_prop_id(existing_props)
+            prop = {
+                "id": pid,
+                "from_trajectories": [t["id"] for t in trajs[-2:]],
+                "target_file": "DEVELOPMENT_STANDARDS.md",
+                "change_type": "add_permanent_rule_example",
+                "title": "Рекомендация: в permanent rules добавить пример 'machine-checkable completion marker'",
+                "rationale": "Успешные циклы, где использовался явный маркер, требовали меньше итераций Reviewer'а.",
+                "proposed_text": "6. Для задач с кросс-репо/скриптами — всегда вводить machine-verifiable маркер (SYNC_DONE, VERIFIED, etc.) и проверять его в тестах.",
+                "insertion_anchor": "В секции Permanent Rules",
+                "safe_to_auto": False,
+                "confidence": 0.65,
+                "expected_impact": "Меньше возвратов от Reviewer на infra-работе",
+                "status": "pending",
+                "created_at": _now_iso(),
+            }
+            proposals.append(prop)
+            existing_props.append(prop)
+
+        if compression_wins >= 1:
+            pid = _next_prop_id(existing_props)
+            prop = {
+                "id": pid,
+                "from_trajectories": [t["id"] for t in trajs[-compression_wins:]],
+                "target_file": "agentic_loop_template/PROMPT_COMPRESSION_GUIDE.md",
+                "change_type": "add_few_shot_example",
+                "title": "Добавить harvested пример компрессии с метриками выигрыша",
+                "rationale": "В нескольких циклах явно фиксировался выигрыш по размеру handoff благодаря delta + внешним ссылкам.",
+                "proposed_text": "**Meta: delta-first + external RAG links дают стабильное сокращение на 30-50% (см. compression_metrics в траекториях).**",
+                "insertion_anchor": "В секции Concrete small-context examples",
+                "safe_to_auto": True,
+                "confidence": 0.72,
+                "expected_impact": "Лучшая дисциплина сжатия у будущих ролей",
+                "status": "pending",
+                "created_at": _now_iso(),
+            }
+            proposals.append(prop)
+            existing_props.append(prop)
+
+        # Full P4 heuristics for metrics/ledger (P1 integration)
+        if metrics_ledger_wins >= 1 or ledger_patterns >= 1:
+            pid = _next_prop_id(existing_props)
+            prop = {
+                "id": pid,
+                "from_trajectories": [t["id"] for t in trajs[-max(1, metrics_ledger_wins):]],
+                "target_file": "agentic_loop_template/PROMPT_COMPRESSION_GUIDE.md",
+                "change_type": "add_few_shot_example",
+                "title": "Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)",
+                "rationale": f"В {max(metrics_ledger_wins, ledger_patterns)} циклах успех коррелировал с явным включением performance metrics (elapsed, tool_calls, confidence, meta_applied) + success_patterns в сжатые handoff'ы. Позволяет лучше отслеживать ROI и компрессию.",
+                "proposed_text": "```markdown\n**Harvested: include 'performance' delta in every handoff (from 20+ loops)**\n- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed\n- success_patterns for ledger/metrics wins\n- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.\nExample: \"performance\": {\"cycle\": 21, \"elapsed_minutes\": 3.5, \"tool_calls\": 12, \"confidence\": 0.9, \"meta_applied\": 8}\n```",
+                "insertion_anchor": "После примера с compression_metrics",
+                "safe_to_auto": True,
+                "confidence": 0.85,
+                "expected_impact": "Лучшее отслеживание эффективности, автоматическая эволюция метрик в циклах",
+                "status": "pending",
+                "created_at": _now_iso(),
+            }
+            proposals.append(prop)
+            existing_props.append(prop)
+
+        _write_index_unlocked(index, agent_dir)
         return proposals
 
-    # Эвристика 1: маркеры верификации -> few-shot в GUIDE
-    marker_mentions = 0
-    # Эвристика 2: хороший стиль коммитов
-    good_commit_style = 0
-    # Эвристика 3: уроки по компрессии / быстрым handoff
-    compression_wins = 0
-    # Эвристика 4: уроки -> кандидаты в permanent rules
-    rule_candidates = []
-    # Эвристика 5: P1 metrics/ledger в паттернах -> few-shot для handoff с метриками (full P4)
-    metrics_ledger_wins = 0
-    ledger_patterns = 0
 
-    for t in trajs:
-        text = json.dumps(t, ensure_ascii=False).lower()
-        if "marker" in text or "verifyonly" in text or "sync_done" in text:
-            marker_mentions += 1
-        commit_msg = (t.get("git_evidence", {}).get("last_commit") or "").lower()
-        if "улучшил" in commit_msg or "добавил" in commit_msg:
-            good_commit_style += 1
-        if t.get("compression_metrics") or "handoff" in text and "короче" in text:
-            compression_wins += 1
-        for lesson in t.get("lessons_learned", []):
-            if "всегда" in lesson.lower() or "обязательно" in lesson.lower():
-                rule_candidates.append(lesson)
-        # New P4 full heuristics for metrics/ledger
-        if "performance" in text or "ledger" in text or "metrics" in text or "roi" in text:
-            metrics_ledger_wins += 1
-        sp = " ".join(t.get("success_patterns", [])).lower()
-        if "performance" in sp or "ledger" in sp or "metrics" in sp:
-            ledger_patterns += 1
-
-    index = _load_index()
-    existing_props = index.setdefault("proposals", [])
-
-    if marker_mentions >= 2:
-        pid = _next_prop_id(existing_props)
-        prop = {
-            "id": pid,
-            "from_trajectories": [t["id"] for t in trajs[-marker_mentions:]],
-            "target_file": "agentic_loop_template/PROMPT_COMPRESSION_GUIDE.md",
-            "change_type": "add_few_shot_example",
-            "title": "Добавить verified few-shot с явным machine-verifiable маркером (SYNC_DONE / VerifyOnly)",
-            "rationale": f"В {marker_mentions} высококачественных циклах успех коррелировал с явным маркером и ссылкой на него в сжатом handoff. Паттерн повторяется.",
-            "proposed_text": "```markdown\n**Good compressed handoff with verification marker (harvested from cycle 17+):**\n- Cycle goal: improve sync-worktree (VerifyOnly + SYNC_DONE).\n- Evidence: grep for SYNC_DONE marker in script + test.\n- Commit style: natural Russian, human dev voice.\n```",
-            "insertion_anchor": "После примера 'Good compressed handoff (delta + links + summary)'",
-            "safe_to_auto": True,
-            "confidence": 0.78,
-            "expected_impact": "Ускорение планирования на infra/sync задачах; снижение размера handoff",
-            "status": "pending",
-            "created_at": _now_iso(),
-        }
-        proposals.append(prop)
-        existing_props.append(prop)
-
-    if good_commit_style >= 1:
-        pid = _next_prop_id(existing_props)
-        prop = {
-            "id": pid,
-            "from_trajectories": [t["id"] for t in trajs[-2:]],
-            "target_file": "DEVELOPMENT_STANDARDS.md",
-            "change_type": "add_permanent_rule_example",
-            "title": "Рекомендация: в permanent rules добавить пример 'machine-checkable completion marker'",
-            "rationale": "Успешные циклы, где использовался явный маркер, требовали меньше итераций Reviewer'а.",
-            "proposed_text": "6. Для задач с кросс-репо/скриптами — всегда вводить machine-verifiable маркер (SYNC_DONE, VERIFIED, etc.) и проверять его в тестах.",
-            "insertion_anchor": "В секции Permanent Rules",
-            "safe_to_auto": False,
-            "confidence": 0.65,
-            "expected_impact": "Меньше возвратов от Reviewer на infra-работе",
-            "status": "pending",
-            "created_at": _now_iso(),
-        }
-        proposals.append(prop)
-        existing_props.append(prop)
-
-    if compression_wins >= 1:
-        pid = _next_prop_id(existing_props)
-        prop = {
-            "id": pid,
-            "from_trajectories": [t["id"] for t in trajs[-compression_wins:]],
-            "target_file": "agentic_loop_template/PROMPT_COMPRESSION_GUIDE.md",
-            "change_type": "add_few_shot_example",
-            "title": "Добавить harvested пример компрессии с метриками выигрыша",
-            "rationale": "В нескольких циклах явно фиксировался выигрыш по размеру handoff благодаря delta + внешним ссылкам.",
-            "proposed_text": "**Meta: delta-first + external RAG links дают стабильное сокращение на 30-50% (см. compression_metrics в траекториях).**",
-            "insertion_anchor": "В секции Concrete small-context examples",
-            "safe_to_auto": True,
-            "confidence": 0.72,
-            "expected_impact": "Лучшая дисциплина сжатия у будущих ролей",
-            "status": "pending",
-            "created_at": _now_iso(),
-        }
-        proposals.append(prop)
-        existing_props.append(prop)
-
-    # Full P4 heuristics for metrics/ledger (P1 integration)
-    if metrics_ledger_wins >= 1 or ledger_patterns >= 1:
-        pid = _next_prop_id(existing_props)
-        prop = {
-            "id": pid,
-            "from_trajectories": [t["id"] for t in trajs[-max(1, metrics_ledger_wins):]],
-            "target_file": "agentic_loop_template/PROMPT_COMPRESSION_GUIDE.md",
-            "change_type": "add_few_shot_example",
-            "title": "Добавить harvested пример с performance/ledger метриками в handoff delta (P1+P4)",
-            "rationale": f"В {max(metrics_ledger_wins, ledger_patterns)} циклах успех коррелировал с явным включением performance metrics (elapsed, tool_calls, confidence, meta_applied) + success_patterns в сжатые handoff'ы. Позволяет лучше отслеживать ROI и компрессию.",
-            "proposed_text": "```markdown\n**Harvested: include 'performance' delta in every handoff (from 20+ loops)**\n- elapsed_minutes, tool_calls, confidence, meta_applied, tests_failed\n- success_patterns for ledger/metrics wins\n- Reduces verbose repeats, enables trend analysis in PROJECT_CONTEXT.\nExample: \"performance\": {\"cycle\": 21, \"elapsed_minutes\": 3.5, \"tool_calls\": 12, \"confidence\": 0.9, \"meta_applied\": 8}\n```",
-            "insertion_anchor": "После примера с compression_metrics",
-            "safe_to_auto": True,
-            "confidence": 0.85,
-            "expected_impact": "Лучшее отслеживание эффективности, автоматическая эволюция метрик в циклах",
-            "status": "pending",
-            "created_at": _now_iso(),
-        }
-        proposals.append(prop)
-        existing_props.append(prop)
-
-    _save_index(index)
-    return proposals
-
-
-def generate_proposals(limit: int = 3) -> List[Dict[str, Any]]:
+def generate_proposals(limit: int = 3, *, agent_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
     """Обёртка: анализирует и возвращает до limit свежих предложений."""
-    props = analyze_for_proposals()
-    return props[:limit]
+    return analyze_for_proposals(agent_dir=agent_dir)[:limit]
 
 
-def apply_safe_proposals(dry_run: bool = True, ids: Optional[List[str]] = None) -> int:
+def apply_safe_proposals(
+    dry_run: bool = True,
+    ids: Optional[List[str]] = None,
+    *,
+    agent_dir: Optional[Path] = None,
+) -> int:
     """
     Применяет безопасные (safe_to_auto=True) предложения.
 
@@ -523,50 +613,51 @@ def apply_safe_proposals(dry_run: bool = True, ids: Optional[List[str]] = None) 
 
     Возвращает количество обработанных предложений.
     """
-    index = _load_index()
-    props = index.get("proposals", [])
-    applied = 0
-    to_apply = [p for p in props if p.get("safe_to_auto") and p.get("status", "pending") == "pending"]
-    if ids:
-        idset = set(ids)
-        to_apply = [p for p in to_apply if p.get("id") in idset]
+    applied_ids: List[Tuple[str, str]] = []  # id, impact
+    with _trajectories_lock(agent_dir):
+        index = _load_index_unlocked(agent_dir)
+        props = index.get("proposals", [])
+        to_apply = [p for p in props if p.get("safe_to_auto") and p.get("status", "pending") == "pending"]
+        if ids:
+            idset = set(ids)
+            to_apply = [p for p in to_apply if p.get("id") in idset]
+        guide_path = Path("PROMPT_COMPRESSION_GUIDE.md")  # cwd, не agent_dir
+        applied = 0
+        for p in to_apply:
+            target = p.get("target_file", "")
+            if dry_run:
+                print(f"[DRY-RUN] Would apply {p['id']} to {target}: {p['title']}")
+                continue
 
-    guide_path = Path("PROMPT_COMPRESSION_GUIDE.md")
+            did_edit = False
+            if "PROMPT_COMPRESSION_GUIDE.md" in target and p.get("change_type") == "add_few_shot_example":
+                if guide_path.exists():
+                    try:
+                        content = guide_path.read_text(encoding="utf-8")
+                        # Ищем секцию meta-harvested и дописываем туда
+                        marker = "## Meta-harvested few-shot examples (v3.x+)"
+                        if marker in content:
+                            append_block = f"\n\n### {p.get('title', 'Harvested example')}\n\n{p.get('proposed_text', '')}\n\n*Добавлено meta_harvester cycle {p.get('from_trajectories', ['?'])[0] if p.get('from_trajectories') else '?'}*\n"
+                            # Вставляем после заголовка секции
+                            parts = content.split(marker, 1)
+                            if len(parts) == 2:
+                                new_content = parts[0] + marker + parts[1].split("\n\n", 1)[0] + append_block + "\n\n" + (parts[1].split("\n\n", 1)[1] if "\n\n" in parts[1] else parts[1])
+                                guide_path.write_text(new_content, encoding="utf-8")
+                                did_edit = True
+                    except Exception:
+                        pass  # не ломаем цикл на ошибке применения
 
-    for p in to_apply:
-        target = p.get("target_file", "")
-        if dry_run:
-            print(f"[DRY-RUN] Would apply {p['id']} to {target}: {p['title']}")
-            continue
-
-        did_edit = False
-        if "PROMPT_COMPRESSION_GUIDE.md" in target and p.get("change_type") == "add_few_shot_example":
-            if guide_path.exists():
-                try:
-                    content = guide_path.read_text(encoding="utf-8")
-                    # Ищем секцию meta-harvested и дописываем туда
-                    marker = "## Meta-harvested few-shot examples (v3.x+)"
-                    if marker in content:
-                        append_block = f"\n\n### {p.get('title', 'Harvested example')}\n\n{p.get('proposed_text', '')}\n\n*Добавлено meta_harvester cycle {p.get('from_trajectories', ['?'])[0] if p.get('from_trajectories') else '?'}*\n"
-                        # Вставляем после заголовка секции
-                        parts = content.split(marker, 1)
-                        if len(parts) == 2:
-                            new_content = parts[0] + marker + parts[1].split("\n\n", 1)[0] + append_block + "\n\n" + (parts[1].split("\n\n", 1)[1] if "\n\n" in parts[1] else parts[1])
-                            guide_path.write_text(new_content, encoding="utf-8")
-                            did_edit = True
-                except Exception:
-                    pass  # не ломаем цикл на ошибке применения
-
-        # Всегда маркируем как applied (даже если редактирование не удалось — Reviewer увидит)
-        p["status"] = "applied"
-        p["applied_at"] = _now_iso()
-        if did_edit:
-            p["notes"] = p.get("notes", "") + " (auto-appended to file)"
-        update_performance_ledger(p["id"], p.get("expected_impact", "applied via meta"))
-        applied += 1
-
-    if applied > 0 or dry_run:
-        _save_index(index)
+            # Всегда маркируем как applied (даже если редактирование не удалось — Reviewer увидит)
+            p["status"] = "applied"
+            p["applied_at"] = _now_iso()
+            if did_edit:
+                p["notes"] = p.get("notes", "") + " (auto-appended to file)"
+            applied_ids.append((p["id"], p.get("expected_impact", "applied via meta")))
+            applied += 1
+        if applied > 0:
+            _write_index_unlocked(index, agent_dir)
+    for pid, impact in applied_ids:
+        update_performance_ledger(pid, impact, agent_dir=agent_dir)
     return applied
 
 
@@ -607,86 +698,90 @@ def basic_replay_harness(task_spec: str, proposal: dict = None) -> dict:
     return {"baseline": baseline, "note": "No proposal provided — baseline only"}
 
 
-def seed_example_trajectory() -> str:
+def seed_example_trajectory(agent_dir: Optional[Path] = None) -> str:
     """
     Создаёт пример "золотой" траектории для демонстрации и сидинга.
     Полезно для первых запусков и тестов.
     Возвращает id созданной траектории.
     """
-    _ensure_agent_dir()
-    index = _load_index()
-    trajs = index.setdefault("trajectories", [])
+    with _trajectories_lock(agent_dir):
+        index = _load_index_unlocked(agent_dir)
+        trajs = index.setdefault("trajectories", [])
 
-    # Простая проверка, чтобы не дублировать пример
-    for t in trajs:
-        if t.get("id", "").startswith("T-EXAMPLE"):
-            return t["id"]
+        # Простая проверка, чтобы не дублировать пример
+        for t in trajs:
+            if t.get("id", "").startswith("T-EXAMPLE"):
+                return t["id"]
 
-    tid = "T-EXAMPLE-001"
-    example = {
-        "id": tid,
-        "cycle": 1,
-        "timestamp": _now_iso(),
-        "outcome": "DONE",
-        "task_ref": "initial meta-harvester integration",
-        "spec_ref": "META_OPTIMIZER_SPEC.md",
-        "quality_signals": {
-            "confidence": 0.92,
-            "tests_total": 8,
-            "tests_failed": 0,
-            "coverage": 85.0,
-            "tool_calls": 6,
-            "elapsed_minutes": 7.0,
-            "process_tags": []
-        },
-        "compressed_handoff_chain": [
-            {
-                "role": "Reviewer",
-                "summary": "Успешно внедрил meta_harvester, применил первый harvested пример.",
-                "context_delta": "Добавлен модуль, обновлены стандарты и роли.",
-                "lessons": ["Meta-анализ даёт конкретные улучшения в few-shot и правилах"]
+        tid = "T-EXAMPLE-001"
+        example = {
+            "id": tid,
+            "cycle": 1,
+            "timestamp": _now_iso(),
+            "outcome": "DONE",
+            "task_ref": "initial meta-harvester integration",
+            "spec_ref": "META_OPTIMIZER_SPEC.md",
+            "quality_signals": {
+                "confidence": 0.92,
+                "tests_total": 8,
+                "tests_failed": 0,
+                "coverage": 85.0,
+                "tool_calls": 6,
+                "elapsed_minutes": 7.0,
+                "process_tags": []
+            },
+            "compressed_handoff_chain": [
+                {
+                    "role": "Reviewer",
+                    "summary": "Успешно внедрил meta_harvester, применил первый harvested пример.",
+                    "context_delta": "Добавлен модуль, обновлены стандарты и роли.",
+                    "lessons": ["Meta-анализ даёт конкретные улучшения в few-shot и правилах"]
+                }
+            ],
+            "lessons_learned": [
+                "Запускать harvest на всех высококачественных DONE-циклах",
+                "Safe apply позволяет быстро интегрировать выигрышные паттерны"
+            ],
+            "success_patterns": [
+                "Явный machine-verifiable маркер в скриптах и handoff'ах",
+                "Delta-first подход + ссылки на предыдущие волны для сжатия"
+            ],
+            "git_evidence": {
+                "branch": "feature/meta-optimizer",
+                "last_commit": "Внёс harvested пример из meta-анализа"
+            },
+            "compression_metrics": {
+                "handoff_avg_chars": 980,
+                "win": "delta + external evidence"
             }
-        ],
-        "lessons_learned": [
-            "Запускать harvest на всех высококачественных DONE-циклах",
-            "Safe apply позволяет быстро интегрировать выигрышные паттерны"
-        ],
-        "success_patterns": [
-            "Явный machine-verifiable маркер в скриптах и handoff'ах",
-            "Delta-first подход + ссылки на предыдущие волны для сжатия"
-        ],
-        "git_evidence": {
-            "branch": "feature/meta-optimizer",
-            "last_commit": "Внёс harvested пример из meta-анализа"
-        },
-        "compression_metrics": {
-            "handoff_avg_chars": 980,
-            "win": "delta + external evidence"
         }
-    }
-    trajs.append(example)
-    _save_index(index)
-    return tid
+        trajs.append(example)
+        _write_index_unlocked(index, agent_dir)
+        return tid
 
 
-def update_performance_ledger(proposal_id: str, impact: str = "", cycle_stats: dict | None = None) -> None:
+def update_performance_ledger(
+    proposal_id: str,
+    impact: str = "",
+    cycle_stats: dict | None = None,
+    *,
+    agent_dir: Optional[Path] = None,
+) -> None:
     """
     Обновление performance ledger.
     Вызывается из apply_safe и Reviewer на DONE циклах.
     Поддерживает как старый формат, так и полный stats от performance_ledger (P1).
     """
-    _ensure_agent_dir()
+    _ensure_agent_dir(agent_dir)
     # Legacy md append (kept for compatibility)
-    ledger = Path(".agent/LOOP_PERFORMANCE.md")
-    lines = []
-    if ledger.exists():
-        lines = ledger.read_text(encoding="utf-8").splitlines()
-    lines.append(f"- { _now_iso() } | proposal {proposal_id} | {impact or 'applied'}")
-    ledger.write_text("\n".join(lines[-50:]) + "\n", encoding="utf-8")
-
-    # New structured ledger (business efficiency P1)
-    # Use direct file load to avoid package __init__ recursion/circular import issues
-    # (consistent with test_performance_ledger.py and guarded __init__.py)
+    ledger = _loop_performance_md(agent_dir)
+    with agent_lock(ledger.parent, name="ledger"):
+        lines: List[str] = []
+        if ledger.exists():
+            lines = ledger.read_text(encoding="utf-8").splitlines()
+        lines.append(f"- { _now_iso() } | proposal {proposal_id} | {impact or 'applied'}")
+        _atomic_write_text(ledger, "\n".join(lines[-50:]) + "\n")
+    # Лок ledger снят до append_cycle — иначе вложенный O_EXCL повиснет.
     try:
         import importlib.util
         pl_path = Path(__file__).parent / "performance_ledger.py"
@@ -694,9 +789,10 @@ def update_performance_ledger(proposal_id: str, impact: str = "", cycle_stats: d
         pl = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(pl)
         if cycle_stats:
-            pl.append_cycle(**cycle_stats)
+            pl.append_cycle(agent_dir=agent_dir, **cycle_stats)
         else:
             pl.append_cycle(
+                agent_dir=agent_dir,
                 cycle=0,
                 outcome="META_APPLIED",
                 notes=f"proposal:{proposal_id} impact:{impact}",
