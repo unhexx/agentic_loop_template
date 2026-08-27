@@ -1,6 +1,6 @@
 # Agentix
 
-[![Version](https://img.shields.io/badge/version-3.11.4-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.12.0-blue?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](docs/getting-started.md)
 [![Platform](https://img.shields.io/badge/platform-Linux_%7C_macOS_%7C_Windows-lightgrey?style=flat-square)](docs/cross-platform.md)
@@ -369,7 +369,7 @@ v1 does **not** listen on a tailnet IP. TeleGrok 0.1.0 does not ship runtime Tai
 | Category | Capability |
 |----------|------------|
 | **Loop discipline** | 5 roles, JSON handoffs, INVEST tasks, git §11 sync |
-| **Packaging** | `pip install -e ".[dev]"` / `.[dashboard]`; console script `agentix`; import package `memory` |
+| **Packaging** | `pip install -e ".[dev]"` / `.[dashboard]` / `.[embeddings]`; console script `agentix`; import package `memory` |
 | **Control Plane** | Loopback HTMX operator UI (`memory.dashboard` on `:8112`), not the runner |
 | **Self-improvement** | Playbooks (ACE scoring), meta-harvester, performance ledger, [skills](skills/README.md) |
 | **Context** | Bounded LOOP_STATE, `context_budget` gate (supervisor caps from config/env), rule-based compressor, local SQLite knowledge, [request proxy](docs/proxy.md) (**pxpipe default** + Agentix gateway) |

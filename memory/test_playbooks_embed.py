@@ -730,3 +730,8 @@ def test_embed_lock_held_during_cache_replace(
 def test_playbooks_py_under_1000_lines() -> None:
     text = (REPO / "memory" / "playbooks.py").read_text(encoding="utf-8")
     assert text.count("\n") < 1000
+
+
+def test_embeddings_extra_is_empty_marker() -> None:
+    text = (REPO / "pyproject.toml").read_text(encoding="utf-8")
+    assert "embeddings = []" in text or "embeddings = [\n]" in text.replace("\r\n", "\n")

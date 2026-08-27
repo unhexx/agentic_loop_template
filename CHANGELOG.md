@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [3.12.0] - 2026-08-27
+
+### Added
+- Optional playbook embeddings ranking: empty extra `embeddings`, config `playbooks.relevance=embed`, HTTP OpenAI-compatible `POST {base}/v1/embeddings` via stdlib urllib, cosine for the 0.2 ACE term, cache `.agent/PLAYBOOKS.embeddings.json` under `agent_lock(name="playbooks")`. Fail-open to substring. Helpers in `memory/playbooks_embed.py`.
+- Design spec: [`docs/superpowers/specs/2026-08-27-p8-10-playbook-embeddings-design.md`](docs/superpowers/specs/2026-08-27-p8-10-playbook-embeddings-design.md)
+
+### Changed
+- `VERSION` → 3.12.0
+- ROADMAP: P8-10 Future bullet removed; milestone v3.12.0
+
+Minor, not a 3.11.5 patch: new extra + config keys. Default omit/`substring` scores match 3.11.4. `select_bullets` signature unchanged. Env: `AGENTIX_EMBED_BASE`, `AGENTIX_EMBED_API_KEY` (then `OPENAI_API_KEY`). Config keys `embedding_base_url` / `embedding_model` / `embedding_api_key` are not secrets in `project_config.example.json`.
+
 ## [3.11.4] - 2026-08-27
 
 ### Added

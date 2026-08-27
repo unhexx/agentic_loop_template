@@ -17,6 +17,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8.0,<9", "tiktoken>=0.7,<1"]
 tokens = ["tiktoken>=0.7,<1"]
+embeddings = []
 dashboard = [
   "fastapi>=0.115",
   "uvicorn[standard]>=0.32",

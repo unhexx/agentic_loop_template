@@ -33,7 +33,7 @@ Each role: **PLAN → ACT (≤3 tool calls) → REFLECT → handoff JSON**.
 | Handoffs | `HANDOFF_SCHEMA.md` | State transfer contract |
 | Memory | `memory/` | questions_collector, meta_harvester (impl. `memory/meta/`), experience_harvester (impl. `memory/experience/`), playbooks, ledger |
 | Planning | `.agent/PLAN.md`, `.agent/TODO.md` | Iteration continuity |
-| Playbooks | `.agent/PLAYBOOKS.json` | Knowledge bullets (ACE scoring) |
+| Playbooks | `.agent/PLAYBOOKS.json` | Knowledge bullets (ACE scoring; optional embeddings when `playbooks.relevance=embed`) |
 | Hub | `.agent/HUB_INDEX.json` | Exportable discovery index |
 | Audit | `memory/audit_log.py` | Enterprise trail (P5) |
 | Resume | `memory/resume.py` | Crash recovery (P7) |
