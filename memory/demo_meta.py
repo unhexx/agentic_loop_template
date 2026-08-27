@@ -11,31 +11,21 @@
 - Анализ и предложения
 - Применение безопасных изменений
 - Обновление performance ledger
-
-Скрипт самодостаточный (прямой импорт модуля, без зависимости от полного пакета памяти).
 """
 
 import json
 import tempfile
 from pathlib import Path
-import importlib.util
 
-# Прямой импорт meta_harvester.py
-spec = importlib.util.spec_from_file_location("mh", Path(__file__).parent / "meta_harvester.py")
-mh = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mh)
+import memory.meta_harvester as mh
+
 
 def main():
     print("=== Демонстрация Meta-Optimizer & Trajectory Harvesting (с playbooks) ===")
     print()
 
-    # Runtime playbook usage (P4-RUNTIME-01)
     try:
-        import importlib.util
-        from pathlib import Path
-        spec = importlib.util.spec_from_file_location("pb", Path(__file__).parent / "playbooks.py")
-        pb = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(pb)
+        from memory import playbooks as pb
         bullets = pb.select_bullets("planning cross-platform playbook usage", scopes=["global", "phase:planning"], k=2)
         print("Playbooks selected for planning (runtime demo):")
         for b in bullets:
@@ -43,13 +33,14 @@ def main():
     except Exception as e:
         print(f"Playbooks select note: {e}")
 
-    # 1. Сидинг примера
-    example_id = mh.seed_example_trajectory()
-    print(f"1. Seeded example trajectory: {example_id}")
-
-    # 2. Создаём временный mock handoff (высокое качество, с маркером)
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
+        agent = tmp_path / ".agent"
+        agent.mkdir()
+
+        example_id = mh.seed_example_trajectory(agent_dir=agent)
+        print(f"1. Seeded example trajectory: {example_id}")
+
         handoff = tmp_path / "demo_handoff.json"
         handoff.write_text(json.dumps({
             "role": "Reviewer",
@@ -71,41 +62,29 @@ def main():
             "git_branch": "feature/meta-demo"
         }, ensure_ascii=False), encoding="utf-8")
 
-        # Перенаправляем хранилище на tmp для чистоты демо
-        orig_index = mh.TRAJECTORIES_INDEX
-        orig_md = mh.META_PROPOSALS_MD
-        mh.TRAJECTORIES_INDEX = tmp_path / "TRAJECTORIES.json"
-        mh.META_PROPOSALS_MD = tmp_path / "META_PROPOSALS.md"
-
-        # 3. Harvest
-        tid = mh.harvest_from_handoff(handoff, cycle=99, outcome="DONE")
+        tid = mh.harvest_from_handoff(handoff, cycle=99, outcome="DONE", agent_dir=agent)
         print(f"2. Harvested trajectory: {tid}")
 
-        # 4. Analyze + Propose
-        props = mh.analyze_for_proposals(recent=1, min_confidence=0.8)
+        props = mh.analyze_for_proposals(recent=1, min_confidence=0.8, agent_dir=agent)
         print(f"3. Generated {len(props)} proposal(s)")
 
         for p in props:
             print(f"   - {p['id']}: {p['title']} (safe={p['safe_to_auto']})")
 
-        # 5. Apply (в демо — dry_run=False, но изменения только в tmp)
-        applied = mh.apply_safe_proposals(dry_run=False)
-        print(f"4. Applied {applied} safe proposal(s) (ledger updated)")
+        applied = mh.apply_safe_proposals(dry_run=True, agent_dir=agent)
+        print(f"4. Applied {applied} safe proposal(s) (dry-run)")
 
-        # Показываем ledger
-        ledger = Path(".agent/LOOP_PERFORMANCE.md")
+        mh.update_performance_ledger("P-DEMO-001", "demo impact", agent_dir=agent)
+        ledger = agent / "LOOP_PERFORMANCE.md"
         if ledger.exists():
             tail = ledger.read_text(encoding="utf-8").strip().splitlines()[-1]
             print(f"5. Performance ledger tail: {tail}")
-
-        # Восстанавливаем пути
-        mh.TRAJECTORIES_INDEX = orig_index
-        mh.META_PROPOSALS_MD = orig_md
 
     print()
     print("=== Демо завершено успешно ===")
     print("См. META_OPTIMIZER_SPEC.md и memory/README.md для деталей.")
     print("В реальном цикле Reviewer вызывает эти команды после качественного DONE.")
+
 
 if __name__ == "__main__":
     main()

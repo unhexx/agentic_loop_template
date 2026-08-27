@@ -67,16 +67,7 @@ from .questions_collector import (
     load_config,
 )
 
-from .meta_harvester import (
-    harvest_from_handoff,
-    get_recent_trajectories,
-    analyze_for_proposals,
-    generate_proposals,
-    apply_safe_proposals,
-    seed_example_trajectory,
-    update_performance_ledger,
-    load_config as load_meta_config,
-)
+# Meta-имена — лениво через __getattr__ (тела не грузятся при import memory).
 
 # Playbooks & Knowledge Objects (full cycle guidance - P4 complete)
 try:
@@ -121,7 +112,23 @@ __all__ = [
 ]
 
 # Lazy exposure so we don't break when full workspace/store modules are not present in all envs
+_META_EXPORTS = {
+    "harvest_from_handoff",
+    "get_recent_trajectories",
+    "analyze_for_proposals",
+    "generate_proposals",
+    "apply_safe_proposals",
+    "seed_example_trajectory",
+    "update_performance_ledger",
+    "load_meta_config",
+}
+
+
 def __getattr__(name):
+    if name in _META_EXPORTS:
+        from . import meta_harvester as mh
+        attr = "load_config" if name == "load_meta_config" else name
+        return getattr(mh, attr)
     if name == "performance_ledger":
         import importlib
         return importlib.import_module("memory.performance_ledger")

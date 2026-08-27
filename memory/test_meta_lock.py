@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+import memory.meta.store as mstore
 from memory.agent_lock import agent_lock as real_lock, lock_path
 
 
@@ -66,7 +67,7 @@ def test_harvest_lock_name_and_parent(tmp_path: Path, monkeypatch: pytest.Monkey
     agent.mkdir()
     lock_roots: list[Path] = []
     lock_names: list[str] = []
-    orig = mh.agent_lock
+    orig = mstore.agent_lock
 
     @contextmanager
     def spy_lock(agent_dir, *, name="agent", timeout=30.0):
@@ -75,7 +76,7 @@ def test_harvest_lock_name_and_parent(tmp_path: Path, monkeypatch: pytest.Monkey
         with orig(agent_dir, name=name, timeout=timeout):
             yield
 
-    monkeypatch.setattr(mh, "agent_lock", spy_lock)
+    monkeypatch.setattr(mstore, "agent_lock", spy_lock)
     mh.harvest_from_handoff(_handoff(tmp_path / "h.json"), cycle=7, outcome="DONE", agent_dir=agent)
     assert "trajectories" in lock_names
     assert all(r == agent.resolve() for r in lock_roots)
@@ -136,7 +137,7 @@ def test_two_harvest_threads_max_held(tmp_path: Path, monkeypatch: pytest.Monkey
                 with gate:
                     current -= 1
 
-    monkeypatch.setattr(mh, "agent_lock", counting_lock)
+    monkeypatch.setattr(mstore, "agent_lock", counting_lock)
     errors: list[BaseException] = []
     handoffs = []
     for i, cycle in enumerate((11, 12, 13, 14)):
@@ -171,7 +172,7 @@ def test_export_sft_default_uses_sft_lock(tmp_path: Path, monkeypatch: pytest.Mo
     cwd.mkdir()
     monkeypatch.chdir(cwd)
     names: list[str] = []
-    orig = mh.agent_lock
+    orig = mstore.agent_lock
 
     @contextmanager
     def spy(agent_dir, *, name="agent", timeout=30.0):
@@ -179,7 +180,7 @@ def test_export_sft_default_uses_sft_lock(tmp_path: Path, monkeypatch: pytest.Mo
         with orig(agent_dir, name=name, timeout=timeout):
             yield
 
-    monkeypatch.setattr(mh, "agent_lock", spy)
+    monkeypatch.setattr(mstore, "agent_lock", spy)
     mh.seed_example_trajectory(agent_dir=agent)
     report = mh.export_sft(agent_dir=agent)
     assert report["written"] >= 1
@@ -193,7 +194,7 @@ def test_export_sft_out_skips_sft_lock(tmp_path: Path, monkeypatch: pytest.Monke
 
     agent = tmp_path / ".agent"
     names: list[str] = []
-    orig = mh.agent_lock
+    orig = mstore.agent_lock
 
     @contextmanager
     def spy(agent_dir, *, name="agent", timeout=30.0):
@@ -201,7 +202,7 @@ def test_export_sft_out_skips_sft_lock(tmp_path: Path, monkeypatch: pytest.Monke
         with orig(agent_dir, name=name, timeout=timeout):
             yield
 
-    monkeypatch.setattr(mh, "agent_lock", spy)
+    monkeypatch.setattr(mstore, "agent_lock", spy)
     mh.seed_example_trajectory(agent_dir=agent)
     dest = tmp_path / "other.jsonl"
     names.clear()
@@ -254,7 +255,7 @@ def test_ledger_lock_not_nested(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
                 yield
 
     monkeypatch.setattr(al, "agent_lock", counting)
-    monkeypatch.setattr(mh, "agent_lock", counting)
+    monkeypatch.setattr(mstore, "agent_lock", counting)
     mh.update_performance_ledger("P-2", agent_dir=agent)
     assert max_depth == 1
     assert depth == 0

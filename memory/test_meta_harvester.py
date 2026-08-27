@@ -12,15 +12,9 @@
 
 import json
 import tempfile
-import sys
 from pathlib import Path
 
-# Прямой импорт файла, минуя __init__.py пакета (чтобы не тянуть отсутствующие workspace и т.д.)
-spec_path = Path(__file__).parent / "meta_harvester.py"
-import importlib.util
-spec = importlib.util.spec_from_file_location("mh", str(spec_path))
-mh = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(mh)
+import memory.meta_harvester as mh
 
 
 def test_basic():
