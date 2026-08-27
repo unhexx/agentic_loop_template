@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass, field, fields
+from dataclasses import MISSING, asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Any, Optional, TypeVar
 
@@ -37,19 +37,20 @@ def _from_dict(
     kwargs: dict[str, Any] = {}
     for f in fields(cls):
         if f.name not in src:
+            # Обязательное поле без ключа — KeyError, не TypeError конструктора.
+            if f.default is MISSING and f.default_factory is MISSING:
+                raise KeyError(f.name)
             continue
         val = src[f.name]
         ncls = nested.get(f.name)
         if ncls is not None and isinstance(val, list):
-            val = [ncls.from_dict(x) if isinstance(x, dict) else x for x in val]
-        elif ncls is not None and isinstance(val, dict):
-            val = ncls.from_dict(val)
+            val = [ncls.from_dict(x) for x in val]
         kwargs[f.name] = val
     return cls(**kwargs)
 
 
 class _SerdeMixin:
-    """Общая serde, чтобы не копировать to_dict/from_dict в каждом типе."""
+    """to_dict — asdict; from_dict берёт только известные поля."""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -211,7 +212,7 @@ def _persist(
     base_dir: Path | None = None,
     **meta: Any,
 ) -> dict[str, Any]:
-    """Общая запись: публичные функции отличаются только ключами ответа."""
+    """Атомарная запись объекта в бакет; в ответе ключи meta и путь файла."""
     path = _append(bucket, obj.to_dict(), cwd, base_dir=base_dir)
     return {**meta, "file": str(path)}
 

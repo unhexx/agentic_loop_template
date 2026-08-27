@@ -5,6 +5,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 import memory.llm_ontology as ont
 import memory.schema as schema_mod
 import memory.store as store_mod
@@ -116,6 +118,20 @@ def test_from_dict_helper_drops_unknown():
     )
     assert got.id == "p1"
     assert "unknown" not in got.to_dict()
+
+
+def test_from_dict_missing_required_raises_keyerror():
+    with pytest.raises(KeyError) as ei:
+        ont.LLMProvider.from_dict({"type": "openai", "base_url": "u"})
+    assert ei.value.args[0] == "id"
+    with pytest.raises(KeyError) as ei:
+        ont.MultiLLMSession.from_dict({})
+    assert ei.value.args[0] == "session_id"
+
+
+def test_nested_variant_non_dict_raises_keyerror():
+    with pytest.raises(KeyError):
+        ont.MultiLLMSession.from_dict({"session_id": "s1", "prompt_variants": [None]})
 
 
 def test_create_session_and_query(tmp_path: Path):
