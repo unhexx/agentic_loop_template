@@ -6,7 +6,7 @@ Agentix supports Windows (primary) and Linux/macOS with platform-adaptive bootst
 
 | Platform | Script | Python path |
 |----------|--------|-------------|
-| Windows | `Agent-Init.ps1` | `.venv/Scripts/python` |
+| Windows | `Agent-Init.ps1` (dotsources `scripts/windows/Init-Python.ps1` and `scripts/windows/Init-Prompt.ps1`) | `.venv/Scripts/python` |
 | Linux/Mac | `Agent-Init.sh` | `.venv/bin/python` |
 
 ## Cold-start parity
