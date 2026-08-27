@@ -25,6 +25,40 @@ def test_lock_creates_and_releases(tmp_path: Path) -> None:
     assert not lp.exists()
 
 
+def test_two_threads_serialized_json_replace(tmp_path: Path) -> None:
+    """Один PID, два потока, общий tmp-файл — без thread-guard FileNotFoundError на replace."""
+    agent = tmp_path / ".agent"
+    agent.mkdir()
+    target = agent / "shared.json"
+    errors: list[BaseException] = []
+    barrier = threading.Barrier(8)
+
+    def worker(n: int) -> None:
+        try:
+            barrier.wait(timeout=5)
+            with agent_lock(agent, name="shared", timeout=10.0):
+                data = []
+                if target.exists():
+                    data = json.loads(target.read_text(encoding="utf-8"))
+                data.append(n)
+                tmp = target.with_suffix(".json.tmp")
+                tmp.write_text(json.dumps(data), encoding="utf-8")
+                tmp.replace(target)
+        except BaseException as exc:
+            errors.append(exc)
+
+    threads = [threading.Thread(target=worker, args=(i,)) for i in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(timeout=15)
+        assert not t.is_alive()
+    assert errors == []
+    body = json.loads(target.read_text(encoding="utf-8"))
+    assert sorted(body) == list(range(8))
+    assert not lock_path(agent, "shared").exists()
+
+
 def test_two_threads_one_holder(tmp_path: Path) -> None:
     agent = tmp_path / ".agent"
     hold = threading.Event()

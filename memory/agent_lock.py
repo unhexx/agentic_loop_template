@@ -5,6 +5,7 @@ from __future__ import annotations
 import errno
 import os
 import re
+import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -12,6 +13,20 @@ from typing import Iterator
 
 _SAFE_NAME = re.compile(r"[^A-Za-z0-9._-]")
 _RETRY_SLEEP = 0.05
+# O_EXCL сверяет PID: два потока одного процесса снимают чужой lock-файл.
+_THREAD_GUARDS: dict[str, threading.Lock] = {}
+_THREAD_GUARDS_MU = threading.Lock()
+
+
+def _thread_guard(path: Path) -> threading.Lock:
+    """Один threading.Lock на путь — сериализация внутри процесса."""
+    key = str(path)
+    with _THREAD_GUARDS_MU:
+        guard = _THREAD_GUARDS.get(key)
+        if guard is None:
+            guard = threading.Lock()
+            _THREAD_GUARDS[key] = guard
+        return guard
 
 
 def lock_path(agent_dir: Path, name: str = "agent") -> Path:
@@ -89,12 +104,16 @@ def agent_lock(
     """
     root = Path(agent_dir)
     root.mkdir(parents=True, exist_ok=True)
-    path = lock_path(root, name)
+    path = lock_path(root, name).resolve()
     my_pid = os.getpid()
     deadline = time.monotonic() + float(timeout)
     fd: int | None = None
     owned = False
     flags = os.O_CREAT | os.O_EXCL | os.O_WRONLY
+    guard = _thread_guard(path)
+    remaining = deadline - time.monotonic()
+    if remaining <= 0 or not guard.acquire(timeout=max(0.0, remaining)):
+        raise TimeoutError(f"таймаут блокировки: {path}")
     try:
         while True:
             try:
@@ -121,3 +140,4 @@ def agent_lock(
                 pass
         if owned:
             _unlink_if_owner(path, my_pid)
+        guard.release()
