@@ -15,22 +15,33 @@ LAST_HANDOFF = Path(".agent/last_handoff.json")
 LOOP_STATE = Path(".agent/LOOP_STATE.md")
 
 
-def load_last_handoff() -> Optional[Dict[str, Any]]:
-    if LAST_HANDOFF.exists():
-        return json.loads(LAST_HANDOFF.read_text(encoding="utf-8"))
-    agent_dir = LAST_HANDOFF.parent
-    if agent_dir.exists():
-        alt = list(agent_dir.glob("handoff_*.json"))
+def _last_handoff(agent_dir: Optional[Path] = None) -> Path:
+    """Явный каталог .agent или cwd-дефолт LAST_HANDOFF."""
+    return Path(agent_dir) / "last_handoff.json" if agent_dir is not None else LAST_HANDOFF
+
+
+def _loop_state(agent_dir: Optional[Path] = None) -> Path:
+    return Path(agent_dir) / "LOOP_STATE.md" if agent_dir is not None else LOOP_STATE
+
+
+def load_last_handoff(agent_dir: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    path = _last_handoff(agent_dir)
+    if path.exists():
+        return json.loads(path.read_text(encoding="utf-8"))
+    parent = path.parent
+    if parent.exists():
+        alt = list(parent.glob("handoff_*.json"))
         if alt:
             candidates = sorted(alt, key=lambda p: p.stat().st_mtime, reverse=True)
             return json.loads(candidates[0].read_text(encoding="utf-8"))
     return None
 
 
-def build_resume_context() -> Dict[str, Any]:
+def build_resume_context(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
     """Собирает компактный контекст для возобновления цикла после сбоя."""
-    handoff = load_last_handoff()
-    loop_note = LOOP_STATE.read_text(encoding="utf-8") if LOOP_STATE.exists() else ""
+    handoff = load_last_handoff(agent_dir)
+    loop_path = _loop_state(agent_dir)
+    loop_note = loop_path.read_text(encoding="utf-8") if loop_path.exists() else ""
     ctx: Dict[str, Any] = {
         "resumable": handoff is not None,
         "last_handoff_to": handoff.get("handoff_to") if handoff else None,

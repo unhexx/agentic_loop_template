@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Тесты P5/P7: audit_log, resume, eval_harness."""
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -147,26 +148,54 @@ class TestAuditTorn(unittest.TestCase):
 class TestResume(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        resume.LAST_HANDOFF = Path(self.tmp.name) / "last_handoff.json"
-        resume.LOOP_STATE = Path(self.tmp.name) / "LOOP_STATE.md"
+        self.agent = Path(self.tmp.name) / ".agent"
+        self.agent.mkdir()
+        self._cwd = os.getcwd()
 
     def tearDown(self):
+        os.chdir(self._cwd)
         self.tmp.cleanup()
 
     def test_build_context_no_handoff(self):
-        ctx = resume.build_resume_context()
+        ctx = resume.build_resume_context(agent_dir=self.agent)
         self.assertFalse(ctx["resumable"])
         self.assertEqual(ctx["recommended_next_role"], "Orchestrator")
 
     def test_build_context_with_handoff(self):
-        resume.LAST_HANDOFF.write_text(
-            json.dumps({"handoff_to": "Coder", "role": "Orchestrator", "status": "IN_PROGRESS",
-                        "cycle_number": 5, "summary": "test"}),
+        (self.agent / "last_handoff.json").write_text(
+            json.dumps({
+                "handoff_to": "Coder",
+                "role": "Orchestrator",
+                "status": "IN_PROGRESS",
+                "cycle_number": 5,
+                "summary": "test",
+            }),
             encoding="utf-8",
         )
-        ctx = resume.build_resume_context()
+        ctx = resume.build_resume_context(agent_dir=self.agent)
         self.assertTrue(ctx["resumable"])
         self.assertEqual(ctx["recommended_next_role"], "Coder")
+
+    def test_build_resume_context_agent_dir_not_cwd(self):
+        (self.agent / "last_handoff.json").write_text(
+            json.dumps({
+                "handoff_to": "Tester",
+                "role": "Coder",
+                "status": "IN_PROGRESS",
+                "cycle_number": 2,
+                "summary": "elsewhere",
+            }),
+            encoding="utf-8",
+        )
+        (self.agent / "LOOP_STATE.md").write_text("# loop\n", encoding="utf-8")
+        elsewhere = Path(self.tmp.name) / "cwd"
+        elsewhere.mkdir()
+        os.chdir(elsewhere)
+        ctx = resume.build_resume_context(agent_dir=self.agent)
+        self.assertTrue(ctx["resumable"])
+        self.assertEqual(ctx["recommended_next_role"], "Tester")
+        self.assertIn("loop", ctx["loop_state_excerpt"])
+        self.assertFalse((elsewhere / ".agent").exists())
 
 
 class TestEvalHarness(unittest.TestCase):
