@@ -144,6 +144,22 @@ def test_embed_texts_raises_on_http_error(monkeypatch: pytest.MonkeyPatch) -> No
         )
 
 
+def test_embed_texts_timeouterror_becomes_embed_http(monkeypatch: pytest.MonkeyPatch) -> None:
+    from memory.playbooks_embed import embed_texts
+
+    def boom(*args: object, **kwargs: object):
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(urllib.request, "urlopen", boom)
+    with pytest.raises(ValueError, match="embed_http"):
+        embed_texts(
+            ["q"],
+            base_url="https://example.test",
+            model="text-embedding-3-small",
+            api_key="sk-test",
+        )
+
+
 def test_resolve_embed_settings_priority(monkeypatch: pytest.MonkeyPatch) -> None:
     from memory.playbooks_embed import resolve_embed_settings
 
@@ -508,6 +524,36 @@ def test_embed_http_fail_falls_back(
     joined = " ".join(r.message for r in caplog.records)
     assert "sk-test" not in joined
     assert "commit workflow" not in joined
+
+
+def test_embed_http_timeouterror_falls_back(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    from memory.playbooks import select_bullets
+
+    agent = _agent(tmp_path)
+    _write_embed_cfg(agent)
+    _write_playbooks(
+        agent,
+        [
+            {
+                "id": "b-1",
+                "content": "Always pin the git remote before clone",
+                "tags": ["git"],
+                "effectiveness": 0.8,
+                "last_used": STALE,
+            }
+        ],
+    )
+
+    def boom(*args: object, **kwargs: object):
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(urllib.request, "urlopen", boom)
+    with caplog.at_level(logging.WARNING, logger="memory.playbooks"):
+        rows = select_bullets("git", agent_dir=agent, min_effect=0.0, k=1)
+    assert rows[0]["_score"] == _legacy_score(0.8, 0.3, 0.9)
+    assert any("embed_http" in r.message for r in caplog.records)
 
 
 def test_embed_unconfigured_falls_back(

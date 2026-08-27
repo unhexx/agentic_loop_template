@@ -99,8 +99,11 @@ def embed_texts(
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     req = urllib.request.Request(url, data=payload, method="POST", headers=headers)
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        raw = resp.read().decode("utf-8")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read().decode("utf-8")
+    except TimeoutError as exc:
+        raise ValueError("embed_http") from exc
     try:
         body = json.loads(raw)
     except json.JSONDecodeError as exc:
