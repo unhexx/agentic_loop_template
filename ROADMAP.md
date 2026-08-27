@@ -1,10 +1,10 @@
 # Agentix Public Roadmap
 
-[![Version](https://img.shields.io/badge/version-3.11.1-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.11.2-blue?style=flat-square)](CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](README.md)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen?style=flat-square)](docs/README.md)
 
-**Status Date:** 2026-08-27 · **Initiative:** Business Efficiency — **COMPLETE** · **v3.9 Harness Hardening** — **COMPLETE** · **v3.10 Concurrent fan-out** — **COMPLETE** · **v3.10.1 supervisor caps** — **COMPLETE** · **v3.11 Conflict-free parallel sessions** — **COMPLETE** · **v3.11 NG11 harvester DI** — **COMPLETE** · **Next:** Future
+**Status Date:** 2026-08-27 · **Initiative:** Business Efficiency — **COMPLETE** · **v3.9 Harness Hardening** — **COMPLETE** · **v3.10 Concurrent fan-out** — **COMPLETE** · **v3.10.1 supervisor caps** — **COMPLETE** · **v3.11 Conflict-free parallel sessions** — **COMPLETE** · **v3.11 NG11 harvester DI** — **COMPLETE** · **v3.11.2 Path 1 docs i18n** — **COMPLETE** · **Next:** Future
 
 ---
 
@@ -51,7 +51,6 @@ Leftover nice-to-haves (docs i18n, embeddings, …) moved to Future.
 
 - Hosted Agentix Hub SaaS (optional)
 - Full MCP skills for Linear/Jira/Slack
-- Docs i18n / dual-language public guides (P8-09)
 - Playbook embeddings ranking (P8-10)
 - Modularize large modules (`meta_harvester`, `experience_harvester`, Init.ps1) (P8-12)
 - MultiLLM* dataclasses: use or extract (P8-13)
@@ -64,6 +63,7 @@ Leftover nice-to-haves (docs i18n, embeddings, …) moved to Future.
 
 | Version | Highlight |
 |---------|-----------|
+| **v3.11.2** | P8-09: Path 1 Russian siblings (`README.ru.md`, `docs/ru/`) |
 | **v3.11.1** | NG11: `agent_dir=` + named locks on meta_harvester / eval_harness / resume |
 | **v3.11.0** | Conflict-free parallel sessions: leases, `--push`, STOP fan-out, Streams page, live CLI identity |
 | **v3.10.1** | Configurable supervisor context caps from `context_budget` / env (P8-14) |

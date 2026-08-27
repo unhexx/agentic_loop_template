@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+## [3.11.2] - 2026-08-27
+
+### Added
+- Path 1 Russian siblings: `README.ru.md`, `docs/ru/getting-started.md`, `docs/ru/README.md`. Language header on each pair. Existence test `memory/test_docs_i18n.py`.
+- Design spec: [`docs/superpowers/specs/2026-08-27-p8-09-docs-i18n-design.md`](docs/superpowers/specs/2026-08-27-p8-09-docs-i18n-design.md)
+
+### Changed
+- `VERSION` → 3.11.2
+- ROADMAP: P8-09 Future bullet removed; milestone v3.11.2
+
+Patch, not 3.12.0: no new CLI, wizard/dashboard strings unchanged, English remains canonical.
+
 ## [3.11.1] - 2026-08-27
 
 ### Added

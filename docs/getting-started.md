@@ -1,5 +1,7 @@
 # Getting Started
 
+**Language:** [English](getting-started.md) · [Русский](ru/getting-started.md)
+
 [![Main README](https://img.shields.io/badge/Main-README-blue)](../README.md)
 
 Get a full agentic development loop running in under five minutes.
