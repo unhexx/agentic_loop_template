@@ -12,3 +12,5 @@ blackbox_start_prompt.txt
 .agent/proxy_cache.sqlite
 .agent/proxy_cache.sqlite-*
 .agent/sft/
+.agent/stream_leases.json
+.agent/streams_state.json

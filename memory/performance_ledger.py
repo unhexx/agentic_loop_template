@@ -29,6 +29,8 @@ from memory.agent_lock import agent_lock
 AGENT_DIR = Path(".agent")
 LEDGER_JSON = AGENT_DIR / "PERFORMANCE_LEDGER.json"
 LEDGER_MD = AGENT_DIR / "PERFORMANCE_LEDGER.md"
+LOOP_PERFORMANCE_MD = AGENT_DIR / "LOOP_PERFORMANCE.md"
+MAX_CYCLES = 50
 
 
 def _ledger_json(agent_dir: Optional[Path] = None) -> Path:
@@ -40,6 +42,10 @@ def _ledger_md(agent_dir: Optional[Path] = None) -> Path:
     return Path(agent_dir) / "PERFORMANCE_LEDGER.md" if agent_dir is not None else LEDGER_MD
 
 
+def _loop_performance_md(agent_dir: Optional[Path] = None) -> Path:
+    return Path(agent_dir) / "LOOP_PERFORMANCE.md" if agent_dir is not None else LOOP_PERFORMANCE_MD
+
+
 def _ensure_agent_dir(agent_dir: Optional[Path] = None) -> None:
     _ledger_json(agent_dir).parent.mkdir(parents=True, exist_ok=True)
 
@@ -48,6 +54,14 @@ def _atomic_write_json(path: Path, data: dict) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+    tmp.replace(path)
+
+
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Пишет текст через *.tmp + replace, без усечения цели."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
     tmp.replace(path)
 
 
@@ -89,45 +103,72 @@ def _render_md_view(data: dict, agent_dir: Optional[Path] = None) -> None:
     lines.append(f"- Last updated: {s.get('last_updated')}")
     lines.append("")
     lines.append("See memory/performance_ledger.py and integration in meta_harvester / AGENT_ROLES.")
-    md = _ledger_md(agent_dir)
-    md.parent.mkdir(parents=True, exist_ok=True)
-    with open(md, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
+    _atomic_write_text(_ledger_md(agent_dir), "\n".join(lines))
 
 
-def append_cycle(*, agent_dir: Optional[Path] = None, **kwargs: Any) -> dict:
+def _append_proposal_line(
+    proposal_id: str, impact: str, *, agent_dir: Optional[Path] = None
+) -> None:
+    """Дописать строку apply в LOOP_PERFORMANCE.md. Вызывать уже под локом ledger."""
+    path = _loop_performance_md(agent_dir)
+    lines: list[str] = []
+    if path.exists():
+        lines = path.read_text(encoding="utf-8").splitlines()
+    lines.append(
+        f"- {datetime.now(timezone.utc).isoformat()} | proposal {proposal_id} | {impact or 'applied'}"
+    )
+    _atomic_write_text(path, "\n".join(lines[-MAX_CYCLES:]) + "\n")
+
+
+def append_cycle(
+    *,
+    agent_dir: Optional[Path] = None,
+    proposal_id: Optional[str] = None,
+    proposal_impact: str = "",
+    persist_cycle: bool = True,
+    **kwargs: Any,
+) -> dict:
     """Дописать цикл в ledger. Вызывается из Reviewer / meta на DONE.
 
     agent_dir=None — модульные LEDGER_JSON/LEDGER_MD (CLI и meta_harvester без kwargs).
     Явный путь нужен параллельным сессиям, чтобы не писать в cwd хаба.
+    persist_cycle=False — только лог apply (LOOP_PERFORMANCE.md), без фейкового cycle=0
+    в окне 50. JSON создаётся пустым, если файла ещё нет.
     """
     # Лок на родителе реального JSON, не cwd/.agent: иначе патч LEDGER_JSON уезжает мимо.
     with agent_lock(_ledger_json(agent_dir).parent, name="ledger"):
-        ledger = _load_ledger(agent_dir=agent_dir)
-        record = {
-            "cycle": kwargs.get("cycle"),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "outcome": kwargs.get("outcome", "DONE"),
-            "elapsed_minutes": kwargs.get("elapsed_minutes", 0.0),
-            "tool_calls": kwargs.get("tool_calls", 0),
-            "tokens_est": kwargs.get("tokens_est", 0),
-            "confidence": kwargs.get("confidence", 0.0),
-            "tests_total": kwargs.get("tests_total", 0),
-            "tests_failed": kwargs.get("tests_failed", 0),
-            "violations": kwargs.get("violations", 0),
-            "meta_generated": kwargs.get("meta_generated", 0),
-            "meta_applied": kwargs.get("meta_applied", 0),
-            "success_patterns": kwargs.get("success_patterns", []),
-            "notes": kwargs.get("notes", ""),
-            "proxy_stats": kwargs.get("proxy_stats"),
-            "details": kwargs.get("details"),
-        }
-        ledger["cycles"].append(record)
-        ledger["summary"]["total_cycles"] = len(ledger["cycles"])
-        # Simple compaction: keep last 50
-        if len(ledger["cycles"]) > 50:
-            ledger["cycles"] = ledger["cycles"][-50:]
-        _save_ledger(ledger, agent_dir=agent_dir)
+        record: dict = {}
+        if persist_cycle:
+            record = {
+                "cycle": kwargs.get("cycle"),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "outcome": kwargs.get("outcome", "DONE"),
+                "elapsed_minutes": kwargs.get("elapsed_minutes", 0.0),
+                "tool_calls": kwargs.get("tool_calls", 0),
+                "tokens_est": kwargs.get("tokens_est", 0),
+                "confidence": kwargs.get("confidence", 0.0),
+                "tests_total": kwargs.get("tests_total", 0),
+                "tests_failed": kwargs.get("tests_failed", 0),
+                "violations": kwargs.get("violations", 0),
+                "meta_generated": kwargs.get("meta_generated", 0),
+                "meta_applied": kwargs.get("meta_applied", 0),
+                "success_patterns": kwargs.get("success_patterns", []),
+                "notes": kwargs.get("notes", ""),
+            }
+            if kwargs.get("proxy_stats") is not None:
+                record["proxy_stats"] = kwargs["proxy_stats"]
+            if kwargs.get("details") is not None:
+                record["details"] = kwargs["details"]
+            ledger = _load_ledger(agent_dir=agent_dir)
+            ledger["cycles"].append(record)
+            if len(ledger["cycles"]) > MAX_CYCLES:
+                ledger["cycles"] = ledger["cycles"][-MAX_CYCLES:]
+            ledger["summary"]["total_cycles"] = len(ledger["cycles"])
+            _save_ledger(ledger, agent_dir=agent_dir)
+        elif not _ledger_json(agent_dir).exists():
+            _save_ledger(_load_ledger(agent_dir=agent_dir), agent_dir=agent_dir)
+        if proposal_id:
+            _append_proposal_line(proposal_id, proposal_impact, agent_dir=agent_dir)
         return record
 
 

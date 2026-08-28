@@ -258,3 +258,34 @@ def test_cli_report(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     payload = json.loads(output)
     assert payload["recent_cycles"] == 1
     assert payload["avg_elapsed_min"] == 2.0
+
+
+def test_append_compaction_keeps_total_cycles_in_sync(tmp_path: Path) -> None:
+    agent = _agent(tmp_path)
+    for i in range(51):
+        pl.append_cycle(agent_dir=agent, cycle=i + 1, notes=f"c{i + 1}")
+    data = json.loads((agent / "PERFORMANCE_LEDGER.json").read_text(encoding="utf-8"))
+    cycles = data["cycles"]
+    assert len(cycles) == 50
+    assert data["summary"]["total_cycles"] == 50
+    assert cycles[0]["cycle"] == 2
+    assert cycles[-1]["cycle"] == 51
+    md = (agent / "PERFORMANCE_LEDGER.md").read_text(encoding="utf-8")
+    assert "Total tracked: 50" in md
+    assert "Cycle 1:" not in md
+
+
+def test_append_omits_null_optional_keys(tmp_path: Path) -> None:
+    agent = _agent(tmp_path)
+    rec = pl.append_cycle(agent_dir=agent, cycle=3, notes="без опциональных")
+    assert "proxy_stats" not in rec
+    assert "details" not in rec
+    data = json.loads((agent / "PERFORMANCE_LEDGER.json").read_text(encoding="utf-8"))
+    row = data["cycles"][0]
+    assert "proxy_stats" not in row
+    assert "details" not in row
+    rec2 = pl.append_cycle(
+        agent_dir=agent, cycle=4, proxy_stats={"n": 1}, details={"k": "v"}
+    )
+    assert rec2["proxy_stats"] == {"n": 1}
+    assert rec2["details"] == {"k": "v"}

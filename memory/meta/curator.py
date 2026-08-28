@@ -9,12 +9,9 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from memory.meta.store import (
     DEFAULT_MIN_CONFIDENCE,
-    _atomic_write_text,
     _ensure_agent_dir,
-    _ledger_lock,
     _load_index,
     _load_index_unlocked,
-    _loop_performance_md,
     _now_iso,
     _sft_lock,
     _sft_path,
@@ -217,27 +214,16 @@ def update_performance_ledger(
     Поддерживает как старый формат, так и полный stats от performance_ledger (P1).
     """
     _ensure_agent_dir(agent_dir)
-    # Legacy md append (kept for compatibility)
-    ledger = _loop_performance_md(agent_dir)
-    with _ledger_lock(agent_dir):
-        lines: List[str] = []
-        if ledger.exists():
-            lines = ledger.read_text(encoding="utf-8").splitlines()
-        lines.append(f"- { _now_iso() } | proposal {proposal_id} | {impact or 'applied'}")
-        _atomic_write_text(ledger, "\n".join(lines[-50:]) + "\n")
-    # Лок ledger снят до append_cycle — иначе вложенный O_EXCL повиснет.
     try:
         from memory.performance_ledger import append_cycle
-        if cycle_stats:
-            append_cycle(agent_dir=agent_dir, **cycle_stats)
-        else:
-            append_cycle(
-                agent_dir=agent_dir,
-                cycle=0,
-                outcome="META_APPLIED",
-                notes=f"proposal:{proposal_id} impact:{impact}",
-                meta_applied=1,
-            )
+        stats = dict(cycle_stats or {})
+        append_cycle(
+            agent_dir=agent_dir,
+            proposal_id=proposal_id,
+            proposal_impact=impact or "applied",
+            persist_cycle=cycle_stats is not None,
+            **stats,
+        )
     except Exception as e:
         # non-fatal
         print(f"[performance_ledger] non-fatal: {e}", file=sys.stderr)

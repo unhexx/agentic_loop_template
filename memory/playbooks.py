@@ -167,11 +167,38 @@ def _load_index_unlocked(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
         return _empty_index()
 
 
+def _atomic_write_text(path: Path, text: str) -> None:
+    """Пишет md через *.tmp + replace, без усечения цели."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(path)
+
+
+def _index_bodies_equal(left: Dict[str, Any], right: Dict[str, Any]) -> bool:
+    """Тела каталога без generated_at/updated_at — иначе no-op save пачкает git."""
+    return left.get("playbooks") == right.get("playbooks") and left.get("version") == right.get(
+        "version"
+    )
+
+
 def _write_index_unlocked(data: Dict[str, Any], agent_dir: Optional[Path] = None) -> None:
     """tmp+replace + md без lock — вызывающий уже в секции."""
     path = _playbooks_index(agent_dir)
-    data["updated_at"] = _now_iso()
     path.parent.mkdir(parents=True, exist_ok=True)
+    overview = _playbooks_dir(agent_dir) / "overview.md"
+    if path.exists():
+        try:
+            old = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            old = None
+        if old is not None and _index_bodies_equal(old, data):
+            if overview.exists():
+                return
+            data["updated_at"] = old.get("updated_at") or _now_iso()
+            _write_human_views(data, agent_dir=agent_dir)
+            return
+    data["updated_at"] = _now_iso()
     tmp = path.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(path)
@@ -215,7 +242,7 @@ def _write_human_views(data: Dict[str, Any], agent_dir: Optional[Path] = None) -
             lines.append(f"  last_curated: {pb.get('last_curated', 'never')}")
 
     # Пишем общий
-    (views_dir / "overview.md").write_text("\n".join(lines), encoding="utf-8")
+    _atomic_write_text(views_dir / "overview.md", "\n".join(lines))
 
     # Отдельные views
     for pid, pb in pbs.items():
@@ -223,7 +250,7 @@ def _write_human_views(data: Dict[str, Any], agent_dir: Optional[Path] = None) -
         for b in pb.get("bullets", []):
             eff = b.get("effectiveness", 0.5)
             pb_lines.append(f"- [{eff:.2f}] {b.get('content', '')}  (tags: {b.get('tags', [])})")
-        (views_dir / f"{pid}.md").write_text("\n".join(pb_lines), encoding="utf-8")
+        _atomic_write_text(views_dir / f"{pid}.md", "\n".join(pb_lines))
 
 
 _EMBED_FALLBACK_WARNED = False
@@ -503,10 +530,16 @@ def list_playbooks(agent_dir: Optional[Path] = None) -> List[Dict[str, Any]]:
     return items
 
 
-def discover_items(query: str, scope: Optional[str] = None, k: int = 10) -> List[Dict[str, Any]]:
+def discover_items(
+    query: str,
+    scope: Optional[str] = None,
+    k: int = 10,
+    *,
+    agent_dir: Optional[Path] = None,
+) -> List[Dict[str, Any]]:
     """Поиск bullets по запросу для Hub search UI."""
     scopes = [scope] if scope else None
-    results = select_bullets(query, scopes=scopes, k=k, min_effect=0.0)
+    results = select_bullets(query, scopes=scopes, k=k, min_effect=0.0, agent_dir=agent_dir)
     return [
         {
             "playbook_id": r.get("_playbook"),

@@ -2,6 +2,7 @@
 """Тесты Hub CLI: list, export, discover."""
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -12,10 +13,16 @@ from memory.playbooks import discover_items, export_hub_index, list_playbooks, s
 
 class TestPlaybooksHub(unittest.TestCase):
     def setUp(self):
-        seed_initial_playbooks()
+        self._tmp = tempfile.TemporaryDirectory()
+        self.agent = Path(self._tmp.name) / ".agent"
+        self.agent.mkdir()
+        seed_initial_playbooks(agent_dir=self.agent)
+
+    def tearDown(self):
+        self._tmp.cleanup()
 
     def test_list_returns_items(self):
-        items = list_playbooks()
+        items = list_playbooks(agent_dir=self.agent)
         self.assertIsInstance(items, list)
         self.assertGreater(len(items), 0)
         first = items[0]
@@ -24,16 +31,17 @@ class TestPlaybooksHub(unittest.TestCase):
         self.assertIn("bullet_count", first)
 
     def test_export_hub_format(self):
-        data = export_hub_index(fmt="hub")
+        data = export_hub_index(fmt="hub", agent_dir=self.agent)
         self.assertEqual(data["version"], "1.0")
         self.assertIn("items", data)
         self.assertIn("playbooks", data)
         self.assertGreater(data["item_count"], 0)
-        hub_path = Path(".agent/HUB_INDEX.json")
+        hub_path = self.agent / "HUB_INDEX.json"
         self.assertTrue(hub_path.exists())
+        self.assertFalse((Path(".agent") / "HUB_INDEX.json.tmp").exists())
 
     def test_discover_returns_scored_results(self):
-        results = discover_items("git sync", k=3)
+        results = discover_items("git sync", k=3, agent_dir=self.agent)
         self.assertIsInstance(results, list)
         if results:
             self.assertIn("content", results[0])
@@ -43,7 +51,7 @@ class TestPlaybooksHub(unittest.TestCase):
         schema_path = Path("docs/hub/api-schema.json")
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         hub_defs = schema["definitions"]["HubIndex"]["properties"]
-        data = export_hub_index(fmt="hub")
+        data = export_hub_index(fmt="hub", agent_dir=self.agent)
         for key in ("version", "generated_at", "items"):
             self.assertIn(key, data)
             self.assertIn(key, hub_defs)

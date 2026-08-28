@@ -195,3 +195,36 @@ def test_load_config_reads_agent_dir_not_cwd(
     assert select_bullets("git", agent_dir=agent) == []
     cfg_cwd = load_config()
     assert cfg_cwd["enabled"] is True
+
+
+def test_save_index_skips_timestamp_when_bodies_unchanged(tmp_path: Path) -> None:
+    from memory.playbooks import _load_index, _save_index
+
+    agent = tmp_path / ".agent"
+    seed_initial_playbooks(agent_dir=agent)
+    path = agent / "PLAYBOOKS.json"
+    before = json.loads(path.read_text(encoding="utf-8"))
+    overview_before = (agent / "PLAYBOOKS" / "overview.md").read_text(encoding="utf-8")
+    _save_index(_load_index(agent_dir=agent), agent_dir=agent)
+    after = json.loads(path.read_text(encoding="utf-8"))
+    assert after["updated_at"] == before["updated_at"]
+    assert after["playbooks"] == before["playbooks"]
+    assert (agent / "PLAYBOOKS" / "overview.md").read_text(encoding="utf-8") == overview_before
+
+
+def test_human_views_use_tmp_replace(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import memory.playbooks as pb
+
+    agent = tmp_path / ".agent"
+    replaced: list[str] = []
+    orig = Path.replace
+
+    def wrapped(self: Path, target: Path) -> Path:
+        replaced.append(Path(target).name)
+        return orig(self, target)
+
+    monkeypatch.setattr(Path, "replace", wrapped)
+    seed_initial_playbooks(agent_dir=agent)
+    assert "overview.md" in replaced
+    assert (agent / "PLAYBOOKS" / "overview.md").is_file()
+    assert not (agent / "PLAYBOOKS" / "overview.md.tmp").exists()

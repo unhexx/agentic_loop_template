@@ -5,6 +5,11 @@
 ### Added
 - Root `Jenkinsfile` mirroring GitHub Actions harness + stdlib-collect (Bitbucket Jenkins Test configuration). Contract: `memory/test_ci_parity.py`.
 
+### Fixed
+- Performance ledger counts `total_cycles` after the 50-row window, omits null `proxy_stats`/`details`, and no longer inserts `cycle=0` META_APPLIED rows that compact away real cycles. `update_performance_ledger` writes `LOOP_PERFORMANCE.md` and the JSON ledger in one `"ledger"` section.
+- Playbooks skip `updated_at` / overview rewrite when bullet bodies did not change; human views use tmp+replace.
+- Gitignore hub lock files `.agent/stream_leases.json` and `.agent/streams_state.json` (root + consumer starter).
+
 ## [3.12.0] - 2026-08-27
 
 ### Added

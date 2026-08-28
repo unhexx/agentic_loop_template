@@ -47,10 +47,6 @@ def _sft_path(agent_dir: Optional[Path] = None) -> Path:
     return Path(agent_dir) / "sft" / "train.jsonl" if agent_dir is not None else SFT_PATH
 
 
-def _loop_performance_md(agent_dir: Optional[Path] = None) -> Path:
-    return Path(agent_dir) / "LOOP_PERFORMANCE.md" if agent_dir is not None else Path(".agent/LOOP_PERFORMANCE.md")
-
-
 def _ensure_agent_dir(agent_dir: Optional[Path] = None) -> None:
     """Гарантирует каталог индекса и TRAJECTORIES/."""
     _trajectories_index(agent_dir).parent.mkdir(parents=True, exist_ok=True)
@@ -232,8 +228,3 @@ def _next_prop_id(existing: List[Dict[str, Any]]) -> str:
 def _sft_lock(dest_parent: Path):
     """Секция sft на родителе train.jsonl (дефолтный dest)."""
     return agent_lock(dest_parent, name="sft")
-
-
-def _ledger_lock(agent_dir: Optional[Path] = None):
-    """Секция ledger на родителе LOOP_PERFORMANCE.md."""
-    return agent_lock(_loop_performance_md(agent_dir).parent, name="ledger")

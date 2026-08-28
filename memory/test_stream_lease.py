@@ -419,3 +419,14 @@ def test_cli_overlap_exits_nonzero(tmp_path: Path, capsys: pytest.CaptureFixture
     assert "overlap between streams" in err
     assert "docs" in err
     assert "harness" in err
+
+
+def test_runtime_lock_files_are_gitignored() -> None:
+    repo = Path(__file__).resolve().parents[1]
+    root_gi = (repo / ".gitignore").read_text(encoding="utf-8")
+    starter_gi = (repo / "examples" / "consumer-starter" / ".gitignore.agentic").read_text(
+        encoding="utf-8"
+    )
+    for name in (".agent/stream_leases.json", ".agent/streams_state.json"):
+        assert name in root_gi, name
+        assert name in starter_gi, name

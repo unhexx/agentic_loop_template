@@ -233,6 +233,7 @@ def test_update_performance_ledger_passes_agent_dir(
 def test_ledger_lock_not_nested(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     import memory.agent_lock as al
     import memory.meta_harvester as mh
+    import memory.performance_ledger as pl
 
     agent = tmp_path / ".agent"
     depth = 0
@@ -256,6 +257,88 @@ def test_ledger_lock_not_nested(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
 
     monkeypatch.setattr(al, "agent_lock", counting)
     monkeypatch.setattr(mstore, "agent_lock", counting)
+    monkeypatch.setattr(pl, "agent_lock", counting)
     mh.update_performance_ledger("P-2", agent_dir=agent)
     assert max_depth == 1
     assert depth == 0
+
+
+def test_update_performance_ledger_does_not_insert_cycle_zero(
+    tmp_path: Path,
+) -> None:
+    import memory.meta_harvester as mh
+    from memory import performance_ledger as pl
+
+    agent = tmp_path / ".agent"
+    for i in range(1, 51):
+        pl.append_cycle(agent_dir=agent, cycle=i, notes=f"real-{i}")
+    mh.update_performance_ledger("P-DEMO-001", "demo impact on compression", agent_dir=agent)
+    data = json.loads((agent / "PERFORMANCE_LEDGER.json").read_text(encoding="utf-8"))
+    cycles = data["cycles"]
+    assert {c["cycle"] for c in cycles} == set(range(1, 51))
+    assert all(c.get("outcome") != "META_APPLIED" for c in cycles)
+    assert data["summary"]["total_cycles"] == 50
+    text = (agent / "LOOP_PERFORMANCE.md").read_text(encoding="utf-8")
+    assert "P-DEMO-001" in text
+
+
+def test_update_performance_ledger_cycle_stats_share_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import memory.agent_lock as al
+    import memory.meta_harvester as mh
+    import memory.performance_ledger as pl
+
+    agent = tmp_path / ".agent"
+    depth = 0
+    max_depth = 0
+    events: list[str] = []
+    orig = al.agent_lock
+    orig_replace = Path.replace
+
+    @contextmanager
+    def counting(agent_dir, *, name="agent", timeout=30.0):
+        nonlocal depth, max_depth
+        if name == "ledger":
+            depth += 1
+            max_depth = max(max_depth, depth)
+            events.append("enter")
+            try:
+                with orig(agent_dir, name=name, timeout=timeout):
+                    yield
+            finally:
+                events.append("exit")
+                depth -= 1
+        else:
+            with orig(agent_dir, name=name, timeout=timeout):
+                yield
+
+    def wrapped(self: Path, target: Path) -> Path:
+        name = Path(target).name
+        if name in ("PERFORMANCE_LEDGER.json", "LOOP_PERFORMANCE.md"):
+            events.append(f"write:{name}:{depth}")
+        return orig_replace(self, target)
+
+    monkeypatch.setattr(al, "agent_lock", counting)
+    monkeypatch.setattr(pl, "agent_lock", counting)
+    monkeypatch.setattr(mstore, "agent_lock", counting)
+    monkeypatch.setattr(Path, "replace", wrapped)
+    mh.update_performance_ledger(
+        "P-3",
+        "with stats",
+        cycle_stats={"cycle": 9, "outcome": "DONE", "elapsed_minutes": 1.5},
+        agent_dir=agent,
+    )
+    assert max_depth == 1
+    assert depth == 0
+    assert events.count("enter") == 1
+    assert events.count("exit") == 1
+    assert "write:LOOP_PERFORMANCE.md:1" in events
+    assert "write:PERFORMANCE_LEDGER.json:1" in events
+    enter_i = events.index("enter")
+    exit_i = events.index("exit")
+    assert enter_i < events.index("write:LOOP_PERFORMANCE.md:1") < exit_i
+    assert enter_i < events.index("write:PERFORMANCE_LEDGER.json:1") < exit_i
+    data = json.loads((agent / "PERFORMANCE_LEDGER.json").read_text(encoding="utf-8"))
+    assert data["cycles"][-1]["cycle"] == 9
+    assert "P-3" in (agent / "LOOP_PERFORMANCE.md").read_text(encoding="utf-8")
