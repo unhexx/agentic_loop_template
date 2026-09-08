@@ -1,6 +1,6 @@
 # Agentix
 
-[![Version](https://img.shields.io/badge/version-3.12.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.13.0-blue?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](docs/ru/getting-started.md)
 [![Platform](https://img.shields.io/badge/platform-Linux_%7C_macOS_%7C_Windows-lightgrey?style=flat-square)](docs/cross-platform.md)
@@ -345,6 +345,9 @@ python -m memory.playbooks export --format hub
 | `python -m memory.compressor files --budget 12000 …` | Дистилляция по правилам (priority drop + head/tail) |
 | `python -m memory.knowledge query --q "…" --category playbook` | Локальный SQLite knowledge (ingest-docs / upsert / stats) |
 | `python -m memory.proxy health\|serve\|stats` | Прокси запросов: фронт pxpipe, шлюз `:8110`, статистика токенов |
+| `python -m memory.stack check` | Контракт `deploy/compose.yaml` (loopback, профили, JSON) |
+| `bash scripts/agentix-stack.sh up` | SearXNG на `127.0.0.1:8080`; `--research` добавляет LDR через шлюз→pxpipe |
+| `python -m memory search --q "…" --json` | Локальный JSON-клиент SearXNG |
 | `agy-pxpipe --model gemini-3.7-flash-high --print='…'` | Опциональный второй pxpipe для Antigravity CLI; см. [pxpipe для agy](#pxpipe-для-agy-gemini-37-flash) |
 | `python -m memory.meta_harvester export-sft` | Локальный SFT JSONL из золотых траекторий DONE (без GPU) |
 
@@ -463,4 +466,4 @@ Dogfood на этом репозитории за **50+ циклов** (Business
 
 ## Лицензия
 
-[MIT](LICENSE) · **Agentix 3.12.0** · Поддерживается **exception.expert**
+[MIT](LICENSE) · **Agentix 3.13.0** · Поддерживается **exception.expert**

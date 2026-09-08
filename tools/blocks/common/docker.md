@@ -1,9 +1,15 @@
-# Docker (when project uses compose)
+# Docker (operator stack)
+
+Шаблон держит Compose в `deploy/compose.yaml`. Шлюз и pxpipe — процессы хоста.
 
 ```bash
-docker compose ps
-docker compose up -d --build
-docker compose logs --tail 100
+python -m memory.stack check
+bash scripts/agentix-stack.sh up                 # SearXNG 127.0.0.1:8080
+bash scripts/agentix-stack.sh up --research      # + LDR :5000 через шлюз→pxpipe
+bash scripts/agentix-stack.sh ps
+bash scripts/agentix-stack.sh health
+bash scripts/agentix-stack.sh down
+python -m memory search --q "langgraph agent" --json
 ```
 
-Prefer compose over ad-hoc `python -m uvicorn` when STANDARDS say Docker-first.
+Не публиковать порты на 0.0.0.0. Ollama без host port. Живые запросы модели — только через pxpipe.

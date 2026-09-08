@@ -142,5 +142,6 @@ log "template_version=$VERSION workspace_id=$WID"
 python -m memory.context_budget cold-start --budget 16000 --compress 2>/dev/null || true
 
 log "Use: python -m memory.playbooks select ... | python -m memory state snapshot"
+log "Stack: python -m memory.stack check; bash scripts/agentix-stack.sh up  # SearXNG, optional --research"
 log "Git: scripts/preflight_git.sh; multi-repo §11 when STRICT_MULTI_REPO=1"
 echo "AGENT_INIT_OK version=$VERSION workspace=$WID prompt=$PROMPT_PATH"

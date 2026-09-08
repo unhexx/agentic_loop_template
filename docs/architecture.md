@@ -38,6 +38,7 @@ Each role: **PLAN → ACT (≤3 tool calls) → REFLECT → handoff JSON**.
 | Audit | `memory/audit_log.py` | Enterprise trail (P5) |
 | Resume | `memory/resume.py` | Crash recovery (P7) |
 | Request proxy | `memory/proxy/` | Loopback `:8110` gateway → host pxpipe `:8100` ([docs/proxy.md](proxy.md)) |
+| Operator stack | `deploy/compose.yaml` | SearXNG JSON `:8080`, optional LDR LangGraph `:5000`, optional unpublished Ollama; [docs/stack.md](stack.md) |
 | Control Plane | `memory.dashboard` | operator HTMX UI, not the runner |
 | Stream identity | `memory/stream_context.py` | ContextVar then `AGENTIX_*` env; `apply_stream_env` copies into the child dict **once** per spawn |
 | Agent lock | `memory/agent_lock.py` | stdlib `O_EXCL` + PID on `.agent/<name>.lock`; stale-PID recovery; named locks for state / handoff / streams / leases / writers |

@@ -2,8 +2,19 @@
 
 ## [Unreleased]
 
+## [3.13.0] - 2026-09-08
+
 ### Added
+- Operator Compose stack (`deploy/compose.yaml`): profile `search` (SearXNG JSON on `127.0.0.1:8080`), `research` (Local Deep Research / LangGraph on `127.0.0.1:5000`), `ollama` (unpublished). LDR talks to the host gateway `host.docker.internal:8110` so live calls still hit **pxpipe**.
+- `python -m memory.stack` contract/check, `python -m memory search`, `scripts/agentix-stack.sh`.
+- Docs: [`docs/stack.md`](docs/stack.md), spec [`docs/superpowers/specs/2026-09-08-p9-operator-stack-design.md`](docs/superpowers/specs/2026-09-08-p9-operator-stack-design.md).
+- Tests: `memory/test_stack.py`, `memory/test_search.py` (hermetic; no Docker daemon in CI).
 - Root `Jenkinsfile` mirroring GitHub Actions harness + stdlib-collect (Bitbucket Jenkins Test configuration). Contract: `memory/test_ci_parity.py`.
+
+### Changed
+- `VERSION` → 3.13.0
+- ROADMAP: P9 complete; milestone v3.13.0
+- Gateway / dashboard / pxpipe remain host processes (loopback SR-04).
 
 ### Fixed
 - Performance ledger counts `total_cycles` after the 50-row window, omits null `proxy_stats`/`details`, and no longer inserts `cycle=0` META_APPLIED rows that compact away real cycles. `update_performance_ledger` writes `LOOP_PERFORMANCE.md` and the JSON ledger in one `"ledger"` section.

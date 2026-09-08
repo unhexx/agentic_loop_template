@@ -1,0 +1,107 @@
+# Операторский стек Agentix (P9).
+# Шлюз :8110, дашборд :8112 и pxpipe :8100 остаются процессами хоста
+# (loopback SR-04). Контейнеры — поиск и исследование.
+#
+# По умолчанию только SearXNG:
+#   bash scripts/agentix-stack.sh up
+# Исследование (LangGraph LDR) + поиск:
+#   bash scripts/agentix-stack.sh up --research
+# Локальная Ollama без публикации порта:
+#   bash scripts/agentix-stack.sh up --research --ollama
+
+name: agentix
+
+services:
+  searxng:
+    image: docker.io/searxng/searxng:latest
+    profiles: ["search"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      - SEARXNG_BASE_URL=http://127.0.0.1:8080/
+      - SEARXNG_SECRET=${SEARXNG_SECRET:-}
+    volumes:
+      - ./deploy/searxng:/etc/searxng:rw
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      start_period: 20s
+      retries: 5
+    security_opt:
+      - "no-new-privileges:true"
+    restart: unless-stopped
+    networks:
+      - agentix
+
+  local-deep-research:
+    image: docker.io/localdeepresearch/local-deep-research:latest
+    profiles: ["research"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:5000:5000"
+    environment:
+      - LDR_WEB_HOST=0.0.0.0
+      - LDR_WEB_PORT=5000
+      - LDR_DATA_DIR=/data
+      - LDR_SEARCH_ENGINE_WEB_SEARXNG_DEFAULT_PARAMS_INSTANCE_URL=http://searxng:8080
+      - LDR_LLM_PROVIDER=${LDR_LLM_PROVIDER:-openai_endpoint}
+      - LDR_LLM_OPENAI_ENDPOINT_URL=${LDR_LLM_OPENAI_ENDPOINT_URL:-http://host.docker.internal:8110/v1}
+      - LDR_LLM_OPENAI_ENDPOINT_API_KEY=${LDR_LLM_OPENAI_ENDPOINT_API_KEY:-local}
+      - LDR_LLM_MODEL=${LDR_LLM_MODEL:-grok}
+      - LDR_LLM_OLLAMA_URL=http://ollama:11434
+    volumes:
+      - ldr_data:/data
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - FOWNER
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    depends_on:
+      searxng:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - agentix
+
+  ollama:
+    image: docker.io/ollama/ollama:latest
+    profiles: ["ollama"]
+    # Порт на хост не публикуем: у демона нет аутентификации.
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_KEEP_ALIVE: "30m"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 8s
+      start_period: 20s
+      retries: 5
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+    networks:
+      - agentix
+
+volumes:
+  ldr_data:
+  ollama_data:
+
+networks:
+  agentix:
+    driver: bridge

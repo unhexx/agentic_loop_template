@@ -1,6 +1,6 @@
 # Agentix
 
-[![Version](https://img.shields.io/badge/version-3.12.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.13.0-blue?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](docs/getting-started.md)
 [![Platform](https://img.shields.io/badge/platform-Linux_%7C_macOS_%7C_Windows-lightgrey?style=flat-square)](docs/cross-platform.md)
@@ -345,6 +345,9 @@ python -m memory.playbooks export --format hub
 | `python -m memory.compressor files --budget 12000 …` | Rule-based distillation (priority drop + head/tail) |
 | `python -m memory.knowledge query --q "…" --category playbook` | Local SQLite knowledge (ingest-docs / upsert / stats) |
 | `python -m memory.proxy health\|serve\|stats` | Request proxy: pxpipe front, gateway `:8110`, token stats |
+| `python -m memory.stack check` | Validate `deploy/compose.yaml` contract (loopback, profiles, JSON) |
+| `bash scripts/agentix-stack.sh up` | SearXNG on `127.0.0.1:8080`; `--research` adds LDR via gateway→pxpipe |
+| `python -m memory search --q "…" --json` | Local SearXNG JSON client |
 | `agy-pxpipe --model gemini-3.7-flash-high --print='…'` | Optional second pxpipe for Antigravity CLI; see [pxpipe for agy](#pxpipe-for-agy-gemini-37-flash) |
 | `python -m memory.meta_harvester export-sft` | Local SFT JSONL from golden DONE trajectories (no GPU) |
 
@@ -373,6 +376,7 @@ v1 does **not** listen on a tailnet IP. TeleGrok 0.1.0 does not ship runtime Tai
 | **Control Plane** | Loopback HTMX operator UI (`memory.dashboard` on `:8112`), not the runner |
 | **Self-improvement** | Playbooks (ACE scoring), meta-harvester, performance ledger, [skills](skills/README.md) |
 | **Context** | Bounded LOOP_STATE, `context_budget` gate (supervisor caps from config/env), rule-based compressor, local SQLite knowledge, [request proxy](docs/proxy.md) (**pxpipe default** + Agentix gateway) |
+| **Operator stack** | Compose profiles: SearXNG JSON, optional LDR (LangGraph), optional unpublished Ollama; [docs/stack.md](docs/stack.md) |
 | **Parallel streams** | `run-parallel` with `owned_paths` + git worktrees; serial default, opt-in `--concurrent`, one integration PR |
 | **Cross-platform** | `Agent-Init.ps1` + `Agent-Init.sh`, platform-adaptive prompts |
 | **Multi-frontend** | Grok (default), Cursor, Claude Code, Blackbox adapters |
@@ -393,6 +397,7 @@ v1 does **not** listen on a tailnet IP. TeleGrok 0.1.0 does not ship runtime Tai
 | [docs/multi-frontend.md](docs/multi-frontend.md) | Cursor / Claude / Blackbox |
 | [docs/metrics-roi.md](docs/metrics-roi.md) | Proof from 50+ dogfood cycles |
 | [docs/proxy.md](docs/proxy.md) | Default request proxy, SLOs, opt-out, optional agy/pxpipe-agy |
+| [docs/stack.md](docs/stack.md) | Operator Compose stack (SearXNG / LDR / Ollama), pxpipe path |
 | [docs/hub/README.md](docs/hub/README.md) | Playbook marketplace |
 | [docs/enterprise-governance.md](docs/enterprise-governance.md) | Policy + audit |
 | [docs/case-study.md](docs/case-study.md) | Dogfood case study |
@@ -415,8 +420,10 @@ agentic_loop_template/
 │   ├── stack-templates/      # Python API, static docs
 │   └── case-study/           # Sanitized trajectory
 ├── memory/                   # Ledger, playbooks, meta, audit, resume, dashboard
+├── deploy/                   # Compose: SearXNG, LDR, optional Ollama
 ├── prompts/                  # Short role prompts (start here)
 ├── scripts/demo-loop.sh      # One-command demo
+├── scripts/agentix-stack.sh  # Operator stack up/down/health
 ├── .agent/                   # PLAN, TODO, ledger, playbooks, hub index
 ├── Agent-Init.ps1 / .sh      # Bootstrap scripts
 ├── SYSTEM_PROMPT.md          # Master prompt (fill {{placeholders}})
@@ -463,4 +470,4 @@ Source: [`.agent/PERFORMANCE_LEDGER.md`](.agent/PERFORMANCE_LEDGER.md) · [docs/
 
 ## License
 
-[MIT](LICENSE) · **Agentix 3.9.3** · Maintained by **exception.expert**
+[MIT](LICENSE) · **Agentix 3.13.0** · Maintained by **exception.expert**

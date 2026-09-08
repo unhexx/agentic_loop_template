@@ -233,3 +233,5 @@ __marimo__/
 .agent/jira-from-commits-state.json
 .agent/blackbox_prompt.txt
 .venv/
+deploy/compose.env
+deploy/searxng/.cache/

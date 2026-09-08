@@ -18,7 +18,7 @@ Host agent tools (`read_file`, `search_replace`, `run_terminal_command`, `grep`,
 | `memory` | Orchestrator snapshot / Reviewer merge | memory query/update/meta/playbooks |
 | `git` | Before push/PR/merge | preflight_git + sync |
 | `test` | Tester role | venv + pytest |
-| `docker` | Compose-based projects | compose basics |
+| `docker` | Operator stack (SearXNG / LDR) | deploy/compose + agentix-stack.sh |
 | `handoff` | Every role exit | validate_handoff rules |
 
 ## Rules

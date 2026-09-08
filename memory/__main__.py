@@ -48,6 +48,14 @@ def _cli() -> None:
         from .proxy.__main__ import cli as proxy_cli
 
         raise SystemExit(proxy_cli(sys.argv[2:]))
+    if len(sys.argv) > 1 and sys.argv[1] == "stack":
+        from .stack import cli as stack_cli
+
+        raise SystemExit(stack_cli(sys.argv[2:]))
+    if len(sys.argv) > 1 and sys.argv[1] == "search":
+        from .search import cli as search_cli
+
+        raise SystemExit(search_cli(sys.argv[2:]))
 
     parser = argparse.ArgumentParser(description="Agentic Loop structured memory")
     sub = parser.add_subparsers(dest="cmd", required=True)

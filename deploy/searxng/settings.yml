@@ -1,0 +1,18 @@
+# Локальный SearXNG для агентов. JSON обязателен: LDR и memory.search
+# ходят в /search?format=json. Без json endpoint отвечает 403.
+use_default_settings: true
+
+server:
+  # SearXNG 2026 не стартует с литералом ultrasecretkey.
+  secret_key: "agentix-local-dev-not-ultrasecretkey"
+  limiter: false
+  public_instance: false
+  image_proxy: false
+  method: "GET"
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  formats:
+    - html
+    - json

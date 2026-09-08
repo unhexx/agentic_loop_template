@@ -1,10 +1,10 @@
 # Agentix Public Roadmap
 
-[![Version](https://img.shields.io/badge/version-3.12.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.13.0-blue?style=flat-square)](CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](README.md)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen?style=flat-square)](docs/README.md)
 
-**Status Date:** 2026-08-27 · **Initiative:** Business Efficiency — **COMPLETE** · **v3.9 Harness Hardening** — **COMPLETE** · **v3.10 Concurrent fan-out** — **COMPLETE** · **v3.10.1 supervisor caps** — **COMPLETE** · **v3.11 Conflict-free parallel sessions** — **COMPLETE** · **v3.11 NG11 harvester DI** — **COMPLETE** · **v3.11.2 Path 1 docs i18n** — **COMPLETE** · **v3.11.3 MultiLLM extract** — **COMPLETE** · **v3.11.4 P8-12 module split** — **COMPLETE** · **v3.12.0 P8-10 playbook embeddings** — **COMPLETE** · **Next:** Future
+**Status Date:** 2026-09-08 · **Initiative:** Business Efficiency — **COMPLETE** · **P9 Operator Compose Stack** — **COMPLETE (v3.13.0)** · **Next:** Future
 
 ---
 
@@ -47,6 +47,27 @@ Leftover nice-to-haves (docs i18n, embeddings, …) moved to Future.
 
 ---
 
+## P9 — done (v3.13.0)
+
+Shipped 2026-09-08 on `feature/p9-operator-stack`. Criteria:
+
+- Compose profiles for SearXNG (JSON), optional Local Deep Research (LangGraph), optional unpublished Ollama.
+- Host bind `127.0.0.1` only; `host.docker.internal` for gateway → pxpipe.
+- Gateway/dashboard/pxpipe remain host processes (SR-04).
+- Hermetic tests; Docker daemon not required in CI.
+
+| ID | Task | Status |
+|----|------|--------|
+| P9-01 | `deploy/compose.yaml` + SearXNG JSON settings | Done |
+| P9-02 | LDR research profile via gateway `:8110` | Done |
+| P9-03 | Optional Ollama profile, no host port | Done |
+| P9-04 | `memory.stack` / `memory.search` + `agentix-stack.sh` | Done |
+| P9-05 | Docs, roadmap, 3.13.0 | Done |
+
+Spec: [2026-09-08-p9-operator-stack-design.md](docs/superpowers/specs/2026-09-08-p9-operator-stack-design.md). Operator guide: [docs/stack.md](docs/stack.md).
+
+---
+
 ## Future
 
 - Hosted Agentix Hub SaaS (optional)
@@ -60,6 +81,7 @@ Leftover nice-to-haves (docs i18n, embeddings, …) moved to Future.
 
 | Version | Highlight |
 |---------|-----------|
+| **v3.13.0** | P9: operator Compose stack (SearXNG JSON, LDR LangGraph, optional Ollama); live LLM still pxpipe |
 | **v3.12.0** | P8-10: optional embeddings extra; hybrid 0.2 cosine; fail-open substring |
 | **v3.11.4** | P8-12: thin loaders + `memory/meta/` + `memory/experience/` + Init.ps1 dotsource |
 | **v3.11.3** | P8-13: MultiLLM ontology extracted to `memory/llm_ontology.py` |

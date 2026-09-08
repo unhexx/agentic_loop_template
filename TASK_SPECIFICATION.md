@@ -1,8 +1,8 @@
 # TASK_SPECIFICATION.md — Agentix Business Efficiency Initiative
 
 **Project:** Agentix (agentic_loop_template)
-**Version Target:** 3.3+ (business hardened)
-**Primary Goal:** Transform the Agentix template into the highest-ROI, most adoptable, self-improving agentic development harness on the market by implementing the prioritized business efficiency recommendations.
+**Version Target:** 3.13.0 (P9 operator stack)
+**Primary Goal:** Transform the Agentix template into the highest-ROI, most adoptable, self-improving agentic development harness on the market by implementing the prioritized business efficiency recommendations. P9 adds containerized SearXNG / Local Deep Research (LangGraph) while keeping pxpipe on every live model request.
 
 **Source of Truth for this initiative:** This file + .agent/PLAN.md + SPRINTPLAN.md + PROJECT_CONTEXT.md (updated each cycle).
 
