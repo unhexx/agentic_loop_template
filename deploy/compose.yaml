@@ -2,7 +2,7 @@
 # Шлюз :8110, дашборд :8112 и pxpipe :8100 остаются процессами хоста
 # (loopback SR-04). Контейнеры — поиск и исследование.
 #
-# По умолчанию только SearXNG:
+# SearXNG без профиля — стартует вместе с проектом:
 #   bash scripts/agentix-stack.sh up
 # Исследование (LangGraph LDR) + поиск:
 #   bash scripts/agentix-stack.sh up --research
@@ -14,16 +14,18 @@ name: agentix
 services:
   searxng:
     image: docker.io/searxng/searxng:latest
-    profiles: ["search"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:8080:8080"
     environment:
       - SEARXNG_BASE_URL=http://127.0.0.1:8080/
-      - SEARXNG_SECRET=${SEARXNG_SECRET:-}
     volumes:
-      - ./deploy/searxng:/etc/searxng:rw
+      # Именованный том — favicons/кэш; yaml/toml только :ro,
+      # иначе контейнер chown'ит дерево git.
+      - searxng_data:/etc/searxng
+      - ./deploy/searxng/settings.yml:/etc/searxng/settings.yml:ro
+      - ./deploy/searxng/limiter.toml:/etc/searxng/limiter.toml:ro
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
       interval: 30s
@@ -99,6 +101,7 @@ services:
       - agentix
 
 volumes:
+  searxng_data:
   ldr_data:
   ollama_data:
 

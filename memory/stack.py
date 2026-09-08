@@ -49,7 +49,8 @@ class StackService:
 
 STACK: Dict[str, StackService] = {
     "searxng": StackService(
-        profile="search",
+        # Без профиля — иначе `compose up` без --profile не поднимает поиск.
+        profile=None,
         host_port=8080,
         bind="127.0.0.1",
         publish=True,
@@ -57,6 +58,7 @@ STACK: Dict[str, StackService] = {
         runtime="compose",
         json_format=True,
         public_instance=False,
+        note="всегда с проектом, без compose-профиля",
     ),
     "ldr": StackService(
         profile="research",

@@ -52,6 +52,17 @@ def test_compose_follows_stack_contract():
     assert "0.0.0.0:" not in text.replace("LDR_WEB_HOST=0.0.0.0", "")
 
 
+def test_searxng_has_no_compose_profile():
+    """SearXNG всегда с проектом; профили остаются только у research/ollama."""
+    assert STACK["searxng"].profile is None
+    assert STACK["searxng"].compose_profile_needles() == ()
+    assert STACK["ldr"].profile == "research"
+    assert STACK["ollama"].profile == "ollama"
+    text = COMPOSE.read_text(encoding="utf-8")
+    assert 'profiles: ["search"]' not in text
+    assert "profiles: ['search']" not in text
+
+
 def test_host_ports_come_from_config_modules():
     assert STACK["searxng"].host_port == 8080
     assert STACK["ldr"].host_port == 5000
@@ -79,6 +90,23 @@ def test_searxng_settings_beyond_validator():
     assert "- html" in text
     assert "- json" in text
     assert 'secret_key: "ultrasecretkey"' not in text
+    assert "agentix-local-dev-not-ultrasecretkey" in text
+
+
+def test_searxng_secret_is_settings_not_env():
+    """Один источник секрета: закоммиченный ключ. Env SEARXNG_SECRET не держим."""
+    compose = COMPOSE.read_text(encoding="utf-8")
+    env = ENV_EX.read_text(encoding="utf-8")
+    assert "SEARXNG_SECRET" not in compose
+    assert "SEARXNG_SECRET" not in env
+
+
+def test_searxng_volumes_named_and_readonly_config():
+    text = COMPOSE.read_text(encoding="utf-8")
+    assert "./deploy/searxng:/etc/searxng" not in text
+    assert "searxng_data:/etc/searxng" in text
+    assert "settings.yml:/etc/searxng/settings.yml:ro" in text
+    assert "limiter.toml:/etc/searxng/limiter.toml:ro" in text
 
 
 def test_stack_cli_json(capsys):
@@ -93,11 +121,22 @@ def test_stack_cli_check():
     assert cli(["check"]) == 0
 
 
-def test_env_example_has_no_real_secret_placeholder_only():
+def test_env_example_has_ldr_endpoint_no_searx_secret():
     text = ENV_EX.read_text(encoding="utf-8")
-    assert "SEARXNG_SECRET=" in text
-    assert "change-me" in text.lower() or "replace" in text.lower()
     assert "LDR_LLM_OPENAI_ENDPOINT_URL=" in text
+    assert "SEARXNG_SECRET" not in text
+
+
+def test_agentix_stack_script_portable_and_fail_closed():
+    text = SCRIPT.read_text(encoding="utf-8")
+    # Команда in-place sed ломает BSD sed на macOS — в скрипте её быть не должно.
+    assert not any(ln.lstrip().startswith("sed ") for ln in text.splitlines())
+    assert "PROFILES=(search)" not in text
+    assert "memory.stack check" in text
+    assert "/healthz" in text
+    health = text.split("health)", 1)[1]
+    assert "memory.stack check" in health
+    assert "exit 1" in health
 
 
 def test_gitignore_compose_env():

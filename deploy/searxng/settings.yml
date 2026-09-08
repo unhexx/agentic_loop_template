@@ -3,7 +3,8 @@
 use_default_settings: true
 
 server:
-  # SearXNG 2026 не стартует с литералом ultrasecretkey.
+  # Образ читает ключ отсюда, не из SEARXNG_SECRET. Литерал ultrasecretkey
+  # в SearXNG 2026 не стартует; локальный ключ закоммичен — это не public instance.
   secret_key: "agentix-local-dev-not-ultrasecretkey"
   limiter: false
   public_instance: false
