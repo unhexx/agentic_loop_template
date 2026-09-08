@@ -6,52 +6,89 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-STACK: Dict[str, Dict[str, Any]] = {
-    "searxng": {
-        "profile": "search",
-        "host_port": 8080,
-        "bind": "127.0.0.1",
-        "image": "docker.io/searxng/searxng:latest",
-    },
-    "ldr": {
-        "profile": "research",
-        "host_port": 5000,
-        "bind": "127.0.0.1",
-        "image": "docker.io/localdeepresearch/local-deep-research:latest",
-    },
-    "ollama": {
-        "profile": "ollama",
-        "host_port": None,
-        "publish": False,
-        "image": "docker.io/ollama/ollama:latest",
-    },
-    "gateway": {
-        "profile": None,
-        "host_port": 8110,
-        "bind": "127.0.0.1",
-        "runtime": "host",
-        "note": "не в Compose по умолчанию: loopback peer (SR-04)",
-    },
-    "dashboard": {
-        "profile": None,
-        "host_port": 8112,
-        "bind": "127.0.0.1",
-        "runtime": "host",
-    },
-    "pxpipe": {
-        "profile": None,
-        "host_port": 8100,
-        "bind": "127.0.0.1",
-        "runtime": "host",
-        "note": "imager не вендорится; шлюз фронтит pxpipe",
-    },
+from memory.dashboard.config import DEFAULT_PORT
+from memory.proxy.config import GATEWAY_PORT, PXPIPE_PORT
+
+
+@dataclass(frozen=True)
+class StackService:
+    """Одна служба контракта. Валидатор и CLI читают только эти поля."""
+
+    profile: Optional[str] = None
+    host_port: Optional[int] = None
+    bind: Optional[str] = None
+    publish: bool = False
+    image: Optional[str] = None
+    runtime: str = "compose"
+    json_format: Optional[bool] = None
+    public_instance: Optional[bool] = None
+    note: Optional[str] = None
+
+    def publish_mapping(self) -> Optional[str]:
+        """Ожидаемая запись ports: иначе не сверить bind из контракта с YAML."""
+        if not self.publish or self.host_port is None:
+            return None
+        bind = self.bind or "127.0.0.1"
+        return f"{bind}:{self.host_port}:{self.host_port}"
+
+
+STACK: Dict[str, StackService] = {
+    "searxng": StackService(
+        profile="search",
+        host_port=8080,
+        bind="127.0.0.1",
+        publish=True,
+        image="docker.io/searxng/searxng:latest",
+        runtime="compose",
+        json_format=True,
+        public_instance=False,
+    ),
+    "ldr": StackService(
+        profile="research",
+        host_port=5000,
+        bind="127.0.0.1",
+        publish=True,
+        image="docker.io/localdeepresearch/local-deep-research:latest",
+        runtime="compose",
+    ),
+    "ollama": StackService(
+        profile="ollama",
+        host_port=11434,
+        publish=False,
+        image="docker.io/ollama/ollama:latest",
+        runtime="compose",
+    ),
+    "gateway": StackService(
+        profile=None,
+        host_port=GATEWAY_PORT,
+        bind="127.0.0.1",
+        publish=False,
+        runtime="host",
+        note="не в Compose по умолчанию: loopback peer (SR-04)",
+    ),
+    "dashboard": StackService(
+        profile=None,
+        host_port=DEFAULT_PORT,
+        bind="127.0.0.1",
+        publish=False,
+        runtime="host",
+    ),
+    "pxpipe": StackService(
+        profile=None,
+        host_port=PXPIPE_PORT,
+        bind="127.0.0.1",
+        publish=False,
+        runtime="host",
+        note="imager не вендорится; шлюз фронтит pxpipe",
+    ),
 }
 
-PROFILES = ("search", "research", "ollama")
-DEFAULT_UP_PROFILES = ("search",)
+PROFILES = tuple(svc.profile for svc in STACK.values() if svc.profile)
+DEFAULT_UP_PROFILES = (STACK["searxng"].profile,) if STACK["searxng"].profile else ()
 
 
 def repo_root(start: Optional[Path] = None) -> Path:
@@ -82,25 +119,33 @@ def validate_stack_files(root: Optional[Path] = None) -> Dict[str, Any]:
             errors.append(f"missing:{p.relative_to(root)}")
     if compose.is_file():
         text = compose.read_text(encoding="utf-8")
-        if "127.0.0.1:8080:8080" not in text:
-            errors.append("searxng must publish 127.0.0.1:8080")
-        if "127.0.0.1:5000:5000" not in text:
-            errors.append("ldr must publish 127.0.0.1:5000")
-        if "11434:11434" in text:
-            errors.append("ollama must not publish a host port")
         if "host.docker.internal:host-gateway" not in text:
             errors.append("extra_hosts host.docker.internal required")
         if "no-new-privileges:true" not in text:
             errors.append("no-new-privileges required")
-        for name in PROFILES:
-            if name not in text:
-                errors.append(f"profile missing:{name}")
+        for name, svc in STACK.items():
+            if svc.profile and svc.profile not in text:
+                errors.append(f"profile missing:{svc.profile}")
+            mapping = svc.publish_mapping()
+            if mapping is not None and mapping not in text:
+                errors.append(f"{name} must publish {svc.bind}:{svc.host_port}")
+            # Непубликуемый контейнерный порт (ollama): хостовый mapping вида N:N запрещён.
+            if (
+                not svc.publish
+                and svc.runtime == "compose"
+                and svc.host_port is not None
+                and f"{svc.host_port}:{svc.host_port}" in text
+            ):
+                errors.append(f"{name} must not publish a host port")
+            if svc.image and svc.image not in text:
+                errors.append(f"image missing:{svc.image}")
     if settings.is_file():
         st = settings.read_text(encoding="utf-8")
-        if "json" not in st:
-            errors.append("searxng settings must enable json format")
-        if "public_instance: false" not in st:
-            errors.append("searxng must not be a public instance")
+        for name, svc in STACK.items():
+            if svc.json_format is True and "json" not in st:
+                errors.append(f"{name} settings must enable json format")
+            if svc.public_instance is False and "public_instance: false" not in st:
+                errors.append(f"{name} must not be a public instance")
     return {"ok": not errors, "errors": errors, "root": str(root)}
 
 
@@ -112,13 +157,17 @@ def cli(argv: Optional[List[str]] = None) -> int:
     sub.add_parser("check", help="Проверить файлы deploy/")
     args = parser.parse_args(argv)
     if args.cmd == "contract":
-        payload = {"stack": STACK, "profiles": list(PROFILES), "default_up": list(DEFAULT_UP_PROFILES)}
+        payload = {
+            "stack": {key: asdict(spec) for key, spec in STACK.items()},
+            "profiles": list(PROFILES),
+            "default_up": list(DEFAULT_UP_PROFILES),
+        }
         if args.json:
             print(json.dumps(payload, ensure_ascii=False, indent=2))
         else:
             for key, spec in STACK.items():
-                port = spec.get("host_port")
-                print(f"{key}\t{spec.get('bind', '-')}:{port}\tprofile={spec.get('profile')}")
+                bind = spec.bind or "-"
+                print(f"{key}\t{bind}:{spec.host_port}\tprofile={spec.profile}")
         return 0
     report = validate_stack_files()
     if not report["ok"]:
