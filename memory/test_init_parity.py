@@ -25,6 +25,7 @@ def test_shared_cold_start_ritual():
         "knowledge ingest-if-empty",
         "playbooks seed",
         "proxy install-venv",
+        "memory.stack",
     ):
         assert token in sh, f"нет {token!r} в Agent-Init.sh"
         assert token in ps1, f"нет {token!r} в Agent-Init.ps1"

@@ -1,38 +1,31 @@
 # .agent/PLAN.md — Living Project Plan
 
-**Initiative:** Business Efficiency Recommendations — **COMPLETE**
-**Template Version:** 3.4.0
-**Last Update:** 2026-07-03
+**Initiative:** P9 Operator Compose Stack — **COMPLETE** on `feature/p9-operator-stack`
+**Template Version:** 3.13.0
+**Last Update:** 2026-09-08
+**Loop:** 5 (post-P9 hardening, still not merging `main`)
 
 ## Phase Status
 
 | Phase | Status |
 |-------|--------|
-| P0 Foundation | COMPLETE |
-| P1 Metrics/ROI | COMPLETE |
-| P2 Cross-Platform | COMPLETE |
-| P3 Productization | COMPLETE |
-| P4 Meta-Optimizer | COMPLETE |
-| P5 Enterprise | COMPLETE |
-| P6 DX & Onboarding | COMPLETE |
-| P7 Efficiency & Sustain | COMPLETE |
+| P0–P8 | COMPLETE (see ROADMAP) |
+| P9 Operator stack | COMPLETE (v3.13.0) |
+| Loop 5 follow-up | IN PROGRESS |
 
-## Iteration 4 — P5 Enterprise (COMPLETE)
+## P9 delivered
 
-- P5-GOV-01: `memory/audit_log.py`, `examples/policy/sample-policy.toml`, `docs/enterprise-governance.md`
-- P5-INT-01: `docs/integrations.md`, `.github/workflows/agentix-loop.yml`
+- `deploy/compose.yaml` profiles `search` / `research` / `ollama`
+- SearXNG JSON on `127.0.0.1:8080`; LDR via host gateway → pxpipe
+- `memory.stack` / `memory.search` / `scripts/agentix-stack.sh` / `docs/stack.md`
+- Live pxpipe path unchanged (`proxy.mode=required`)
 
-## Iteration 5 — P6 DX (COMPLETE)
+## Loop 5 INVEST (this cycle)
 
-- P6-WIZARD-01: `Agent-Init.sh --wizard`, `docs/onboarding-wizard.md`
-- P6-DEMO-01: `scripts/demo-loop.sh`, stack templates, `.vscode/extensions.json`
+1. Living PLAN/TODO match 3.13.0
+2. Init.ps1 stack tip (parity with Init.sh)
+3. demo-loop.sh: non-fatal `memory.stack check`
+4. SearXNG `limiter.toml` so 2026 image does not warn
+5. consumer-starter pointer to stack + `AGENTIX_SEARXNG_URL`
 
-## Iteration 6 — P7 Sustain (COMPLETE)
-
-- P7-RESUME-01: `memory/resume.py`, selective memory in compression guide
-- P7-EVAL-01: `memory/eval_harness.py`
-- P7-CASE-01: `docs/case-study.md`, `examples/case-study/`
-- P7-HYGIENE-01: Legacy path generalization in standards/roles
-- P7-RELEASE-01: CHANGELOG v3.4.0, initiative closed
-
-**Initiative gate:** All P1–P7 done. Tests green. ROADMAP marks initiative complete.
+Do **not** merge to `main` until operator review of the feature branch.

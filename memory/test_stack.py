@@ -9,6 +9,7 @@ REPO = Path(__file__).resolve().parents[1]
 COMPOSE = REPO / "deploy" / "compose.yaml"
 ENV_EX = REPO / "deploy" / "compose.env.example"
 SETTINGS = REPO / "deploy" / "searxng" / "settings.yml"
+LIMITER = REPO / "deploy" / "searxng" / "limiter.toml"
 SCRIPT = REPO / "scripts" / "agentix-stack.sh"
 
 
@@ -16,7 +17,10 @@ def test_deploy_files_exist():
     assert COMPOSE.is_file()
     assert ENV_EX.is_file()
     assert SETTINGS.is_file()
+    assert LIMITER.is_file()
     assert SCRIPT.is_file()
+    limiter = LIMITER.read_text(encoding="utf-8")
+    assert "127.0.0.0/8" in limiter
     assert SCRIPT.stat().st_mode & 0o111, "agentix-stack.sh должен быть исполняемым"
 
 

@@ -13,6 +13,14 @@
 - `scripts/agentix-stack.sh`, `docs/stack.md`
 - Hermetic tests `memory/test_stack.py`, `memory/test_search.py`
 
+## Loop 5 (post-P9, same branch)
+
+- Living PLAN/TODO for 3.13.0
+- Init.ps1 / Init.sh `memory.stack` parity
+- demo-loop.sh non-fatal stack check
+- SearXNG `limiter.toml`
+- consumer-starter stack pointer + `AGENTIX_SEARXNG_URL`
+
 ## Next
 
-Evaluate the branch, then merge/tag 3.13.0 from review. No further INVEST in this sprint.
+Evaluate `feature/p9-operator-stack`, then merge/tag 3.13.0. Do not merge `main` from the loop.

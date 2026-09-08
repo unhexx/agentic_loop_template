@@ -74,9 +74,10 @@ def validate_stack_files(root: Optional[Path] = None) -> Dict[str, Any]:
     errors: List[str] = []
     compose = root / "deploy" / "compose.yaml"
     settings = root / "deploy" / "searxng" / "settings.yml"
+    limiter = root / "deploy" / "searxng" / "limiter.toml"
     env_ex = root / "deploy" / "compose.env.example"
     script = root / "scripts" / "agentix-stack.sh"
-    for p in (compose, settings, env_ex, script):
+    for p in (compose, settings, limiter, env_ex, script):
         if not p.is_file():
             errors.append(f"missing:{p.relative_to(root)}")
     if compose.is_file():

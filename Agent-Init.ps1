@@ -285,6 +285,7 @@ Begin as Orchestrator.
 "@
 [System.IO.File]::WriteAllText($shortPromptPath, $shortPrompt, [System.Text.Encoding]::UTF8)
 Write-Host "  Starter prompt saved to: $shortPromptPath" -ForegroundColor Green
+Write-Host "  Stack: python -m memory.stack check; bash scripts/agentix-stack.sh up" -ForegroundColor DarkGray
 
 Write-Host ""
 Write-Host "=== Agentic Loop Environment Ready ===" -ForegroundColor Green

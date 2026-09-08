@@ -18,6 +18,8 @@ cp examples/consumer-starter/AGENTS.md.example /path/to/your-project/AGENTS.md
 
 Pattern sources: `contact-vault/docs/06-ENGINEERING/Agent-Playbook.md`, `telegrok/AGENTS.md`.
 
+Operator search/research containers (SearXNG JSON, optional LDR): [docs/stack.md](../../docs/stack.md). Live Grok still goes through the gateway → host pxpipe; do not copy `deploy/compose.env`.
+
 Use this when the work is a normal PR, not a multi-cycle autonomous sprint.
 
 ---

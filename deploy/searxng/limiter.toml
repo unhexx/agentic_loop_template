@@ -1,0 +1,12 @@
+# Локальный инстанс: botdetection выключен в settings.yml (limiter: false).
+# Файл нужен SearXNG 2026, иначе в логе missing config file.
+
+[botdetection.ip_limit]
+link_token = false
+
+[botdetection.ip_lists]
+block_ip = []
+pass_ip = [
+  "127.0.0.0/8",
+  "::1",
+]

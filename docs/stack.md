@@ -52,6 +52,7 @@ bash scripts/agentix-stack.sh up --research --ollama
 | [`deploy/compose.yaml`](../deploy/compose.yaml) | Profiles `search` / `research` / `ollama` |
 | [`deploy/compose.env.example`](../deploy/compose.env.example) | Copy to `deploy/compose.env` |
 | [`deploy/searxng/settings.yml`](../deploy/searxng/settings.yml) | `formats: [html, json]` |
+| [`deploy/searxng/limiter.toml`](../deploy/searxng/limiter.toml) | silences SearXNG 2026 missing-config warning |
 | [`scripts/agentix-stack.sh`](../scripts/agentix-stack.sh) | up / down / ps / health |
 | [`memory/stack.py`](../memory/stack.py) | Port/profile contract |
 | [`memory/search.py`](../memory/search.py) | stdlib JSON client |

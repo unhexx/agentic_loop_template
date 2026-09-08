@@ -1,16 +1,17 @@
 # .agent/TODO.md — Task Backlog
 
-**Business Efficiency Initiative: COMPLETE (v3.4.0)**
+**P9:** COMPLETE (v3.13.0) on `feature/p9-operator-stack`
+**Loop 5:** post-P9 DX/hardening
 
-## All Iterations DONE
+## Loop 5
 
-- [x] Iteration 1: P0/P1/P4 foundation
-- [x] Iteration 2: P2 cross-platform
-- [x] Iteration 3: P3 productization
-- [x] Iteration 4: P5 enterprise governance + integrations
-- [x] Iteration 5: P6 DX wizard + demos + stack templates
-- [x] Iteration 6: P7 resume/eval/case-study/cleanup + v3.4.0
+- [x] L5-01 Living PLAN/TODO for 3.13.0
+- [x] L5-02 Init.ps1 stack tip + init parity token `memory.stack`
+- [x] L5-03 demo-loop.sh non-fatal stack check
+- [x] L5-04 `deploy/searxng/limiter.toml` + contract test
+- [x] L5-05 consumer-starter stack pointer + SearXNG env
 
-## Post-Initiative
+## Parked (not this loop)
 
-No open INVEST tasks. Future work is outside this initiative scope (hosted Hub SaaS, mobile, etc.).
+- Merge/tag 3.13.0 on `main` after evaluation
+- Hosted Hub SaaS / messenger / mobile (ROADMAP Future)
