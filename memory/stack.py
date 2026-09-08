@@ -8,7 +8,7 @@ import json
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from memory.dashboard.config import DEFAULT_PORT
 from memory.proxy.config import GATEWAY_PORT, PXPIPE_PORT
@@ -34,6 +34,13 @@ class StackService:
             return None
         bind = self.bind or "127.0.0.1"
         return f"{bind}:{self.host_port}:{self.host_port}"
+
+    def compose_profile_needles(self) -> Tuple[str, ...]:
+        """Ключ profiles, не имя образа (research ⊂ local-deep-research)."""
+        if not self.profile:
+            return ()
+        name = self.profile
+        return (f'profiles: ["{name}"]', f"profiles: ['{name}']")
 
 
 STACK: Dict[str, StackService] = {
@@ -124,12 +131,13 @@ def validate_stack_files(root: Optional[Path] = None) -> Dict[str, Any]:
         if "no-new-privileges:true" not in text:
             errors.append("no-new-privileges required")
         for name, svc in STACK.items():
-            if svc.profile and svc.profile not in text:
+            needles = svc.compose_profile_needles()
+            if needles and not any(n in text for n in needles):
                 errors.append(f"profile missing:{svc.profile}")
             mapping = svc.publish_mapping()
             if mapping is not None and mapping not in text:
                 errors.append(f"{name} must publish {svc.bind}:{svc.host_port}")
-            # Непубликуемый контейнерный порт (ollama): хостовый mapping вида N:N запрещён.
+            # У демона нет аутентификации — порт на хост нельзя отдавать.
             if (
                 not svc.publish
                 and svc.runtime == "compose"
@@ -142,7 +150,7 @@ def validate_stack_files(root: Optional[Path] = None) -> Dict[str, Any]:
     if settings.is_file():
         st = settings.read_text(encoding="utf-8")
         for name, svc in STACK.items():
-            if svc.json_format is True and "json" not in st:
+            if svc.json_format is True and "- json" not in st:
                 errors.append(f"{name} settings must enable json format")
             if svc.public_instance is False and "public_instance: false" not in st:
                 errors.append(f"{name} must not be a public instance")

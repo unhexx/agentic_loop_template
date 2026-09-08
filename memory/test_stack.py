@@ -41,8 +41,9 @@ def test_compose_follows_stack_contract():
         mapping = svc.publish_mapping()
         if mapping:
             assert mapping in text, name
-        if svc.profile:
-            assert svc.profile in text, name
+        needles = svc.compose_profile_needles()
+        if needles:
+            assert any(n in text for n in needles), name
         if svc.image:
             assert svc.image in text, name
         if not svc.publish and svc.runtime == "compose" and svc.host_port is not None:
@@ -75,7 +76,8 @@ def test_searxng_settings_beyond_validator():
     """json/public_instance уже в validate_stack_files; здесь — секрет и html."""
     text = SETTINGS.read_text(encoding="utf-8")
     assert "use_default_settings: true" in text
-    assert "html" in text
+    assert "- html" in text
+    assert "- json" in text
     assert 'secret_key: "ultrasecretkey"' not in text
 
 
