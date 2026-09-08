@@ -347,7 +347,7 @@ python -m memory.playbooks export --format hub
 | `python -m memory.proxy health\|serve\|stats` | Request proxy: pxpipe front, gateway `:8110`, token stats |
 | `python -m memory.stack check` | Validate `deploy/compose.yaml` contract (loopback, profiles, JSON) |
 | `bash scripts/agentix-stack.sh up` | SearXNG on `127.0.0.1:8080`; `--research` adds LDR via gateway→pxpipe |
-| `python -m memory search --q "…" --json` | Local SearXNG JSON client |
+| `python -m memory.stack search --q "…" --json` | Local SearXNG JSON client |
 | `agy-pxpipe --model gemini-3.7-flash-high --print='…'` | Optional second pxpipe for Antigravity CLI; see [pxpipe for agy](#pxpipe-for-agy-gemini-37-flash) |
 | `python -m memory.meta_harvester export-sft` | Local SFT JSONL from golden DONE trajectories (no GPU) |
 

@@ -347,7 +347,7 @@ python -m memory.playbooks export --format hub
 | `python -m memory.proxy health\|serve\|stats` | Прокси запросов: фронт pxpipe, шлюз `:8110`, статистика токенов |
 | `python -m memory.stack check` | Контракт `deploy/compose.yaml` (loopback, профили, JSON) |
 | `bash scripts/agentix-stack.sh up` | SearXNG на `127.0.0.1:8080`; `--research` добавляет LDR через шлюз→pxpipe |
-| `python -m memory search --q "…" --json` | Локальный JSON-клиент SearXNG |
+| `python -m memory.stack search --q "…" --json` | Локальный JSON-клиент SearXNG |
 | `agy-pxpipe --model gemini-3.7-flash-high --print='…'` | Опциональный второй pxpipe для Antigravity CLI; см. [pxpipe для agy](#pxpipe-для-agy-gemini-37-flash) |
 | `python -m memory.meta_harvester export-sft` | Локальный SFT JSONL из золотых траекторий DONE (без GPU) |
 

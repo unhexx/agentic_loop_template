@@ -27,7 +27,7 @@ The Xakep LDR write-up runs SearXNG + research UI + a local LLM in Docker. Agent
 python -m memory.stack check
 bash scripts/agentix-stack.sh up                 # SearXNG only
 curl -sS 'http://127.0.0.1:8080/search?q=test&format=json' | head
-python -m memory search --q "langgraph agent" --json
+python -m memory.stack search --q "langgraph agent" --json
 ```
 
 Deep research UI (needs Docker image pull + running gateway/pxpipe):
@@ -54,14 +54,13 @@ bash scripts/agentix-stack.sh up --research --ollama
 | [`deploy/searxng/settings.yml`](../deploy/searxng/settings.yml) | `formats: [html, json]` |
 | [`deploy/searxng/limiter.toml`](../deploy/searxng/limiter.toml) | silences SearXNG 2026 missing-config warning |
 | [`scripts/agentix-stack.sh`](../scripts/agentix-stack.sh) | up / down / ps / health |
-| [`memory/stack.py`](../memory/stack.py) | Port/profile contract |
-| [`memory/search.py`](../memory/search.py) | stdlib JSON client |
+| [`memory/stack.py`](../memory/stack.py) | Port/profile contract and SearXNG JSON client |
 
 ## Security
 
 - Publish `127.0.0.1` only.
 - `no-new-privileges:true`.
-- SearXNG is not a public instance; JSON is on because LDR and `memory.search` need it (default image 403s `format=json`).
+- SearXNG is not a public instance; JSON is on because LDR and `python -m memory.stack search` need it (default image 403s `format=json`).
 - Ollama is unpublished: the daemon has no auth.
 - Replace `SEARXNG_SECRET` / `server.secret_key` before any reverse proxy.
 
