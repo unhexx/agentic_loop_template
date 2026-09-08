@@ -14,7 +14,7 @@
 
 ### Added
 - Operator Compose stack (`deploy/compose.yaml`): profile `search` (SearXNG JSON on `127.0.0.1:8080`), `research` (Local Deep Research / LangGraph on `127.0.0.1:5000`), `ollama` (unpublished). LDR talks to the host gateway `host.docker.internal:8110` so live calls still hit **pxpipe**.
-- `python -m memory.stack` contract/check, `python -m memory search`, `scripts/agentix-stack.sh`.
+- `python -m memory.stack` contract/check/search, `scripts/agentix-stack.sh`.
 - Docs: [`docs/stack.md`](docs/stack.md), spec [`docs/superpowers/specs/2026-09-08-p9-operator-stack-design.md`](docs/superpowers/specs/2026-09-08-p9-operator-stack-design.md).
 - Tests: `memory/test_stack.py`, `memory/test_search.py` (hermetic; no Docker daemon in CI).
 - Loop 5: Init.ps1 `memory.stack` tip, demo-loop stack check, SearXNG `limiter.toml`, consumer-starter `AGENTIX_SEARXNG_URL`.

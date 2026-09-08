@@ -9,7 +9,7 @@ bash scripts/agentix-stack.sh up --research      # + LDR :5000 через шлю
 bash scripts/agentix-stack.sh ps
 bash scripts/agentix-stack.sh health
 bash scripts/agentix-stack.sh down
-python -m memory search --q "langgraph agent" --json
+python -m memory.stack search --q "langgraph agent" --json
 ```
 
 Не публиковать порты на 0.0.0.0. Ollama без host port. Живые запросы модели — только через pxpipe.

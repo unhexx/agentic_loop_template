@@ -1,4 +1,4 @@
-# Локальный SearXNG для агентов. JSON обязателен: LDR и memory.search
+# Локальный SearXNG для агентов. JSON обязателен: LDR и python -m memory.stack search
 # ходят в /search?format=json. Без json endpoint отвечает 403.
 use_default_settings: true
 
