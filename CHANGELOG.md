@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added
+- Root `Jenkinsfile` mirroring GitHub Actions harness + stdlib-collect (Bitbucket Jenkins Test configuration). Contract: `memory/test_ci_parity.py`.
+
+### Fixed
+- Performance ledger counts `total_cycles` after the 50-row window, omits null `proxy_stats`/`details`, and no longer inserts `cycle=0` META_APPLIED rows that compact away real cycles. `update_performance_ledger` writes `LOOP_PERFORMANCE.md` and the JSON ledger in one `"ledger"` section.
+- Playbooks skip `updated_at` / overview rewrite when bullet bodies did not change; human views use tmp+replace.
+- Gitignore hub lock files `.agent/stream_leases.json` and `.agent/streams_state.json` (root + consumer starter).
+
 ## [3.13.0] - 2026-09-08
 
 ### Added
@@ -10,17 +18,11 @@
 - Docs: [`docs/stack.md`](docs/stack.md), spec [`docs/superpowers/specs/2026-09-08-p9-operator-stack-design.md`](docs/superpowers/specs/2026-09-08-p9-operator-stack-design.md).
 - Tests: `memory/test_stack.py`, `memory/test_search.py` (hermetic; no Docker daemon in CI).
 - Loop 5: Init.ps1 `memory.stack` tip, demo-loop stack check, SearXNG `limiter.toml`, consumer-starter `AGENTIX_SEARXNG_URL`.
-- Root `Jenkinsfile` mirroring GitHub Actions harness + stdlib-collect (Bitbucket Jenkins Test configuration). Contract: `memory/test_ci_parity.py`.
 
 ### Changed
 - `VERSION` → 3.13.0
 - ROADMAP: P9 complete; milestone v3.13.0
 - Gateway / dashboard / pxpipe remain host processes (loopback SR-04).
-
-### Fixed
-- Performance ledger counts `total_cycles` after the 50-row window, omits null `proxy_stats`/`details`, and no longer inserts `cycle=0` META_APPLIED rows that compact away real cycles. `update_performance_ledger` writes `LOOP_PERFORMANCE.md` and the JSON ledger in one `"ledger"` section.
-- Playbooks skip `updated_at` / overview rewrite when bullet bodies did not change; human views use tmp+replace.
-- Gitignore hub lock files `.agent/stream_leases.json` and `.agent/streams_state.json` (root + consumer starter).
 
 ## [3.12.0] - 2026-08-27
 

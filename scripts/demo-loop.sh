@@ -16,7 +16,7 @@ test -f .agent/PLAN.md && test -f TASK_SPECIFICATION.md
 echo "PLAN + SPEC: OK"
 
 echo "--- Stack contract (no Docker required) ---"
-python -m memory.stack check || echo "(stack check skipped — OK if deploy/ missing)"
+python -m memory.stack check
 
 echo "--- Resume context ---"
 python -m memory.resume --json | head -20
