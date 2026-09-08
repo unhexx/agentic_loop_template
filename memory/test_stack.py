@@ -4,10 +4,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+from shutil import copy2, copytree
 
 from memory.dashboard.config import DEFAULT_PORT
 from memory.proxy.config import GATEWAY_PORT, PXPIPE_PORT
-from memory.stack import STACK, cli, compose_path, validate_stack_files
+from memory.stack import (
+    STACK,
+    cli,
+    compose_path,
+    compose_service_block,
+    validate_stack_files,
+)
 
 REPO = Path(__file__).resolve().parents[1]
 COMPOSE = REPO / "deploy" / "compose.yaml"
@@ -59,8 +66,32 @@ def test_searxng_has_no_compose_profile():
     assert STACK["ldr"].profile == "research"
     assert STACK["ollama"].profile == "ollama"
     text = COMPOSE.read_text(encoding="utf-8")
-    assert 'profiles: ["search"]' not in text
-    assert "profiles: ['search']" not in text
+    block = compose_service_block(text, "searxng")
+    assert block
+    for line in block.splitlines():
+        if line.lstrip().startswith("#"):
+            continue
+        assert not line.lstrip().startswith("profiles:"), line
+    assert "search" not in {STACK[k].profile for k in STACK}
+
+
+def test_validate_rejects_leftover_searxng_profile(tmp_path: Path):
+    """Ключ profiles на always-on службе прячет её от compose up без --profile."""
+    (tmp_path / "VERSION").write_text((REPO / "VERSION").read_text(encoding="utf-8"))
+    copytree(REPO / "deploy", tmp_path / "deploy")
+    (tmp_path / "scripts").mkdir()
+    copy2(SCRIPT, tmp_path / "scripts" / "agentix-stack.sh")
+    compose = tmp_path / "deploy" / "compose.yaml"
+    compose.write_text(
+        COMPOSE.read_text(encoding="utf-8").replace(
+            "  searxng:\n    image:",
+            '  searxng:\n    profiles: ["search"]\n    image:',
+        ),
+        encoding="utf-8",
+    )
+    report = validate_stack_files(tmp_path)
+    assert report["ok"] is False
+    assert any("must not declare a compose profile" in e for e in report["errors"])
 
 
 def test_host_ports_come_from_config_modules():

@@ -126,6 +126,27 @@ def compose_path(root: Optional[Path] = None) -> Path:
     return repo_root(root) / "deploy" / "compose.yaml"
 
 
+def compose_service_block(text: str, name: str) -> str:
+    """Тело службы в Compose (ключ с отступом 2). Пусто, если блока нет."""
+    lines = text.splitlines()
+    start = None
+    for i, line in enumerate(lines):
+        key = line.split(":", 1)[0]
+        if key == f"  {name}":
+            start = i
+            break
+    if start is None:
+        return ""
+    body: List[str] = []
+    for line in lines[start + 1 :]:
+        if line.startswith("  ") and not line.startswith("    "):
+            break
+        if line and not line[0].isspace():
+            break
+        body.append(line)
+    return "\n".join(body)
+
+
 def validate_stack_files(root: Optional[Path] = None) -> Dict[str, Any]:
     """Проверяем файлы без docker daemon."""
     root = repo_root(root)
@@ -148,6 +169,15 @@ def validate_stack_files(root: Optional[Path] = None) -> Dict[str, Any]:
             needles = svc.compose_profile_needles()
             if needles and not any(n in text for n in needles):
                 errors.append(f"profile missing:{svc.profile}")
+            # Без профиля ключ profiles прячет службу от `compose up`.
+            if not svc.profile and svc.runtime == "compose":
+                block = compose_service_block(text, name)
+                for line in block.splitlines():
+                    if line.lstrip().startswith("#"):
+                        continue
+                    if line.lstrip().startswith("profiles:"):
+                        errors.append(f"{name} must not declare a compose profile")
+                        break
             mapping = svc.publish_mapping()
             if mapping is not None and mapping not in text:
                 errors.append(f"{name} must publish {svc.bind}:{svc.host_port}")
