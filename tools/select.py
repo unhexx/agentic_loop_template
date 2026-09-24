@@ -25,6 +25,7 @@ INTENTS = {
     "knowledge": [],
     "compress": ["common/memory.md"],
     "harvest": ["common/experience.md"],
+    "xai": ["common/xai_tools.md"],
 }
 
 # Skills живут в корне репозитория, не в tools/blocks.
