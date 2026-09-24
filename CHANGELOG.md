@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.14.0 — 2026-09-24
+
+### Added
+- Local client-side xAI Tools as separate repositories (`tool-code-execution`, `tool-collections-search`, `tool-browse-page`, `tool-web-search`, `tool-view-image`, `tool-mcp-bridge`, `tool-x-search`)
+- `tools/select.py --intent xai` and `tools/blocks/common/xai_tools.md`
+- Overlay `deploy/xai-local-tools.compose.yaml` (loopback, cap_drop ALL)
+- `docs/xai-local-tools.md` — mixing server-side and client-side tools
+
+### Notes
+- X search / view_x_video remain xAI server-side; local facade refuses by default
+- Offline tasks do not call third-party SaaS
+
 ## [Unreleased]
 
 ### Added
