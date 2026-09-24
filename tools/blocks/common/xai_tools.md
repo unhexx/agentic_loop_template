@@ -23,7 +23,23 @@ python tools/select.py --intent xai
 | `x_keyword_search` `x_semantic_search` `x_user_search` `x_thread_fetch` `view_x_video` | **только server-side xAI** | https://github.com/unhexx/tool-x-search (фасад/fixtures) |
 | image generation | server-side xAI или локальная Ollama (профиль `ollama`) | не дублировать облако |
 
-Операторский SearXNG шаблона (`deploy/compose.yaml`, `:8080`) — допустимый self-hosted backend для `tool-web-search` (`SEARXNG_URL=http://127.0.0.1:8080`). Это не xAI `web_search`.
+Операторский SearXNG шаблона (`deploy/compose.yaml`, `:8080`) — допустимый self-hosted backend для `tool-web-search` (`SEARXNG_URL=http://127.0.0.1:8080`). Это не xAI `web_search`. Второй инстанс не поднимать, если этот уже жив.
+
+## SearXNG
+
+SearXNG — самохостный метапоисковик: принимает запрос, опрашивает настроенные публичные движки и отдаёт агрегированный JSON без трекинга пользователя. В этом контуре он нужен **только** живому `web_search` / `search_images`.
+
+| Режим | Что поднять | Внешние движки |
+|-------|-------------|----------------|
+| CI / корпус / свои файлы | только `tool-web-search` (`TOOL_OFFLINE=1`) | нет |
+| Живой поиск, SearXNG шаблона уже есть | `SEARXNG_URL=http://127.0.0.1:8080`, без профиля `searxng` | да, через уже поднятый инстанс |
+| Живой поиск без шаблона | в `tool-web-search`: `docker compose --profile searxng up` | да |
+
+Не ставить SearXNG «на всякий случай» и не дублировать `:8080`.
+
+## Документы в каждом tool-репозитории
+
+У каждого Tool на `main`: `docs/DESIGN.md`, `docs/AGENT_TASKS.md`, `AGENTS.md`. Локальный агент читает дизайн, берёт один открытый пункт из очереди, гоняет `pytest`, обновляет статус в том же цикле.
 
 ## Поднять локальные Tools
 
