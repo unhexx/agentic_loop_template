@@ -14,6 +14,7 @@
 ## Loop 6
 
 - [ ] L6-01 Отдельным коммитом сдать однокомандный init (`scripts/agentix-init.sh`, `scripts/agentix-init.ps1`, `memory/init_project.py`, `memory/test_init_project.py`, регистрация в `memory/__main__.py`) и только абзацы документации об этой команде. В HEAD `646cb0a` этих файлов нет, в рабочем дереве они с 2026-09-28. Не включать черновик model_routing, правки supervisor и раздел P10.
+- [ ] L6-02 В `examples/consumer-starter/.gitignore.agentic` заменить `agentic_loop_template/` на `agentic_loop_template` без слэша. Со слэшем git не прячет симлинк на SSOT: проверено на пустом репозитории, тот же приём уже стоит в `docloom/.gitignore`.
 
 ## Parked (not this loop)
 
