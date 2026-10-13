@@ -3,6 +3,8 @@
 ## [Unreleased]
 
 ### Added
+- Roadmap P10 (planned): the Orchestrator delegates role turns to `agy` with `GEMINI_API_KEY` only. No OAuth login and no pxpipe (`GOOGLE_GEMINI_BASE_URL` / `agy-pxpipe` stay out of the delegate). Host probe: this account is `ineligible` for Antigravity OAuth, and the VS Code token is not a Gemini API key.
+- One-command install into a new project: `bash scripts/agentix-init.sh <project> --name … --frontend grok --goal "…"` (`python -m memory init`, Windows `scripts/agentix-init.ps1`). Symlink to the SSOT, editable `.[dev]` venv, starter files with placeholders filled. Idempotent unless `--force`. Contract: `memory/test_init_project.py`.
 - Root `Jenkinsfile` mirroring GitHub Actions harness + stdlib-collect (Bitbucket Jenkins Test configuration). Contract: `memory/test_ci_parity.py`.
 
 ### Fixed

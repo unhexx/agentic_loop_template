@@ -100,6 +100,54 @@ def test_build_role_prompt_mentions_role_and_snapshot(tmp_path, monkeypatch):
     assert "tools/select.py" in prompt
 
 
+def test_build_role_prompt_injects_default_model_routing(tmp_path: Path):
+    agent = tmp_path / ".agent"
+    agent.mkdir()
+    (agent / "project_config.json").write_text(
+        json.dumps(
+            {
+                "model_routing": {
+                    "enabled": True,
+                    "availability_policy": "verify_model_in_frontend_before_start",
+                    "roles": {
+                        "Coder": {
+                            "provider": "anthropic",
+                            "model": "claude-sonnet-4-6",
+                        },
+                        "Debugger": {
+                            "provider": "anthropic",
+                            "model": "claude-sonnet-4-6",
+                        },
+                    },
+                    "fallbacks": {
+                        "Coder": {
+                            "provider": "google",
+                            "model": "gemini-3.7-flash",
+                            "allowed_when": "mechanical_or_scaffolding_only",
+                        }
+                    },
+                    "escalation": {
+                        "Debugger": {
+                            "after_failed_rounds": 2,
+                            "provider": "anthropic",
+                            "model": "claude-opus-4-6",
+                        }
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    coder_prompt = build_role_prompt("Coder", handoff_in=None, workdir=tmp_path)
+    debugger_prompt = build_role_prompt("Debugger", handoff_in=None, workdir=tmp_path)
+
+    assert "anthropic/claude-sonnet-4-6" in coder_prompt
+    assert "google/gemini-3.7-flash" in coder_prompt
+    assert "anthropic/claude-opus-4-6" in debugger_prompt
+    assert "after 2 unresolved rounds" in debugger_prompt
+
+
 def test_save_and_load_last_handoff_roundtrip(tmp_path: Path):
     data = {
         "role": "Coder",

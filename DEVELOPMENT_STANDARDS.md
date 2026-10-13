@@ -55,7 +55,7 @@ When writing or modifying any source code:
 ## 4. Environment and Tooling Rules
 
 - All Python work must happen inside the local `.venv`.
-- Bootstrap with the script that matches the host: `bash Agent-Init.sh` (Linux/macOS) or `.\Agent-Init.ps1` (Windows). Consumer repos should symlink the sibling SSOT (`examples/consumer-starter/Agent-Init.consumer.sh`), not copy the whole template tree.
+- Bootstrap with the script that matches the host: `bash Agent-Init.sh` (Linux/macOS) or `.\Agent-Init.ps1` (Windows). A new consumer repo is one command: `bash scripts/agentix-init.sh <project> --name <name> --frontend grok` (symlink to the SSOT, do not copy the tree). Refresh later with the copied `Agent-Init.sh`.
 - Use the provided scripts (`scripts/preflight_git.sh`, `scripts/setup.ps1` on Windows, etc.).
 - Never run Python commands using the system `python` when a virtual environment is available.
 - After a parent-folder session, Reviewer may run `python -m memory.experience_harvester cycle --parent <parent>`.

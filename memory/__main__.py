@@ -52,6 +52,10 @@ def _cli() -> None:
         from .stack import cli as stack_cli
 
         raise SystemExit(stack_cli(sys.argv[2:]))
+    if len(sys.argv) > 1 and sys.argv[1] == "init":
+        from .init_project import cli as init_cli
+
+        raise SystemExit(init_cli(sys.argv[2:]))
 
     parser = argparse.ArgumentParser(description="Agentic Loop structured memory")
     sub = parser.add_subparsers(dest="cmd", required=True)

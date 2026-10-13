@@ -113,7 +113,7 @@ PLAN + SPEC: OK
 2. Вставьте содержимое [`prompts/short_orchestrator_prompt.md`](prompts/short_orchestrator_prompt.md) как **первое сообщение**.
 3. Агент стартует как **Orchestrator**, читает `.agent/PLAN.md` и начинает цикл.
 
-> **Новый продуктовый проект?** Два уровня — см. [`examples/consumer-starter/`](examples/consumer-starter/) (English): **lite** `AGENTS.md` (большинство продуктов) или **полный** цикл через `Agent-Init.consumer.sh` (симлинк на SSOT, не копируйте дерево).
+> **Новый продуктовый проект?** Одна команда из этого клона: `bash scripts/agentix-init.sh /path/to/your-project --name your-project --frontend grok --goal "..."`. Она делает симлинк на это дерево, ставит его editable в `.venv` проекта и записывает стартовые файлы. `--tier lite` — только `AGENTS.md`. См. [`examples/consumer-starter/`](examples/consumer-starter/) (English).
 
 ---
 
@@ -446,12 +446,12 @@ Dogfood на этом репозитории за **50+ циклов** (Business
 
 ## Адаптация под ваш проект
 
-1. Скопируйте этот шаблон в свой репозиторий (или используйте [`examples/consumer-starter/`](examples/consumer-starter/) (English)).
-2. Заполните `{{placeholders}}` в [`SYSTEM_PROMPT.md`](SYSTEM_PROMPT.md) (English).
-3. Создайте [`TASK_SPECIFICATION.md`](TASK_SPECIFICATION.md) (English) с проверяемыми требованиями.
-4. Запустите bootstrap (`Agent-Init.ps1` или `Agent-Init.sh --wizard`).
-5. Добавьте `agentic_loop_template/` и артефакты цикла в `.gitignore` продуктовых репозиториев.
-6. Настройте [`TOOLS_REGISTRY.md`](TOOLS_REGISTRY.md) (English) под свои MCP-навыки.
+```bash
+bash scripts/agentix-init.sh /path/to/your-project \
+  --name your-project --frontend grok --goal "Одно предложение, которое цикл может проверить"
+```
+
+Команда делает симлинк на этот репозиторий, создаёт `.venv`, ставит `.[dev]` и заполняет `AGENTS.md`, `TASK_SPECIFICATION.md`, `PROJECT_CONTEXT.md`, `.agent/project_config.json` и `.gitignore`. Дальше при необходимости настройте [`TOOLS_REGISTRY.md`](TOOLS_REGISTRY.md) (English) под свои MCP-навыки. Повторный прогрев venv в продуктовом репозитории: `bash Agent-Init.sh`.
 
 ---
 

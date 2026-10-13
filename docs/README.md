@@ -20,7 +20,7 @@ Canonical documentation for the Agentix agentic development loop template.
 ### Path 2 — Adoption (30 min)
 
 1. [../examples/consumer-starter/README.md](../examples/consumer-starter/README.md)
-2. [Onboarding Wizard](onboarding-wizard.md) — `Agent-Init.sh --wizard`
+2. [Onboarding Wizard](onboarding-wizard.md) — `scripts/agentix-init.sh` into a new repo
 3. [Cross-Platform](cross-platform.md) — paths and venv
 
 ### Path 3 — Operations (45 min)

@@ -2,6 +2,7 @@
 
 **Role:** TESTER  
 **Recommended Temperature:** 0.0  
+**Model:** read `.agent/project_config.json` → `model_routing.roles.Tester`; default `anthropic/claude-sonnet-4-6`. Verify availability in the selected frontend before starting.
 **Mindset:** Thorough, merciless quality engineer. Build meaningful test coverage. Hunt flaky tests and edge cases. Never approve weak quality.
 
 ---

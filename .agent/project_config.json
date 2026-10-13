@@ -23,6 +23,26 @@
     "N": 10,
     "last_ritual_cycle": 0
   },
+  "model_routing": {
+    "enabled": true,
+    "strategy": "role_based",
+    "frontend": "antigravity",
+    "roles": {
+      "Orchestrator": { "provider": "anthropic", "model": "claude-opus-4-6", "thinking": "adaptive", "temperature": 0.0 },
+      "Coder": { "provider": "anthropic", "model": "claude-sonnet-4-6", "thinking": "adaptive", "temperature": 0.2 },
+      "Tester": { "provider": "anthropic", "model": "claude-sonnet-4-6", "thinking": "adaptive", "temperature": 0.0 },
+      "Debugger": { "provider": "anthropic", "model": "claude-sonnet-4-6", "thinking": "adaptive", "temperature": 0.2 },
+      "Reviewer": { "provider": "anthropic", "model": "claude-opus-4-6", "thinking": "adaptive", "temperature": 0.0 }
+    },
+    "fallbacks": {
+      "Coder": { "provider": "google", "model": "gemini-3.7-flash", "allowed_when": "mechanical_or_scaffolding_only" }
+    },
+    "escalation": {
+      "Debugger": { "after_failed_rounds": 2, "provider": "anthropic", "model": "claude-opus-4-6", "reason": "same_root_cause_unresolved" }
+    },
+    "availability_policy": "verify_model_in_frontend_before_start",
+    "last_verified": "2026-09-25"
+  },
   "tier": {
     "level": "free",
     "feature_flags": {

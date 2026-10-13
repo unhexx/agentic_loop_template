@@ -107,6 +107,8 @@ Tests stay skip/exempt for this frontend (`memory/test_proxy.py` still requires 
 
 Do not claim billed `measured_saved_pct` until Google `:countTokens` probes populate on this instance.
 
+The OAuth token stored by the VS Code extension Universal Chat Provider (`antigravity-*.json`) is a `cloudcode-pa` grant, not the Gemini API key this shim forwards. A 2026-09-28 probe got `API_KEY_INVALID` for that token and `unsupported_model` for `gemini-3.1-*` when `agy` itself was pointed at `:8101`. Planned P10 in [ROADMAP.md](../ROADMAP.md) does not call this shim: the delegate uses `GEMINI_API_KEY` and talks to Google directly. Grok traffic stays on `:8100`.
+
 ## Rollback
 
 `AGENTIX_PROXY=0` is enough for **supervisor / GrokAdapter**: the grok subprocess no longer receives `GROK_CLI_CHAT_PROXY_BASE_URL` / `AGENTIX_GATEWAY_URL`, so it uses the CLI public default.

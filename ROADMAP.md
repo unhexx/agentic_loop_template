@@ -4,7 +4,7 @@
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](README.md)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen?style=flat-square)](docs/README.md)
 
-**Status Date:** 2026-09-08 · **Initiative:** Business Efficiency — **COMPLETE** · **P9 Operator Compose Stack** — **COMPLETE (v3.13.0)** · **Next:** Future
+**Status Date:** 2026-09-28 · **Initiative:** Business Efficiency — **COMPLETE** · **P9 Operator Compose Stack** — **COMPLETE (v3.13.0)** · **Next:** P10 Antigravity delegate (planned)
 
 ---
 
@@ -65,6 +65,33 @@ Shipped 2026-09-08 on `feature/p9-operator-stack`. Criteria:
 | P9-05 | Docs, roadmap, 3.13.0 | Done |
 
 Spec: [2026-09-08-p9-operator-stack-design.md](docs/superpowers/specs/2026-09-08-p9-operator-stack-design.md). Operator guide: [docs/stack.md](docs/stack.md).
+
+---
+
+## P10 — planned: Antigravity CLI as a delegate
+
+The leader stays the Orchestrator (supervisor). `agy` is a **delegate** for role turns the leader assigns (Coder / Tester mechanical work), not a second harness and not a replacement for the Grok path on `:8100`.
+
+Host check on 2026-09-28. The VS Code extension Universal Chat Provider stores an OAuth grant for `cloudcode-pa` in `globalStorage/maxdewald.universal-chat-provider/auth/antigravity-*.json`. That file is not copied into the repo. After the account was authorized again, the access token was valid until `2026-09-28T16:36:39+03:00`.
+
+| Probe | Result |
+|-------|--------|
+| `fetchAvailableModels` with the VS Code token | **200**. 27 models, including `gemini-3.7-flash-tiered` and `gemini-3.8-flash-tiered`. `agy models` lists the same family plus Claude and GPT-OSS. |
+| `generateContent` (`gemini-2.5-flash`, `gemini-3.7-flash-tiered`) | **429** `RESOURCE_EXHAUSTED`. Auth works; quota does not. |
+| `agy --print --model gemini-3.7-flash-high` (2026-09-29, active account set, no pxpipe) | Login passes. Google answers **400** `FAILED_PRECONDITION`: `User location is not supported for the API use.` No response text. |
+| pxpipe-agy | Shim `:8101` is up. This logged-in `agy --print` never reached it (`events.jsonl` unchanged). The earlier same-day probe still stands: a raw OAuth token is not a Gemini API key (`API_KEY_INVALID`), and `gemini-3.1-*` is `unsupported_model`. |
+
+The delegate does **not** use pxpipe and does **not** read the VS Code OAuth file. As of 2026-09-29 the `agy` login itself succeeds (the earlier `ineligible` check is gone). A direct `--print` still fails on Google's location check, **400** `User location is not supported for the API use.` pxpipe-agy is not a region bypass: P10 must not set `GOOGLE_GEMINI_BASE_URL` and must not call `agy-pxpipe`. The VS Code OAuth token remains unusable as `GEMINI_API_KEY`.
+
+The call is `agy --print` with `modelProvider` `gemini` and `GEMINI_API_KEY` set in the environment. The key is not read from the VS Code auth JSON, not taken from the keyring OAuth grant, and not written into the repo. A later probe still needs a real Gemini API key: the OAuth access token returns `API_KEY_INVALID`, and the keyring `AQ.` token returns `ACCESS_TOKEN_TYPE_UNSUPPORTED`.
+
+| ID | Task | Status |
+|----|------|--------|
+| P10-01 | `memory/adapters/agy.py`: `RoleAdapter.run_role_turn` via `agy --print` (optional `--agent`) | Planned |
+| P10-02 | `get_adapter("agy")` and `supervisor.adapters.agy` in `project_config.example.json` | Planned |
+| P10-03 | Preflight: require `GEMINI_API_KEY`; do not open a browser login and do not read the VS Code OAuth file | Planned |
+| P10-04 | Adapter env unsets `GOOGLE_GEMINI_BASE_URL`; hermetic test with a fake `agy` that asserts no pxpipe URL | Planned |
+| P10-05 | Leader prompt: Orchestrator may hand Coder/Tester work to the `agy` delegate; Reviewer stays on the leader | Planned |
 
 ---
 

@@ -20,7 +20,7 @@
 ### Path 2 — Внедрение (30 мин)
 
 1. [../examples/consumer-starter/README.md](../../examples/consumer-starter/README.md) (English)
-2. [Onboarding Wizard](../onboarding-wizard.md) (English) — `Agent-Init.sh --wizard`
+2. [Onboarding Wizard](../onboarding-wizard.md) (English) — `scripts/agentix-init.sh` в новый репозиторий
 3. [Cross-Platform](../cross-platform.md) (English) — пути и venv
 
 ### Path 3 — Эксплуатация (45 мин)

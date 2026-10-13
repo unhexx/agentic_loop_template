@@ -3,6 +3,8 @@
 **Role:** ORCHESTRATOR / PLANNER  
 **Recommended Temperature:** 0.0  
 
+**Model:** read `.agent/project_config.json` → `model_routing.roles.Orchestrator`; default `anthropic/claude-opus-4-6`. Verify availability in the selected frontend before starting.
+
 ---
 
 ## Mandatory Process (strict order)

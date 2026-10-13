@@ -315,6 +315,39 @@ def build_role_prompt(
     snap = _state_snapshot_for_workdir(workdir)
     knowledge = _knowledge_block(role, handoff_in, workdir)
 
+    routing = load_config(workdir).get("model_routing")
+    routing_note = ""
+    if isinstance(routing, dict) and routing.get("enabled", True):
+        roles = routing.get("roles")
+        role_route = roles.get(role) if isinstance(roles, dict) else None
+        if isinstance(role_route, dict):
+            provider = str(role_route.get("provider") or "").strip()
+            model = str(role_route.get("model") or "").strip()
+            if provider and model:
+                routing_note = (
+                    "\n## Model routing\n"
+                    f"- configured: {provider}/{model}\n"
+                    f"- availability policy: {routing.get('availability_policy', 'verify before start')}\n"
+                )
+        if role == "Coder":
+            fallbacks = routing.get("fallbacks")
+            fallback = fallbacks.get("Coder") if isinstance(fallbacks, dict) else None
+            if isinstance(fallback, dict) and fallback.get("model"):
+                routing_note += (
+                    f"- optional Coder fallback: {fallback.get('provider', '')}/{fallback['model']} "
+                    f"({fallback.get('allowed_when', 'restricted')})\n"
+                )
+        if role == "Debugger":
+            escalation = routing.get("escalation")
+            debug_escalation = (
+                escalation.get("Debugger") if isinstance(escalation, dict) else None
+            )
+            if isinstance(debug_escalation, dict) and debug_escalation.get("model"):
+                routing_note += (
+                    f"- escalate after {debug_escalation.get('after_failed_rounds', 2)} unresolved rounds: "
+                    f"{debug_escalation.get('provider', '')}/{debug_escalation['model']}\n"
+                )
+
     prompt = (
         f"You are the **{role}** in the Agentix loop. "
         "Driven by supervisor — do not wait for human «продолжай».\n"
@@ -322,7 +355,7 @@ def build_role_prompt(
         "(HANDOFF_SCHEMA / schemas/handoff.schema.json / last_handoff).\n"
         "Do NOT read .agent/history/* archives. "
         "Use tools/select.py for tools (do not inline full tool docs).\n\n"
-        f"{body}\n{prev}\n## State snapshot\n{snap}\n{knowledge}"
+        f"{body}\n{routing_note}{prev}\n## State snapshot\n{snap}\n{knowledge}"
     )
     # Забор после compress: иначе компрессор его выкинет. Запас — FENCE_OVERHEAD_CHARS.
     return _maybe_compress_prompt(prompt, workdir) + fence_block()

@@ -113,7 +113,7 @@ PLAN + SPEC: OK
 2. Paste the contents of [`prompts/short_orchestrator_prompt.md`](prompts/short_orchestrator_prompt.md) as the **first message**.
 3. The agent starts as **Orchestrator**, reads `.agent/PLAN.md`, and begins the cycle.
 
-> **New consumer project?** Two tiers — see [`examples/consumer-starter/`](examples/consumer-starter/): **lite** `AGENTS.md` (most products) or **full** loop via `Agent-Init.consumer.sh` (symlink the SSOT, do not copy the tree).
+> **New consumer project?** One command from this clone: `bash scripts/agentix-init.sh /path/to/your-project --name your-project --frontend grok --goal "..."`. It symlinks this tree, installs it editable into the project `.venv`, and writes the starter files. `--tier lite` is only `AGENTS.md`. See [`examples/consumer-starter/`](examples/consumer-starter/).
 
 ---
 
@@ -450,12 +450,12 @@ Source: [`.agent/PERFORMANCE_LEDGER.md`](.agent/PERFORMANCE_LEDGER.md) · [docs/
 
 ## Adaptation for Your Project
 
-1. Copy this template into your repo (or use [`examples/consumer-starter/`](examples/consumer-starter/)).
-2. Fill `{{placeholders}}` in [`SYSTEM_PROMPT.md`](SYSTEM_PROMPT.md).
-3. Create [`TASK_SPECIFICATION.md`](TASK_SPECIFICATION.md) with testable requirements.
-4. Run bootstrap (`Agent-Init.ps1` or `Agent-Init.sh --wizard`).
-5. Add `agentic_loop_template/` and cycle artifacts to `.gitignore` in consumer repos.
-6. Customize [`TOOLS_REGISTRY.md`](TOOLS_REGISTRY.md) for your MCP skills.
+```bash
+bash scripts/agentix-init.sh /path/to/your-project \
+  --name your-project --frontend grok --goal "One sentence the loop can test"
+```
+
+The command symlinks this repo, creates `.venv`, installs `.[dev]`, and fills `AGENTS.md`, `TASK_SPECIFICATION.md`, `PROJECT_CONTEXT.md`, `.agent/project_config.json`, and `.gitignore`. Then customize [`TOOLS_REGISTRY.md`](TOOLS_REGISTRY.md) for your MCP skills if you need them. Re-run `bash Agent-Init.sh` inside the product repo to refresh the venv.
 
 ---
 
