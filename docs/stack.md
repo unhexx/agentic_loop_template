@@ -72,3 +72,10 @@ bash scripts/agentix-stack.sh up --research --ollama
 `proxy.mode=required` is unchanged. LDR’s OpenAI-compatible endpoint points at the **host gateway**, which fronts pxpipe. Mock/CI never talk to a model. Opt out of the live proxy with `AGENTIX_PROXY=0`.
 
 Contract tests: `python -m pytest -q memory/test_stack.py memory/test_search.py`.
+
+
+## xAI local Tools
+
+Базовые Tools, которые можно исполнить без xAI, вынесены в отдельные репозитории и подключаются как client-side functions.
+
+См. [xai-local-tools.md](xai-local-tools.md) и `docker compose -f deploy/xai-local-tools.compose.yaml up`.

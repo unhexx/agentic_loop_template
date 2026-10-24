@@ -4,7 +4,7 @@
 Load only what you need via:
 
 ```bash
-python tools/select.py --intent git|test|memory|docker|state|handoff|bootstrap
+python tools/select.py --intent git|test|memory|docker|state|handoff|bootstrap|xai
 # operator:
 python -m memory doctor
 python -m memory.local_mcp list-tools   # stdlib MCP (proxy_health, state_*, …)
@@ -22,6 +22,7 @@ Host agent tools (`read_file`, `search_replace`, `run_terminal_command`, `grep`,
 | `git` | Before push/PR/merge | preflight_git + sync |
 | `test` | Tester role | venv + pytest |
 | `docker` | Operator stack (SearXNG / LDR) | deploy/compose + agentix-stack.sh |
+| `xai` | Mix xAI server-side tools with local client-side Tools | tools/blocks/common/xai_tools.md |
 | `handoff` | Every role exit | validate_handoff rules |
 | `doctor` | Live verify / cold operator check | `memory.doctor` + [live-verify](docs/live-verify.md) |
 | `mcp` | Schema-backed harness tools | `memory.local_mcp` / `agentix-local-mcp` |

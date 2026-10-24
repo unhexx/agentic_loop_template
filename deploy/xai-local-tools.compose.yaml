@@ -1,0 +1,138 @@
+# xAI local Tools overlay
+
+Соседние репозитории (клонировать рядом с шаблоном или задать `XAI_TOOLS_ROOT`).
+
+Каждый сервис собирается из своего репозитория. Порты только на 127.0.0.1.
+
+```bash
+ROOT="${XAI_TOOLS_ROOT:-..}"
+for repo in tool-code-execution tool-collections-search tool-browse-page \
+            tool-web-search tool-view-image tool-mcp-bridge tool-x-search; do
+  test -d "$ROOT/$repo" || git clone "https://github.com/unhexx/${repo}.git" "$ROOT/$repo"
+done
+docker compose -f deploy/xai-local-tools.compose.yaml up -d --build
+```
+
+name: agentix-xai-tools
+
+services:
+  tool-code-execution:
+    build: ${XAI_TOOLS_ROOT:-..}/tool-code-execution
+    image: tool-code-execution:local
+    ports: ["127.0.0.1:8091:8091"]
+    environment:
+      TOOL_HOST: "0.0.0.0"
+      TOOL_PORT: "8091"
+      TOOL_TOKEN: "${TOOL_TOKEN:-local}"
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    mem_limit: 256m
+    pids_limit: 128
+    restart: unless-stopped
+
+  tool-collections-search:
+    build: ${XAI_TOOLS_ROOT:-..}/tool-collections-search
+    image: tool-collections-search:local
+    ports: ["127.0.0.1:8092:8092"]
+    environment:
+      TOOL_HOST: "0.0.0.0"
+      TOOL_PORT: "8092"
+      TOOL_TOKEN: "${TOOL_TOKEN:-local}"
+      COLLECTIONS_ROOT: /app/corpus
+      COLLECTIONS_DB: /tmp/tool-data/collections.sqlite
+    volumes:
+      - collections_data:/tmp/tool-data
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    mem_limit: 256m
+    restart: unless-stopped
+
+  tool-browse-page:
+    build: ${XAI_TOOLS_ROOT:-..}/tool-browse-page
+    image: tool-browse-page:local
+    ports: ["127.0.0.1:8093:8093"]
+    environment:
+      TOOL_HOST: "0.0.0.0"
+      TOOL_PORT: "8093"
+      TOOL_TOKEN: "${TOOL_TOKEN:-local}"
+      TOOL_OFFLINE: "${TOOL_OFFLINE:-0}"
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    mem_limit: 256m
+    restart: unless-stopped
+
+  tool-web-search:
+    build: ${XAI_TOOLS_ROOT:-..}/tool-web-search
+    image: tool-web-search:local
+    ports: ["127.0.0.1:8094:8094"]
+    environment:
+      TOOL_HOST: "0.0.0.0"
+      TOOL_PORT: "8094"
+      TOOL_TOKEN: "${TOOL_TOKEN:-local}"
+      TOOL_OFFLINE: "${TOOL_OFFLINE:-1}"
+      WEB_CORPUS: /app/corpus/index.json
+      SEARXNG_URL: "${SEARXNG_URL:-http://host.docker.internal:8080}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    mem_limit: 256m
+    restart: unless-stopped
+
+  tool-view-image:
+    build: ${XAI_TOOLS_ROOT:-..}/tool-view-image
+    image: tool-view-image:local
+    ports: ["127.0.0.1:8095:8095"]
+    environment:
+      TOOL_HOST: "0.0.0.0"
+      TOOL_PORT: "8095"
+      TOOL_TOKEN: "${TOOL_TOKEN:-local}"
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    mem_limit: 256m
+    restart: unless-stopped
+
+  tool-mcp-bridge:
+    build: ${XAI_TOOLS_ROOT:-..}/tool-mcp-bridge
+    image: tool-mcp-bridge:local
+    ports: ["127.0.0.1:8096:8096"]
+    environment:
+      TOOL_HOST: "0.0.0.0"
+      TOOL_PORT: "8096"
+      TOOL_TOKEN: "${TOOL_TOKEN:-local}"
+      MCP_SERVERS: "${MCP_SERVERS:-[ ]}"
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs: ["/tmp:size=64m,mode=1777"]
+    mem_limit: 256m
+    restart: unless-stopped
+
+  tool-x-search:
+    build: ${XAI_TOOLS_ROOT:-..}/tool-x-search
+    image: tool-x-search:local
+    ports: ["127.0.0.1:8097:8097"]
+    environment:
+      TOOL_HOST: "0.0.0.0"
+      TOOL_PORT: "8097"
+      TOOL_TOKEN: "${TOOL_TOKEN:-local}"
+      TOOL_X_FIXTURES: "${TOOL_X_FIXTURES:-0}"
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+    read_only: true
+    tmpfs: ["/tmp:size=32m,mode=1777"]
+    mem_limit: 128m
+    restart: unless-stopped
+
+volumes:
+  collections_data:

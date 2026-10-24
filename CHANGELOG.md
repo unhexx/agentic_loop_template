@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- Local client-side xAI Tools as separate repositories (`tool-code-execution`, `tool-collections-search`, `tool-browse-page`, `tool-web-search`, `tool-view-image`, `tool-mcp-bridge`, `tool-x-search`). `tools/select.py --intent xai`, `tools/blocks/common/xai_tools.md`, overlay `deploy/xai-local-tools.compose.yaml` (loopback, cap_drop ALL), `docs/xai-local-tools.md`. X search and view_x_video stay xAI server-side; the local facade refuses by default.
 - P11 Local MCP SSOT: `memory/local_mcp/` (19 tools), `agentix-local-mcp`, minimal `memory/integrations/`, hermetic `memory/test_local_mcp.py`. Spec: `docs/superpowers/specs/2026-10-24-p11-local-mcp-ssot-design.md`.
 - Operator doctor: `python -m memory doctor` / `agentix-doctor` (proxy health, port ledger 8100–8112/8080/5000, stack contract, P10-safe Gemini env check). Contract: `memory/test_doctor.py`.
 - Supervisor `adapters_by_role` + optional `stack_check_on_start`; `meta_optimizer.auto_harvest_on_done` gate. Contract: `memory/test_adapters_by_role.py`.
