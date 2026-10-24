@@ -33,6 +33,11 @@ Do **not** parallelize when both streams must edit the same hot files (`DEVELOPM
 ./scripts/agentic_loop.sh --workstreams harness,docs
 # WT_BASE default: ../agentic-loop-worktrees
 
+# One-shot scaffold (worktrees + lease claims); hub stays on main:
+bash scripts/parallel_scaffold.sh --hub . \
+  --stream harness:memory/,tools/ \
+  --stream docs:docs/,TOOLS_REGISTRY.md
+
 python -m memory.stream_lease claim --stream harness:memory/,tools/ --workdir . --worktree PATH
 python -m memory.stream_lease status --workdir .
 python -m memory.stream_lease release --stream harness --workdir .

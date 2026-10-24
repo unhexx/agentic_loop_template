@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agentix://local_mcp/state_append_delta.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["text", "role"],
+  "properties": {
+    "working_directory": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "text": { "type": "string", "maxLength": 500 },
+    "role": {
+      "enum": ["Orchestrator", "Coder", "Tester", "Debugger", "Reviewer"]
+    }
+  }
+}

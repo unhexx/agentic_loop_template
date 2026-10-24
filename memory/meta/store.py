@@ -94,6 +94,7 @@ def load_config(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
             "process_violations": 0,
         },
         "auto_apply_safe": True,
+        "auto_harvest_on_done": False,
         "max_proposals_per_cycle": 3,
         "last_harvested_cycle": 0,
     }
@@ -104,7 +105,14 @@ def load_config(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
             raw = json.loads(cfg_path.read_text(encoding="utf-8"))
             mo = raw.get("meta_optimizer", {}) or raw.get("meta", {})
             if isinstance(mo, dict):
-                for k in ("enabled", "frequency", "auto_apply_safe", "max_proposals_per_cycle", "last_harvested_cycle"):
+                for k in (
+                    "enabled",
+                    "frequency",
+                    "auto_apply_safe",
+                    "auto_harvest_on_done",
+                    "max_proposals_per_cycle",
+                    "last_harvested_cycle",
+                ):
                     if k in mo:
                         cfg[k] = mo[k]
                 if "min_quality" in mo and isinstance(mo["min_quality"], dict):

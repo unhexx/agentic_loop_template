@@ -24,11 +24,34 @@ As of 2026-09-25, the official Anthropic model catalog lists Claude Opus 4.6 and
 
 The official Google catalog lists `gemini-3.7-flash` as a stable model and `gemini-3.1-pro-preview` as a preview model. `gemini-3.1-pro-low` is not used as a default ID because it is not an official Google API model ID in the catalog checked on that date. The `-high`, `-medium`, and `-low` suffixes used by this repository's optional Antigravity shim are frontend routing hints, not general Google API model IDs.
 
+## Adapter routing (runtime)
+
+Prompt `model_routing` is advisory. The supervisor also supports **runtime** adapter selection:
+
+```json
+"supervisor": {
+  "adapter": "grok",
+  "adapters_by_role": {
+    "Orchestrator": "grok",
+    "Coder": "cursor",
+    "Tester": "cursor",
+    "Debugger": "grok",
+    "Reviewer": "grok"
+  }
+}
+```
+
+- CLI `--adapter` overrides every role for that run.
+- Allowed for new work: `mock`, `grok`, `cursor`, and (when P10 unblocked) `agy`.
+- **Do not** set any role to Blackbox.
+- Leader/Orchestrator and Reviewer should stay on Grok + gateway → pxpipe unless the run is mock CI.
+
 ## Operational rules
 
 1. Read `model_routing.roles[role]` before every handoff.
 2. Verify the model is available in the selected frontend; report `model_unavailable` instead of silently downgrading Orchestrator or Reviewer.
 3. Record the actual provider and model in the handoff `performance` or `context_updates` field when the frontend exposes it.
 4. Re-evaluate this policy when a model is retired, a frontend changes its catalog, or cycle metrics show a role-specific regression.
+5. Prefer `supervisor.adapters_by_role` when a role must use a different frontend CLI; keep pxpipe on the Grok leader path.
 
 The model catalog sources used for this review are [Anthropic's model overview](https://platform.claude.com/docs/en/about-claude/models/overview) and [Google's Gemini model catalog](https://ai.google.dev/gemini-api/docs/models).

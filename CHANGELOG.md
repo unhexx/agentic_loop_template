@@ -3,9 +3,18 @@
 ## [Unreleased]
 
 ### Added
+- P11 Local MCP SSOT: `memory/local_mcp/` (19 tools), `agentix-local-mcp`, minimal `memory/integrations/`, hermetic `memory/test_local_mcp.py`. Spec: `docs/superpowers/specs/2026-10-24-p11-local-mcp-ssot-design.md`.
+- Operator doctor: `python -m memory doctor` / `agentix-doctor` (proxy health, port ledger 8100–8112/8080/5000, stack contract, P10-safe Gemini env check). Contract: `memory/test_doctor.py`.
+- Supervisor `adapters_by_role` + optional `stack_check_on_start`; `meta_optimizer.auto_harvest_on_done` gate. Contract: `memory/test_adapters_by_role.py`.
+- Post-P9 upgrade brainstorm: `docs/superpowers/specs/2026-10-24-post-p9-upgrade-brainstorm.md`.
+- Live-verify playbook: [`docs/live-verify.md`](docs/live-verify.md) (pass / environment-blocked / product-bug).
+- Parallel stream scaffold: `scripts/parallel_scaffold.sh` (worktrees + `stream_lease claim`).
 - Roadmap P10 (planned): the Orchestrator delegates role turns to `agy` with `GEMINI_API_KEY` only. No OAuth login and no pxpipe (`GOOGLE_GEMINI_BASE_URL` / `agy-pxpipe` stay out of the delegate). Host probe: this account is `ineligible` for Antigravity OAuth, and the VS Code token is not a Gemini API key.
 - One-command install into a new project: `bash scripts/agentix-init.sh <project> --name … --frontend grok --goal "…"` (`python -m memory init`, Windows `scripts/agentix-init.ps1`). Symlink to the SSOT, editable `.[dev]` venv, starter files with placeholders filled. Idempotent unless `--force`. Contract: `memory/test_init_project.py`.
 - Root `Jenkinsfile` mirroring GitHub Actions harness + stdlib-collect (Bitbucket Jenkins Test configuration). Contract: `memory/test_ci_parity.py`.
+
+### Changed
+- `SYSTEM_PROMPT.md` template version → 3.13.0; consumer-starter gitignore SSOT symlink without trailing slash; knowledge readonly + non-mutating state snapshot (hub parity for MCP).
 
 ### Fixed
 - Performance ledger counts `total_cycles` after the 50-row window, omits null `proxy_stats`/`details`, and no longer inserts `cycle=0` META_APPLIED rows that compact away real cycles. `update_performance_ledger` writes `LOOP_PERFORMANCE.md` and the JSON ledger in one `"ledger"` section.

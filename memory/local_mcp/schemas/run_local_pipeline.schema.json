@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agentix://local_mcp/run_local_pipeline.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["backend", "working_directory"],
+  "properties": {
+    "backend": { "enum": ["act", "self_hosted", "jenkins"] },
+    "working_directory": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "environment_variables": {
+      "type": "object",
+      "maxProperties": 32,
+      "additionalProperties": { "type": "string", "maxLength": 512 }
+    },
+    "timeout_s": { "type": "integer", "minimum": 1, "maximum": 7200 },
+    "workflow_file": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "job_name": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "runner_labels": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "items": { "type": "string", "minLength": 1, "maxLength": 64 }
+    },
+    "job_path": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "jenkinsfile_path": { "type": "string", "minLength": 1, "maxLength": 4096 }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "backend": { "const": "act" } }, "required": ["backend"] },
+      "then": {
+        "not": { "anyOf": [
+          { "required": ["runner_labels"] },
+          { "required": ["job_path"] },
+          { "required": ["jenkinsfile_path"] }
+        ] }
+      }
+    },
+    {
+      "if": { "properties": { "backend": { "const": "self_hosted" } }, "required": ["backend"] },
+      "then": {
+        "required": ["runner_labels"],
+        "not": { "anyOf": [
+          { "required": ["workflow_file"] },
+          { "required": ["job_name"] },
+          { "required": ["job_path"] },
+          { "required": ["jenkinsfile_path"] }
+        ] }
+      }
+    },
+    {
+      "if": { "properties": { "backend": { "const": "jenkins" } }, "required": ["backend"] },
+      "then": {
+        "not": { "anyOf": [
+          { "required": ["workflow_file"] },
+          { "required": ["job_name"] },
+          { "required": ["runner_labels"] }
+        ] },
+        "oneOf": [
+          { "required": ["job_path"], "not": { "required": ["jenkinsfile_path"] } },
+          { "required": ["jenkinsfile_path"], "not": { "required": ["job_path"] } }
+        ]
+      }
+    }
+  ]
+}

@@ -1,31 +1,24 @@
 # .agent/PLAN.md — Living Project Plan
 
-**Initiative:** P9 Operator Compose Stack — **COMPLETE** on `feature/p9-operator-stack`
-**Template Version:** 3.13.0
-**Last Update:** 2026-09-08
-**Loop:** 5 (post-P9 hardening, still not merging `main`)
+**Initiative:** Post-P9 top ideas  
+**Template Version:** 3.13.0 (+ Unreleased P11)  
+**Last Update:** 2026-10-24  
+**Loop:** 7 — ideas 1–7 landed in working tree
 
-## Phase Status
+## Delivered
 
-| Phase | Status |
-|-------|--------|
-| P0–P8 | COMPLETE (see ROADMAP) |
-| P9 Operator stack | COMPLETE (v3.13.0) |
-| Loop 5 follow-up | IN PROGRESS |
+| Idea | Artifact |
+|------|----------|
+| 1 Hygiene | L6-02 gitignore, SYSTEM_PROMPT 3.13.0 |
+| 2 P11 MCP | `memory/local_mcp/`, integrations, tests |
+| 3 Doctor | `memory/doctor.py`, `agentix-doctor` |
+| 4 Routing | `adapters_by_role` (no Blackbox) |
+| 5 Stack/meta | `stack_check_on_start`, `auto_harvest_on_done` |
+| 6 Live verify | `docs/live-verify.md` |
+| 7 Parallel scaffold | `scripts/parallel_scaffold.sh` |
 
-## P9 delivered
+## Next (human)
 
-- `deploy/compose.yaml` profiles `search` / `research` / `ollama`
-- SearXNG JSON on `127.0.0.1:8080`; LDR via host gateway → pxpipe
-- `memory.stack` / `memory.search` / `scripts/agentix-stack.sh` / `docs/stack.md`
-- Live pxpipe path unchanged (`proxy.mode=required`)
-
-## Loop 5 INVEST (this cycle)
-
-1. Living PLAN/TODO match 3.13.0
-2. Init.ps1 stack tip (parity with Init.sh)
-3. demo-loop.sh: non-fatal `memory.stack check`
-4. SearXNG `limiter.toml` so 2026 image does not warn
-5. consumer-starter pointer to stack + `AGENTIX_SEARXNG_URL`
-
-Do **not** merge to `main` until operator review of the feature branch.
+- Review Unreleased → decide 3.14.0 tag  
+- No `git push main` from agents  
+- P10 only with region-eligible `GEMINI_API_KEY`

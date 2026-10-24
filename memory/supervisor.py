@@ -428,6 +428,69 @@ def _should_start_new_cycle(
     return False
 
 
+def resolve_adapter_for_role(
+    supervisor_cfg: Dict[str, Any],
+    role: str,
+    *,
+    cli_adapter: Optional[str] = None,
+) -> str:
+    """Pick adapter for a role. CLI override wins; else adapters_by_role; else adapter."""
+    if cli_adapter:
+        return str(cli_adapter)
+    by_role = supervisor_cfg.get("adapters_by_role") or {}
+    if isinstance(by_role, dict):
+        named = by_role.get(role)
+        if isinstance(named, str) and named.strip():
+            return named.strip()
+    default = supervisor_cfg.get("adapter") or "mock"
+    return str(default)
+
+
+def _maybe_stack_check(workdir: Path, supervisor_cfg: Dict[str, Any]) -> Optional[str]:
+    """Optional deploy/ contract before the first turn. Returns error string or None."""
+    if supervisor_cfg.get("stack_check_on_start") is not True:
+        return None
+    workdir = Path(workdir).resolve()
+    # Do not climb to an unrelated SSOT via repo_root cwd fallback.
+    if not (workdir / "deploy" / "compose.yaml").is_file():
+        return f"stack check failed: missing deploy/compose.yaml under {workdir}"
+    try:
+        from memory.stack import validate_stack_files
+
+        report = validate_stack_files(workdir)
+    except Exception as exc:
+        return f"stack check failed: {exc}"
+    if not report.get("ok"):
+        return f"stack check failed: {report}"
+    return None
+
+
+def _maybe_meta_harvest_on_done(
+    workdir: Path,
+    handoff: Dict[str, Any],
+    cycle: int,
+) -> None:
+    """Config-gated trajectory harvest after Reviewer DONE / PR_READY."""
+    del handoff  # handoff already persisted as last_handoff.json
+    try:
+        from memory.meta_harvester import harvest_from_handoff, load_config
+
+        cfg = load_config(workdir / ".agent")
+        if not cfg.get("enabled"):
+            return
+        if cfg.get("auto_harvest_on_done") is not True:
+            return
+        path = workdir / ".agent" / "last_handoff.json"
+        harvest_from_handoff(
+            path,
+            cycle=max(1, int(cycle)),
+            outcome="DONE",
+            agent_dir=workdir / ".agent",
+        )
+    except Exception as exc:
+        log.warning("meta harvest on done failed: %s", exc)
+
+
 def run_loop(
     workdir: Path,
     adapter_name: Optional[str] = None,
@@ -457,7 +520,11 @@ def run_loop(
     if not isinstance(sup, dict):
         sup = {}
 
-    adapter_name = (adapter_name or sup.get("adapter") or "mock") or "mock"
+    cli_adapter = adapter_name
+    default_adapter = (sup.get("adapter") or "mock") or "mock"
+    adapter_name = resolve_adapter_for_role(
+        sup, "Orchestrator", cli_adapter=cli_adapter
+    ) or default_adapter
     if max_cycles is None:
         max_cycles = int(sup.get("max_cycles") or 5)
     else:
@@ -469,6 +536,15 @@ def run_loop(
     role_timeout_s = int(sup.get("role_timeout_s") or role_timeout_s)
     max_turns = max(20, max_cycles * 8)
 
+    stack_err = _maybe_stack_check(workdir, sup)
+    if stack_err:
+        return {
+            "terminal": Terminal.BLOCKED,
+            "exit_code": 1,
+            "reason": stack_err,
+            "role": "Orchestrator",
+        }
+
     try:
         assert_ready(workdir, adapter_name=adapter_name)
     except ProxyNotReady as exc:
@@ -479,7 +555,16 @@ def run_loop(
             "role": "Orchestrator",
         }
 
-    adapter = get_adapter(adapter_name, cfg)
+    adapters_cache: Dict[str, Any] = {}
+
+    def _adapter_for(role_name: str):
+        name = resolve_adapter_for_role(sup, role_name, cli_adapter=cli_adapter)
+        if name not in adapters_cache:
+            assert_ready(workdir, adapter_name=name)
+            adapters_cache[name] = get_adapter(name, cfg)
+        return name, adapters_cache[name]
+
+    adapter_name, adapter = _adapter_for("Orchestrator")
     agent = workdir / ".agent"
     hb_path = _heartbeat_path(workdir)
     hb_stop: Optional[threading.Event] = None
@@ -530,6 +615,21 @@ def run_loop(
 
             retries = 0
             while True:
+                try:
+                    adapter_name, adapter = _adapter_for(role)
+                except ProxyNotReady as exc:
+                    _save(
+                        {
+                            "status": Terminal.BLOCKED.value,
+                            "notes": str(exc),
+                        }
+                    )
+                    return {
+                        "terminal": Terminal.BLOCKED,
+                        "exit_code": 1,
+                        "reason": str(exc),
+                        "role": role,
+                    }
                 prompt = build_role_prompt(role, handoff, workdir)
                 last_path = workdir / ".agent" / "last_handoff.json"
                 # Свой Event на ход: clear() общего флага оживлял бы старый тикер.
@@ -633,6 +733,11 @@ def run_loop(
                         maybe_cycle_on_done(workdir, apply=False)
                     except Exception as exc:
                         log.warning("maybe_cycle_on_done failed: %s", exc)
+                    _maybe_meta_harvest_on_done(
+                        workdir,
+                        handoff,
+                        int((_load().get("cycle_number") or 1)),
+                    )
                     if create_pr:
                         term = maybe_create_pr(workdir, sup)
                     pr_ready_count += 1

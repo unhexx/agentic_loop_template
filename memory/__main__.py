@@ -56,6 +56,14 @@ def _cli() -> None:
         from .init_project import cli as init_cli
 
         raise SystemExit(init_cli(sys.argv[2:]))
+    if len(sys.argv) > 1 and sys.argv[1] == "doctor":
+        from .doctor import cli as doctor_cli
+
+        raise SystemExit(doctor_cli(sys.argv[2:]))
+    if len(sys.argv) > 1 and sys.argv[1] == "local_mcp":
+        from .local_mcp.__main__ import main as local_mcp_main
+
+        raise SystemExit(local_mcp_main(sys.argv[2:]))
 
     parser = argparse.ArgumentParser(description="Agentic Loop structured memory")
     sub = parser.add_subparsers(dest="cmd", required=True)

@@ -462,9 +462,10 @@ def test_gateway_healthz_sse_roundtrip_and_redaction() -> None:
                     assert "SUPERSECRET_TOKEN" not in events
                     assert "Bearer " not in events
                     assert "/v1/responses" in events
-                    assert _FakeUpstream.last_headers.get("Authorization") == (
-                        "Bearer SUPERSECRET_TOKEN"
-                    )
+                    # urllib may normalize header keys to lowercase (Python 3.14+).
+                    _hdrs = _FakeUpstream.last_headers
+                    _auth = _hdrs.get("Authorization") or _hdrs.get("authorization")
+                    assert _auth == "Bearer SUPERSECRET_TOKEN"
                 finally:
                     gw.shutdown()
     finally:

@@ -1,13 +1,16 @@
-# TOOLS REGISTRY — Progressive index (v3.4.1)
+# TOOLS REGISTRY — Progressive index (v3.13+)
 
 **Do not paste this entire file into the model.**  
 Load only what you need via:
 
 ```bash
 python tools/select.py --intent git|test|memory|docker|state|handoff|bootstrap
+# operator:
+python -m memory doctor
+python -m memory.local_mcp list-tools   # stdlib MCP (proxy_health, state_*, …)
 ```
 
-Host agent tools (`read_file`, `search_replace`, `run_terminal_command`, `grep`, MCP, …) use **exact schemas from the host environment** — do not guess parameter names.
+Host agent tools (`read_file`, `search_replace`, `run_terminal_command`, `grep`, MCP, …) use **exact schemas from the host environment** — do not guess parameter names. Prefer attaching `agentix-local-mcp` when the host supports MCP instead of guessing argv from Markdown blocks.
 
 ## Index
 
@@ -20,6 +23,9 @@ Host agent tools (`read_file`, `search_replace`, `run_terminal_command`, `grep`,
 | `test` | Tester role | venv + pytest |
 | `docker` | Operator stack (SearXNG / LDR) | deploy/compose + agentix-stack.sh |
 | `handoff` | Every role exit | validate_handoff rules |
+| `doctor` | Live verify / cold operator check | `memory.doctor` + [live-verify](docs/live-verify.md) |
+| `mcp` | Schema-backed harness tools | `memory.local_mcp` / `agentix-local-mcp` |
+| `parallel` | Multi-stream owned_paths | `scripts/parallel_scaffold.sh` + leases |
 
 ## Rules
 
@@ -29,4 +35,4 @@ Host agent tools (`read_file`, `search_replace`, `run_terminal_command`, `grep`,
 4. Full multi-repo `gh` verbatim blocks are **opt-in** (`STRICT_MULTI_REPO=1` or `project_config.git.strict_multi_repo`).  
 5. UTF-8 for all handoff and log files.
 
-**Template version:** see `VERSION` (3.4.1+).
+**Template version:** see `VERSION` (3.13.0+). Live leader adapter is Grok+pxpipe; do not use Blackbox for new routing.

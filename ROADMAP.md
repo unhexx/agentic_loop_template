@@ -4,7 +4,7 @@
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](README.md)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen?style=flat-square)](docs/README.md)
 
-**Status Date:** 2026-09-28 · **Initiative:** Business Efficiency — **COMPLETE** · **P9 Operator Compose Stack** — **COMPLETE (v3.13.0)** · **Next:** P10 Antigravity delegate (planned)
+**Status Date:** 2026-10-24 · **Initiative:** Business Efficiency — **COMPLETE** · **P9 Operator Compose Stack** — **COMPLETE (v3.13.0)** · **P11 Local MCP SSOT** — **IN TREE (Unreleased)** · **Next:** release hygiene + P10 when geo-eligible
 
 ---
 
@@ -65,6 +65,22 @@ Shipped 2026-09-08 on `feature/p9-operator-stack`. Criteria:
 | P9-05 | Docs, roadmap, 3.13.0 | Done |
 
 Spec: [2026-09-08-p9-operator-stack-design.md](docs/superpowers/specs/2026-09-08-p9-operator-stack-design.md). Operator guide: [docs/stack.md](docs/stack.md).
+
+---
+
+## P11 — Local MCP SSOT (in tree, Unreleased)
+
+Port of hub `memory/local_mcp` into this template so consumers get stdlib MCP tools + `run_local_pipeline` without a second memory tree.
+
+| ID | Task | Status |
+|----|------|--------|
+| P11-01 | `memory/local_mcp/` + schemas + `agentix-local-mcp` | Done |
+| P11-02 | Minimal `memory/integrations` for config/notify | Done |
+| P11-03 | Knowledge readonly + snapshot non-mutate + logutil LocalRedact | Done |
+| P11-04 | Hermetic core tests (defer live Jenkins/Bitbucket CI) | Done |
+| P11-05 | `agentix-doctor` + supervisor `adapters_by_role` / stack / meta hooks | Done |
+
+Spec: [2026-10-24-p11-local-mcp-ssot-design.md](docs/superpowers/specs/2026-10-24-p11-local-mcp-ssot-design.md).
 
 ---
 
