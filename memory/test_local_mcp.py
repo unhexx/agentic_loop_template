@@ -7261,10 +7261,23 @@ def test_self_hosted_ephemeral_copies_diag_before_exit(tmp_path: Path, monkeypat
     _assert_agent_clean(work)
 
 
+def _fanotify_permitted() -> bool:
+    from memory.local_mcp.backends.self_hosted import _DiagSnap
+
+    snap = _DiagSnap(Path("."), Path("."), "fan-probe")
+    fd = snap._fan_init()
+    if fd < 0:
+        return False
+    os.close(fd)
+    return True
+
+
 def test_self_hosted_ephemeral_snapshot_same_turn_as_unlink(
     tmp_path: Path, monkeypatch
 ):
     """Write and unlink of _diag in one turn still leaves the new logs."""
+    if not _fanotify_permitted():
+        pytest.skip("fanotify is required to read _diag after a same-turn unlink")
     work, runner = _prepare_hosted(
         tmp_path,
         "fast",
@@ -9783,8 +9796,9 @@ def test_webhook_secret_file_is_owner_read_under_root(tmp_path: Path, monkeypatc
     assert code is None and relay is not None and relay.secret == "file-secret"
     assert _saw_secret() is True
 
-    secret_path.write_bytes(b"file-secret\n\n")
+    # 0400 is owner-read. Root can still write it; the CI user cannot.
     secret_path.chmod(0o600)
+    secret_path.write_bytes(b"file-secret\n\n")
     code, relay = prepare(work, {})
     assert code == "webhook_secret_missing" and relay is None
 

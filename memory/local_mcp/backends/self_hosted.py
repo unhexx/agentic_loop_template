@@ -768,8 +768,10 @@ def _supervise(
         samples: list[tuple[float, int]] = []
         while True:
             samples.append((time.monotonic(), _worker_bytes(runner)))
-            # Already-up: no wait in this process. Snapshot while it is alive.
-            if snap is not None and thread is None:
+            # Sample while the child is alive. Fanotify still covers a same-turn
+            # unlink; a poll keeps a log that stays on disk for a moment when
+            # fanotify_init is not permitted.
+            if snap is not None:
                 snap.drain_and_flush()
             if owned.is_set():
                 break

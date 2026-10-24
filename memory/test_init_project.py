@@ -42,7 +42,11 @@ def test_full_scaffold_fills_files_and_symlink(tmp_path: Path):
     assert cfg["supervisor"]["adapter"] == "grok"
     assert "question_pool" in cfg
     ignore = (target / ".gitignore").read_text(encoding="utf-8")
-    assert "agentic_loop_template/" in ignore
+    # A trailing slash ignores a directory, not the SSOT symlink.
+    assert [ln for ln in ignore.splitlines() if ln.strip() == "agentic_loop_template"] == [
+        "agentic_loop_template"
+    ]
+    assert "agentic_loop_template/" not in ignore
     assert ".agent/stream_leases.json" in ignore
     assert "billing" in (target / ".env.agentic").read_text(encoding="utf-8")
     assert (target / "Agent-Init.sh").stat().st_mode & 0o111
@@ -62,7 +66,9 @@ def test_second_run_skips_and_gitignore_once(tmp_path: Path):
     assert ".gitignore" in again["skipped"]
     assert "Changed" not in (target / "AGENTS.md").read_text(encoding="utf-8")
     ignore = (target / ".gitignore").read_text(encoding="utf-8")
-    assert ignore.count("agentic_loop_template/") == 1
+    assert [ln for ln in ignore.splitlines() if ln.strip() == "agentic_loop_template"] == [
+        "agentic_loop_template"
+    ]
 
 
 def test_force_rewrites_goal_and_claude_stays_mock(tmp_path: Path):
@@ -110,7 +116,8 @@ def test_preserves_existing_gitignore_prefix(tmp_path: Path):
     _init(target, name="app")
     text = (target / ".gitignore").read_text(encoding="utf-8")
     assert text.startswith("node_modules/\n")
-    assert "agentic_loop_template/" in text
+    assert "\nagentic_loop_template\n" in text
+    assert "agentic_loop_template/" not in text
 
 
 def test_ritual_argv_matches_cold_start():
