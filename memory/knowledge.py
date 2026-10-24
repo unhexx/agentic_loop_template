@@ -114,6 +114,19 @@ def _conn(path: Optional[Path] = None) -> Iterator[sqlite3.Connection]:
         con.close()
 
 
+@contextmanager
+def _ro_conn(path: Path) -> Iterator[sqlite3.Connection]:
+    """Read-only open. Does not create the file, migrate, or commit."""
+    # as_uri() percent-encodes the absolute path. mode=ro refuses writes.
+    uri = Path(path).as_uri() + "?mode=ro"
+    con = sqlite3.connect(uri, uri=True, timeout=10.0)
+    try:
+        con.row_factory = sqlite3.Row
+        yield con
+    finally:
+        con.close()
+
+
 def _ensure_fts(con: sqlite3.Connection) -> bool:
     """FTS5, если сборка SQLite умеет. Иначе тихий LIKE."""
     try:
@@ -195,6 +208,13 @@ def upsert(
     return _row_to_dict(row)
 
 
+def _open_db(db: Optional[Path], readonly: bool) -> Iterator[sqlite3.Connection]:
+    if readonly:
+        # Do not call db_path(): it honors AGENTIX_KNOWLEDGE_DB.
+        return _ro_conn(Path(db))  # type: ignore[arg-type]
+    return _conn(db)
+
+
 def query(
     *,
     q: Optional[str] = None,
@@ -202,6 +222,7 @@ def query(
     source: Optional[str] = None,
     top: int = 5,
     db: Optional[Path] = None,
+    readonly: bool = False,
 ) -> List[Dict[str, Any]]:
     """Поиск: FTS5 MATCH при непустом q, иначе/при сбое — LIKE."""
     limit = max(1, int(top))
@@ -224,8 +245,9 @@ def query(
         )
         fts_args.append(limit)
         try:
-            with _conn(db) as con:
-                if _ensure_fts(con):
+            with _open_db(db, readonly) as con:
+                # A read-only handle must not run _ensure_fts (it creates tables).
+                if readonly or _ensure_fts(con):
                     rows = con.execute(fts_sql, fts_args).fetchall()
                     if rows:
                         return [_row_to_dict(r) for r in rows]
@@ -250,14 +272,14 @@ def query(
         f"FROM knowledge {where} ORDER BY id DESC LIMIT ?"
     )
     args.append(limit)
-    with _conn(db) as con:
+    with _open_db(db, readonly) as con:
         rows = con.execute(sql, args).fetchall()
     return [_row_to_dict(r) for r in rows]
 
 
-def stats(db: Optional[Path] = None) -> Dict[str, Any]:
+def stats(db: Optional[Path] = None, *, readonly: bool = False) -> Dict[str, Any]:
     """Сводка: сколько записей и токенов, разбивка по категориям."""
-    with _conn(db) as con:
+    with _open_db(db, readonly) as con:
         total = con.execute(
             "SELECT COUNT(*) AS n, COALESCE(SUM(tokens), 0) AS tokens FROM knowledge"
         ).fetchone()

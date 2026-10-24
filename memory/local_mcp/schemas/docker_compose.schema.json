@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agentix://local_mcp/docker_compose.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action"],
+  "properties": {
+    "working_directory": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "action": { "enum": ["ps", "logs", "config"] },
+    "tail": { "type": "integer", "minimum": 1, "maximum": 200 }
+  },
+  "allOf": [
+    {
+      "if": {
+        "not": {
+          "properties": { "action": { "const": "logs" } },
+          "required": ["action"]
+        }
+      },
+      "then": { "not": { "required": ["tail"] } }
+    }
+  ]
+}

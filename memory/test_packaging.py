@@ -79,3 +79,13 @@ def test_windows_extras_syntax_has_no_dot():
     assert "install','-e'" in ps1 or "install', '-e'" in ps1
     assert "agentic_loop_template" in ps1
     assert "$TemplateRoot" in ps1
+
+
+def test_console_scripts_include_doctor_and_local_mcp():
+    text = PYPROJECT.read_text(encoding="utf-8")
+    assert 'agentix-doctor = "memory.doctor:main"' in text
+    assert 'agentix-local-mcp = "memory.local_mcp.__main__:main"' in text
+    assert '"local_mcp/schemas/*.json"' in text
+    assert (REPO / "memory" / "local_mcp" / "schemas" / "proxy_health.schema.json").is_file()
+    assert (REPO / "scripts" / "parallel_scaffold.sh").is_file()
+    assert (REPO / "docs" / "live-verify.md").is_file()

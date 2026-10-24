@@ -160,19 +160,24 @@ def test_append_delta_agent_dir_writes_history_under_tmp(tmp_path, monkeypatch):
     assert not (cwd / ".agent").exists()
 
 
-def test_load_state_corrupt_json_logs_error(tmp_path, monkeypatch, caplog):
-    import logging
-
+def test_load_state_corrupt_json_logs_error(tmp_path, monkeypatch):
+    # Do not rely on caplog: configure_logging() sets memory.propagate=False,
+    # so ERROR on memory.state may never reach the root LogCaptureHandler.
     cwd = tmp_path / "cwd"
     cwd.mkdir()
     monkeypatch.chdir(cwd)
     agent = tmp_path / "work" / ".agent"
     agent.mkdir(parents=True)
     (agent / "LOOP_STATE.json").write_text("{not json", encoding="utf-8")
-    with caplog.at_level(logging.ERROR, logger="memory.state"):
-        st = state_mod.load_state(agent_dir=agent)
+    logged: list[str] = []
+
+    def _capture(msg, *args, **_kwargs):
+        logged.append(msg % args if args else str(msg))
+
+    monkeypatch.setattr(state_mod.log, "error", _capture)
+    st = state_mod.load_state(agent_dir=agent)
     assert st["status"] == "READY"
-    assert any("load_state" in rec.getMessage() for rec in caplog.records)
+    assert any("load_state" in m for m in logged)
 
 
 def test_experience_seeds_dedupe():

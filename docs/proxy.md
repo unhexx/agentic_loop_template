@@ -26,6 +26,15 @@ Knowledge retrieval and harvest stay supervisor/ritual-side. The HTTP gateway do
 
 Do **not** auto-edit `~/.grok/config.toml`. Init writes exports into `.venv/bin/activate`. Opt-in: `python -m memory.proxy install-host`.
 
+## Operator doctor
+
+```bash
+python -m memory doctor --strict
+# or: agentix-doctor --strict
+```
+
+Aggregates `memory.proxy health`, a loopback port ledger (`:8100` pxpipe, `:8110` gateway, `:8112` control plane, optional SearXNG/LDR), deploy stack contract, and a P10-safe Gemini env check (`GEMINI_API_KEY` presence; flags `GOOGLE_GEMINI_BASE_URL` if set). Findings use pass / environment / product taxonomy. Does **not** restart `pxpipe.service` or invent secrets. A healthy TCP path can still return HTTP 401 without a bearer — classify that as environment-blocked.
+
 ## Commands
 
 ```bash
