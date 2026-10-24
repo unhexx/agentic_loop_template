@@ -8908,11 +8908,44 @@ def _slack_body(req) -> dict:
     return json.loads(raw.decode("utf-8"))
 
 
+class _FakeSlackResp:
+    """Ответ urlopen: webhook и chat.postMessage читают status и тело."""
+
+    def __init__(self, raw: bytes, status: int = 200) -> None:
+        self._buf = io.BytesIO(raw)
+        self.status = status
+
+    def read(self) -> bytes:
+        return self._buf.read()
+
+    def getcode(self) -> int:
+        return self.status
+
+    def __enter__(self) -> "_FakeSlackResp":
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+
+class FakeHttp:
+    """Подмена urlopen только для Slack. Трекеры hub сюда не входят."""
+
+    def __init__(self) -> None:
+        self.calls: list[Any] = []
+
+    def __call__(self, req: Any, timeout: float | None = None) -> _FakeSlackResp:
+        self.calls.append(req)
+        url = str(getattr(req, "full_url", ""))
+        if "hooks.slack.com" in url or "slack.com/api" in url:
+            return _FakeSlackResp(b'{"ok": true}')
+        raise AssertionError(f"unexpected url {url}")
+
+
 def test_notify_text_posts_ci_audit_not_reviewer(tmp_path: Path, monkeypatch):
     import urllib.error
 
     from memory.integrations.slack import notify_text
-    from memory.test_integrations import FakeHttp
 
     def _boom(*_args, **_kwargs):
         raise AssertionError("handoff cycle helper")
@@ -9073,7 +9106,6 @@ def test_pipeline_notify_gate_message_and_fail_open(tmp_path: Path, monkeypatch,
     import urllib.error
 
     from memory.local_mcp.notify import notify_pipeline_result
-    from memory.test_integrations import FakeHttp
 
     bridge = (REPO / "memory" / "local_mcp" / "notify.py").read_text(encoding="utf-8")
     assert "notify_slack" not in bridge
@@ -9325,8 +9357,6 @@ def test_pipeline_notify_gate_message_and_fail_open(tmp_path: Path, monkeypatch,
 
 
 def test_notify_skips_agent_symlink_outside(tmp_path: Path, monkeypatch):
-    from memory.test_integrations import FakeHttp
-
     fake = FakeHttp()
     monkeypatch.setattr("urllib.request.urlopen", fake)
     monkeypatch.setenv("SLACK_WEBHOOK_URL", "https://hooks.slack.com/services/T/B/XXX")
