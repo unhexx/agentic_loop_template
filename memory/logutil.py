@@ -12,6 +12,8 @@ _CHILD_LOGGERS = (
     "memory.proxy.gateway",
     "memory.playbooks",
     "memory.adapters",  # фильтры родителя memory на child не действуют
+    "memory.integrations",
+    "memory.local_mcp",
 )
 
 
@@ -22,12 +24,36 @@ def _attach_redact(logger: logging.Logger) -> None:
         logger.addFilter(RedactFilter())
 
 
+def _attach_local_redact(logger: logging.Logger) -> None:
+    # Лениво: memory.local_mcp.server импортирует logutil.
+    # GitHub/PEM must see the raw message; dashboard keep_edges runs second.
+    from memory.dashboard.redact import RedactFilter
+    from memory.local_mcp.redact import LocalRedactFilter, install
+
+    install(logger)
+    filters = logger.filters
+    local_at = next(
+        (i for i, filt in enumerate(filters) if isinstance(filt, LocalRedactFilter)),
+        None,
+    )
+    dash_at = next(
+        (i for i, filt in enumerate(filters) if isinstance(filt, RedactFilter)),
+        None,
+    )
+    if local_at is None or dash_at is None or local_at < dash_at:
+        return
+    filt = filters.pop(local_at)
+    filters.insert(dash_at, filt)
+
+
 def get_logger(name: str) -> logging.Logger:
     """Как getLogger, но с RedactFilter на самом эмиттере.
 
     Фильтры родителя memory не применяются к записям child-логгеров.
     """
     lg = logging.getLogger(name)
+    if name == "memory.local_mcp":
+        _attach_local_redact(lg)
     _attach_redact(lg)
     return lg
 
@@ -40,6 +66,8 @@ def configure_logging() -> None:
     level = os.environ.get("AGENTIX_LOG_LEVEL", "INFO").upper()
     root = logging.getLogger("memory")
     _attach_redact(root)
+    local_mcp = logging.getLogger("memory.local_mcp")
+    _attach_local_redact(local_mcp)
     for name in _CHILD_LOGGERS:
         _attach_redact(logging.getLogger(name))
     if root.handlers:

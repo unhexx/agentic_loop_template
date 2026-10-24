@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Bootstrap a product repo against the Agentix SSOT without vendoring a stale copy.
-# Usage (from the product root): bash Agent-Init.consumer.sh [--wizard]
+# Refresh a product repo already linked to the Agentix SSOT.
+# First-time setup is one command from the template clone:
+#   bash scripts/agentix-init.sh /path/to/product --name product --frontend grok
+# Usage (from the product root, after that install): bash Agent-Init.sh [--wizard]
 set -euo pipefail
 
 WIZARD=false

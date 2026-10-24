@@ -26,39 +26,40 @@ Use this when the work is a normal PR, not a multi-cycle autonomous sprint.
 
 ## Tier B — full Agentix loop
 
-Autonomous O→C→T→D→R. Keep the template as a **sibling SSOT** (symlink + `pip install -e ../agentic_loop_template[dev]`).
+Autonomous O→C→T→D→R. One command from the SSOT clone creates the project venv, symlinks the template (it does not copy the tree), and writes the starter files with your name, goal, and frontend filled in:
 
 ```bash
-# layout
-#   _PROJECT/agentic_loop_template/   ← SSOT
-#   _PROJECT/your-project/
-
-cd /path/to/your-project
-cp ../agentic_loop_template/examples/consumer-starter/TASK_SPECIFICATION.example.md TASK_SPECIFICATION.md
-cp ../agentic_loop_template/examples/consumer-starter/PROJECT_CONTEXT.example.md PROJECT_CONTEXT.md
-cp ../agentic_loop_template/examples/consumer-starter/AGENTS.md.example AGENTS.md
-cp ../agentic_loop_template/examples/consumer-starter/Agent-Init.consumer.sh Agent-Init.sh
-cat ../agentic_loop_template/examples/consumer-starter/.gitignore.agentic >> .gitignore
-chmod +x Agent-Init.sh
-bash Agent-Init.sh --wizard
-source .venv/bin/activate
-# paste ../agentic_loop_template/prompts/short_orchestrator_prompt.md
+bash /path/to/agentic_loop_template/scripts/agentix-init.sh /path/to/your-project \
+  --name your-project \
+  --frontend grok \
+  --goal "One sentence the loop can test"
+source /path/to/your-project/.venv/bin/activate
 ```
 
-`Agent-Init.consumer.sh` will `ln -s ../agentic_loop_template` and `pip`/`uv` install the SSOT editable so `python -m memory` works without `PYTHONPATH`. PYTHONPATH is only a fallback if the editable install did not take. Live Grok CLI traffic goes through the Agentix gateway (`http://127.0.0.1:8110/v1`) which fronts host pxpipe. Mock stays proxy-free. Opt out: `AGENTIX_PROXY=0`. See [docs/proxy.md](../../docs/proxy.md).
+Windows:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File C:\path\to\agentic_loop_template\scripts\agentix-init.ps1 C:\path\to\your-project --name your-project --frontend grok
+```
+
+`--tier lite` writes only `AGENTS.md`, `.gitignore`, `.env.agentic`, and `.agent/project_config.json`. Repeat the command safely: existing files stay put unless you pass `--force`. `--no-venv` skips `pip install -e`.
+
+`bash Agent-Init.sh` in the new project (copied from `Agent-Init.consumer.sh`) refreshes the venv later. The symlink points at the SSOT, so `python -m memory` comes from `pip install -e "<template>[dev]"`. `PYTHONPATH` is only a fallback if that install did not take.
+
+Live Grok CLI traffic goes through the Agentix gateway (`http://127.0.0.1:8110/v1`) which fronts host pxpipe. Mock stays proxy-free. Opt out: `AGENTIX_PROXY=0`. See [docs/proxy.md](../../docs/proxy.md). The installer writes `GROK_CLI_CHAT_PROXY_BASE_URL` into the project venv via `python -m memory.proxy install-venv`.
 
 ---
 
 ## Files in This Directory
 
-| File | Action |
+| File | Written by `agentix-init` as |
 |------|--------|
-| `AGENTS.md.example` | Rename → `AGENTS.md` (lite **or** full) |
-| `Agent-Init.consumer.sh` | Copy → product `Agent-Init.sh` (full tier) |
-| `TASK_SPECIFICATION.example.md` | Rename → `TASK_SPECIFICATION.md` (full) |
-| `PROJECT_CONTEXT.example.md` | Rename → `PROJECT_CONTEXT.md` (full) |
-| `.gitignore.agentic` | Merge into project `.gitignore` |
-| `agentic.env.example` | Copy → `.env.agentic` (never commit) |
+| `AGENTS.md.example` | `AGENTS.md` (lite and full) |
+| `Agent-Init.consumer.sh` | `Agent-Init.sh` (full tier) |
+| `TASK_SPECIFICATION.example.md` | `TASK_SPECIFICATION.md` (full) |
+| `PROJECT_CONTEXT.example.md` | `PROJECT_CONTEXT.md` (full) |
+| `.gitignore.agentic` | merged into `.gitignore` |
+| `agentic.env.example` | `.env.agentic` (never commit) |
 
 ---
 

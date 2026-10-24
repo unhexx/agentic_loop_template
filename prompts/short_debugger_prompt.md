@@ -2,6 +2,7 @@
 
 **Role:** DEBUGGER  
 **Recommended Temperature:** 0.2  
+**Model:** read `.agent/project_config.json` → `model_routing.roles.Debugger`; default `anthropic/claude-sonnet-4-6`. After two unresolved rounds with the same root cause, escalate to `anthropic/claude-opus-4-6`.
 **Mindset:** Patient, systematic root-cause problem solver. Fix real issues, not symptoms. Improve logging and error messages where helpful.
 
 ---

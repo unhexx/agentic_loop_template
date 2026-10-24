@@ -43,7 +43,7 @@ Init installs the harness with `pip install -e ".[dev]"`. After `source .venv/bi
 
 Live Grok CLI calls go through the **Agentix gateway** (`http://127.0.0.1:8110/v1`), which fronts host pxpipe (`:8100`). `Agent-Init.sh` writes `GROK_CLI_CHAT_PROXY_BASE_URL` into `.venv/bin/activate`. Mock/CI do not require pxpipe. Opt out with `export AGENTIX_PROXY=0`. Units: [`scripts/systemd/pxpipe.service.example`](../scripts/systemd/pxpipe.service.example), [`scripts/systemd/agentix-gateway.service.example`](../scripts/systemd/agentix-gateway.service.example). Health: `python -m memory.proxy health`. Start gateway: `bash scripts/agentix-proxy.sh start`.
 
-Product repos: prefer [consumer-starter](../examples/consumer-starter/README.md) **lite** `AGENTS.md` or `Agent-Init.consumer.sh` (symlink SSOT + editable install). Do not copy the whole template tree.
+Product repos: `bash scripts/agentix-init.sh /path/to/your-project --name your-project` (symlink SSOT + editable install). Do not copy the whole template tree. See [consumer-starter](../examples/consumer-starter/README.md).
 
 ---
 
@@ -132,10 +132,17 @@ Handing off to Tester.
 
 ## Consumer projects
 
-1. Copy [`examples/consumer-starter/`](../examples/consumer-starter/) into your repo.
-2. Add `agentic_loop_template/` to `.gitignore` (see `.gitignore.agentic`).
-3. Fill `SYSTEM_PROMPT.md` placeholders.
-4. Run bootstrap on your platform.
+One command from this clone installs the harness into another repo and writes the starter config (symlink to this tree, not a copy):
+
+```bash
+bash scripts/agentix-init.sh /path/to/your-project \
+  --name your-project \
+  --frontend grok \
+  --goal "One sentence the loop can test"
+source /path/to/your-project/.venv/bin/activate
+```
+
+Details: [consumer-starter](../examples/consumer-starter/README.md), [onboarding wizard](onboarding-wizard.md).
 
 ---
 

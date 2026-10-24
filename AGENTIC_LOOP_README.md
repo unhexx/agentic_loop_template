@@ -46,15 +46,19 @@ bash scripts/demo-loop.sh
 
 ---
 
-## Model Settings (recommended)
+## Model Settings (default routing)
 
-| Role | Temperature | Top-P | Max Tokens |
-|------|-------------|-------|------------|
-| Orchestrator | 0.0 | 0.9 | 4096 |
-| Coder | 0.2 | 0.95 | 8192 |
-| Tester | 0.0 | 0.9 | 4096 |
-| Debugger | 0.2 | 0.95 | 4096 |
-| Reviewer | 0.0 | 0.9 | 4096 |
+The machine-readable source is `.agent/project_config.json` → `model_routing`. The values below are the default policy for Antigravity; verify availability in the selected frontend before each cycle.
+
+| Role | Model | Temperature | Top-P | Max Tokens |
+|------|-------|-------------|-------|------------|
+| Orchestrator | Claude Opus 4.6 | 0.0 | 0.9 | 4096 |
+| Coder | Claude Sonnet 4.6 | 0.2 | 0.95 | 8192 |
+| Tester | Claude Sonnet 4.6 | 0.0 | 0.9 | 4096 |
+| Debugger | Claude Sonnet 4.6 | 0.2 | 0.95 | 4096 |
+| Reviewer | Claude Opus 4.6 | 0.0 | 0.9 | 4096 |
+
+For routine scaffolding only, Coder may use Gemini 3.7 Flash. After two unresolved Debugger rounds with the same root cause, escalate to Claude Opus 4.6. See [Model routing](docs/model-routing.md).
 
 ---
 

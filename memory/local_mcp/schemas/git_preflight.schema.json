@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agentix://local_mcp/git_preflight.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "working_directory": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "strict_multi_repo": { "type": "boolean" }
+  }
+}

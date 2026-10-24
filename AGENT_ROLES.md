@@ -2,6 +2,20 @@
 
 Insert the appropriate block at the end of the SYSTEM_PROMPT when handing off to a specific role.
 
+## Default model routing
+
+Before starting a role, read `.agent/project_config.json` → `model_routing.roles[<Role>]` and use that model in the selected frontend. The routing policy is:
+
+| Role | Default model | Temperature | Escalation / fallback |
+|---|---|---:|---|
+| Orchestrator | `anthropic/claude-opus-4-6` | 0.0 | — |
+| Coder | `anthropic/claude-sonnet-4-6` | 0.2 | `google/gemini-3.7-flash` for mechanical scaffolding only |
+| Tester | `anthropic/claude-sonnet-4-6` | 0.0 | — |
+| Debugger | `anthropic/claude-sonnet-4-6` | 0.2 | Opus after 2 unresolved rounds with the same root cause |
+| Reviewer | `anthropic/claude-opus-4-6` | 0.0 | — |
+
+Model IDs are canonical provider IDs, not a guarantee that every frontend exposes them. If the selected frontend does not expose the configured ID, stop and report `model_unavailable`; do not silently substitute a weaker model for Orchestrator or Reviewer.
+
 ---
 
 ## ROLE 1: ORCHESTRATOR / PLANNER

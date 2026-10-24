@@ -1,5 +1,5 @@
 # Agentix template and cycle artifacts — merge into project .gitignore
-agentic_loop_template/
+agentic_loop_template
 .agent/handoff_*.json
 .agent/last_handoff.json
 .agent/worktrees/
@@ -14,3 +14,7 @@ blackbox_start_prompt.txt
 .agent/sft/
 .agent/stream_leases.json
 .agent/streams_state.json
+.agent/local-pipeline-runs/
+.secrets
+.vars
+

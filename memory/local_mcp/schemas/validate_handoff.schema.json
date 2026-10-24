@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agentix://local_mcp/validate_handoff.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "working_directory": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "path": { "type": "string", "minLength": 1, "maxLength": 4096 },
+    "handoff": { "type": "object" },
+    "strict_done": { "type": "boolean" }
+  },
+  "oneOf": [
+    { "required": ["path"], "not": { "required": ["handoff"] } },
+    { "required": ["handoff"], "not": { "required": ["path"] } }
+  ]
+}

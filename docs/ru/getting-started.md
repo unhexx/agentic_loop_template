@@ -43,7 +43,17 @@ Init ставит обвязку через `pip install -e ".[dev]"`. Посл�
 
 Живые вызовы Grok CLI идут через **шлюз Agentix** (`http://127.0.0.1:8110/v1`), который стоит перед host pxpipe (`:8100`). `Agent-Init.sh` прописывает `GROK_CLI_CHAT_PROXY_BASE_URL` в `.venv/bin/activate`. Mock/CI не требуют pxpipe. Отключить: `export AGENTIX_PROXY=0`. Юниты: [`scripts/systemd/pxpipe.service.example`](../../scripts/systemd/pxpipe.service.example), [`scripts/systemd/agentix-gateway.service.example`](../../scripts/systemd/agentix-gateway.service.example). Проверка: `python -m memory.proxy health`. Запуск шлюза: `bash scripts/agentix-proxy.sh start`.
 
-Продуктовые репозитории: лучше [consumer-starter](../../examples/consumer-starter/README.md) (English) **lite** `AGENTS.md` или `Agent-Init.consumer.sh` (симлинк на SSOT + editable-установка). Не копируйте всё дерево шаблона.
+Продуктовые репозитории ставятся одной командой из этого клона (симлинк на SSOT, дерево шаблона не копируется):
+
+```bash
+bash scripts/agentix-init.sh /path/to/your-project \
+  --name your-project \
+  --frontend grok \
+  --goal "Одно предложение, которое цикл может проверить"
+source /path/to/your-project/.venv/bin/activate
+```
+
+Подробности: [consumer-starter](../../examples/consumer-starter/README.md) (English), [onboarding wizard](../onboarding-wizard.md) (English).
 
 ---
 

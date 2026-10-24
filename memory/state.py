@@ -256,10 +256,30 @@ def _migrate_from_md(md_path: Path, *, agent_dir: Optional[Path] = None) -> Dict
     return st
 
 
+def _read_state_readonly(agent: Path) -> Dict[str, Any]:
+    """Return saved JSON, or the default. Never creates or rewrites files."""
+    path = agent / "LOOP_STATE.json"
+    if not path.is_file():
+        return default_state()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        log.error("load_state failed for %s: %s", path, exc)
+        return default_state()
+    if not isinstance(data, dict):
+        log.error("load_state: %s is not a JSON object", path)
+        return default_state()
+    base = default_state()
+    base.update(data)
+    return base
+
+
+
 def snapshot(window: int = 3, *, agent_dir: Optional[Path] = None) -> Dict[str, Any]:
     """Compact snapshot for Orchestrator cold-start (no history body)."""
     agent = _agent_dir(agent_dir)
-    st = load_state(agent_dir=agent)
+    # load_state migrates LOOP_STATE.md and creates history/. A snapshot must not.
+    st = _read_state_readonly(agent)
     deltas = list(st.get("recent_deltas") or [])[-max(1, window) :]
     return {
         "workspace_hint": "call `python -m memory info` for memory file paths",

@@ -1,17 +1,19 @@
 # .agent/TODO.md — Task Backlog
 
-**P9:** COMPLETE (v3.13.0) on `feature/p9-operator-stack`
-**Loop 5:** post-P9 DX/hardening
+**P9:** COMPLETE (v3.13.0)  
+**P11:** IN TREE (Unreleased) — local_mcp + doctor + routing hooks  
+**Loop 7:** top-idea execution (2026-10-24) — ideas 1–7
 
-## Loop 5
+## Loop 7 / top ideas
 
-- [x] L5-01 Living PLAN/TODO for 3.13.0
-- [x] L5-02 Init.ps1 stack tip + init parity token `memory.stack`
-- [x] L5-03 demo-loop.sh non-fatal stack check
-- [x] L5-04 `deploy/searxng/limiter.toml` + contract test
-- [x] L5-05 consumer-starter stack pointer + SearXNG env
+- [x] Ideas 1–5 — hygiene, local_mcp, doctor, adapters_by_role, stack/meta hooks
+- [x] Idea 6 — `docs/live-verify.md`
+- [x] Idea 7 — `scripts/parallel_scaffold.sh` + PARALLEL_PROTOCOL pointer
+- [x] Docs wire — TOOLS_REGISTRY, model-routing (no Blackbox)
+- [x] Test fixes — corrupt state caplog; Authorization header case (3.14)
 
-## Parked (not this loop)
+## Parked
 
-- Merge/tag 3.13.0 on `main` after evaluation
-- Hosted Hub SaaS / messenger / mobile (ROADMAP Future)
+- P10 `agy` — geo / Gemini key; no pxpipe bypass; no Blackbox
+- VERSION bump / tag Unreleased after human review
+- Hub SaaS / messenger / mobile (ROADMAP Future)

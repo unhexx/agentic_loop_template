@@ -2,6 +2,30 @@
 
 Interactive cross-platform setup for new consumer projects.
 
+## One-command install into a new project
+
+From a clone of this template:
+
+```bash
+bash scripts/agentix-init.sh /path/to/your-project \
+  --name your-project \
+  --frontend grok \
+  --goal "One sentence the loop can test"
+source /path/to/your-project/.venv/bin/activate
+```
+
+That creates `.venv`, runs `pip install -e "<this-repo>[dev]"`, symlinks `agentic_loop_template` at the SSOT, and writes `AGENTS.md`, `TASK_SPECIFICATION.md`, `PROJECT_CONTEXT.md`, `.agent/project_config.json`, `.agent/PLAN.md`, and the Agentix `.gitignore` block. Placeholders are filled from `--name`, `--goal`, `--stack`, and `--frontend`. A second run does not overwrite those files (`--force` does, except `.env.agentic`).
+
+| Flag | Effect |
+|------|--------|
+| `--tier lite` | `AGENTS.md` + config only |
+| `--tier full` | Loop spec, plan, and `Agent-Init.sh` (default) |
+| `--frontend` | `grok` (default), `cursor`, `claude`, `blackbox` |
+| `--no-venv` | Files only, no pip |
+| `--no-ritual` | Skip state / playbooks / proxy cold start |
+
+Windows: `powershell -ExecutionPolicy Bypass -File scripts\agentix-init.ps1 C:\path\to\your-project --name your-project`. Same flags. Help: `python -m memory init --help`.
+
 ## One-Command Demo
 
 ```bash

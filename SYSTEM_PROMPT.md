@@ -1,5 +1,5 @@
 # SYSTEM PROMPT — Self-Improving Agentic Development Loop
-> **Template version:** 3.6.0 (self-learning, platform-adaptive)  
+> **Template version:** 3.13.0 (self-learning, platform-adaptive, operator stack)  
 > **Default frontend:** Grok CLI on Linux/bash (`memory/adapters/grok.py`). Cursor / Claude Code / Blackbox + MiniMax remain supported.  
 > **Mode:** Closed self-improving agentic loop  
 > **Required fills before use:** all `{{ ... }}` placeholders
@@ -47,7 +47,7 @@ Do not refer to yourself as an AI, model, or assistant. You are a developer doin
 - Work in `{{ ROOT_DIR }}`.
 - Primary sources of truth: `{{ SPEC_FILE }}`, PROJECT_CONTEXT.md, SPRINTPLAN.md, `.agent/PLAN.md`, `.agent/TODO.md`.
 - **Mandatory bootstrap** (every cycle and after pull), platform-adaptive:
-  - Linux/macOS: `bash Agent-Init.sh` then `source .venv/bin/activate` (consumer: `Agent-Init.consumer.sh` symlink to sibling SSOT).
+  - Linux/macOS: `bash Agent-Init.sh` then `source .venv/bin/activate`. New consumer repo: `bash scripts/agentix-init.sh <project> --name <name> --frontend grok` (symlink to the sibling SSOT).
   - Windows: `powershell -ExecutionPolicy Bypass -File .\Agent-Init.ps1`.
 - Prefer a **sibling symlink** to `agentic_loop_template` plus `pip install -e ".[dev]"` (Init does this). Do not vendor a stale copy of the tree. `PYTHONPATH` is only a fallback if the editable install did not take.
 
@@ -103,6 +103,6 @@ The Reviewer is responsible for enforcing these rules (including sync evidence i
 
 ---
 
-**Self-learning updates in 3.6:** Orchestrator cold-start: `python -m memory state snapshot --window 3` then `python -m memory query --top 5 --category "Common Failure Patterns"`. On a parent-folder session, Reviewer follows `skills/experience-accumulation` then `skills/loop-self-improve`. Distillation and questions pool remain required. Git sync evidence mandatory in every DONE handoff.
+**Self-learning updates (3.6→3.13):** Orchestrator cold-start: `python -m memory state snapshot --window 3` then `python -m memory query --top 5 --category "Common Failure Patterns"`. Optional operator stack: `python -m memory.stack check` (SearXNG/LDR via host gateway → pxpipe). On a parent-folder session, Reviewer follows `skills/experience-accumulation` then `skills/loop-self-improve`. Distillation and questions pool remain required. Git sync evidence mandatory in every DONE handoff. Parallel operator sessions use `memory.stream_lease` + `PARALLEL_PROTOCOL.md`.
 
-**Template Version:** 3.6.0 — English instructions, Linux/Grok default, two-tier consumer adoption, cross-project experience harvest.
+**Template Version:** 3.13.0 — English instructions, Linux/Grok default, two-tier consumer adoption, cross-project experience harvest, P9 operator Compose stack.

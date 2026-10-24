@@ -30,6 +30,8 @@ agentix = "memory.__main__:_cli"
 agentix-supervisor = "memory.supervisor:main"
 agentix-dashboard = "memory.dashboard.__main__:main"
 agentix-proxy = "memory.proxy.__main__:cli"
+agentix-local-mcp = "memory.local_mcp.__main__:main"
+agentix-doctor = "memory.doctor:main"
 
 [tool.setuptools.dynamic]
 version = { file = "VERSION" }
@@ -41,4 +43,5 @@ include = ["memory*"]
 memory = [
   "dashboard/templates/**/*.html",
   "data/*.json",
+  "local_mcp/schemas/*.json",
 ]

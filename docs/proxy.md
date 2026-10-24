@@ -26,6 +26,15 @@ Knowledge retrieval and harvest stay supervisor/ritual-side. The HTTP gateway do
 
 Do **not** auto-edit `~/.grok/config.toml`. Init writes exports into `.venv/bin/activate`. Opt-in: `python -m memory.proxy install-host`.
 
+## Operator doctor
+
+```bash
+python -m memory doctor --strict
+# or: agentix-doctor --strict
+```
+
+Aggregates `memory.proxy health`, a loopback port ledger (`:8100` pxpipe, `:8110` gateway, `:8112` control plane, optional SearXNG/LDR), deploy stack contract, and a P10-safe Gemini env check (`GEMINI_API_KEY` presence; flags `GOOGLE_GEMINI_BASE_URL` if set). Findings use pass / environment / product taxonomy. Does **not** restart `pxpipe.service` or invent secrets. A healthy TCP path can still return HTTP 401 without a bearer — classify that as environment-blocked.
+
 ## Commands
 
 ```bash
@@ -106,6 +115,8 @@ tail -n 1 ~/.pxpipe-agy/events.jsonl
 Tests stay skip/exempt for this frontend (`memory/test_proxy.py` still requires pxpipe only for live Grok under `mode=required`). Geo eligibility (`agy` “not available in your location”) fails before generateContent — then only the synthetic POST to `:8101` proves imaging.
 
 Do not claim billed `measured_saved_pct` until Google `:countTokens` probes populate on this instance.
+
+The OAuth token stored by the VS Code extension Universal Chat Provider (`antigravity-*.json`) is a `cloudcode-pa` grant, not the Gemini API key this shim forwards. A 2026-09-28 probe got `API_KEY_INVALID` for that token and `unsupported_model` for `gemini-3.1-*` when `agy` itself was pointed at `:8101`. Planned P10 in [ROADMAP.md](../ROADMAP.md) does not call this shim: the delegate uses `GEMINI_API_KEY` and talks to Google directly. Grok traffic stays on `:8100`.
 
 ## Rollback
 

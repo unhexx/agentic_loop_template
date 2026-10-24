@@ -17,6 +17,7 @@
       "process_violations": 0
     },
     "auto_apply_safe": true,
+    "auto_harvest_on_done": false,
     "max_proposals_per_cycle": 3,
     "last_harvested_cycle": 0
   },
@@ -25,6 +26,26 @@
     "frequency": "every_10_cycles",
     "N": 10,
     "last_ritual_cycle": 0
+  },
+  "model_routing": {
+    "enabled": true,
+    "strategy": "role_based",
+    "frontend": "antigravity",
+    "roles": {
+      "Orchestrator": { "provider": "anthropic", "model": "claude-opus-4-6", "thinking": "adaptive", "temperature": 0.0 },
+      "Coder": { "provider": "anthropic", "model": "claude-sonnet-4-6", "thinking": "adaptive", "temperature": 0.2 },
+      "Tester": { "provider": "anthropic", "model": "claude-sonnet-4-6", "thinking": "adaptive", "temperature": 0.0 },
+      "Debugger": { "provider": "anthropic", "model": "claude-sonnet-4-6", "thinking": "adaptive", "temperature": 0.2 },
+      "Reviewer": { "provider": "anthropic", "model": "claude-opus-4-6", "thinking": "adaptive", "temperature": 0.0 }
+    },
+    "fallbacks": {
+      "Coder": { "provider": "google", "model": "gemini-3.7-flash", "allowed_when": "mechanical_or_scaffolding_only" }
+    },
+    "escalation": {
+      "Debugger": { "after_failed_rounds": 2, "provider": "anthropic", "model": "claude-opus-4-6", "reason": "same_root_cause_unresolved" }
+    },
+    "availability_policy": "verify_model_in_frontend_before_start",
+    "last_verified": "2026-09-25"
   },
   "playbooks": {
     "enabled": true,
@@ -91,6 +112,14 @@
   },
   "supervisor": {
     "adapter": "mock",
+    "adapters_by_role": {
+      "Orchestrator": "mock",
+      "Coder": "mock",
+      "Tester": "mock",
+      "Debugger": "mock",
+      "Reviewer": "mock"
+    },
+    "stack_check_on_start": false,
     "max_cycles": 5,
     "max_role_retries": 2,
     "role_timeout_s": 900,
@@ -105,11 +134,6 @@
       },
       "cursor": {
         "command": null
-      },
-      "blackbox": {
-        "command": "blackbox",
-        "prompt_mode": "p",
-        "extra_args": []
       }
     },
     "block_process_tags": [
@@ -125,6 +149,60 @@
       "concurrent": false,
       "push": false,
       "lease_ttl_s": 7200
+    }
+  },
+  "_local_pipeline_comment": "act is the default for a free-plan solo maintainer; set backend to jenkins only when the org mandates Bitbucket Server/Data Center and Jenkins; set backend to self_hosted only after a human has registered a runner; do not put tokens in this file",
+  "local_pipeline": {
+    "enabled": false,
+    "backend": "act",
+    "notify": false,
+    "act": {
+      "workflow_file": ".github/workflows/agentix-loop.yml",
+      "job_name": "harness",
+      "runner_image": "catthehacker/ubuntu:act-22.04",
+      "secret_file": ".secrets",
+      "pull": false,
+      "cache_server": false,
+      "bind_workdir": false,
+      "mount_docker_sock": false,
+      "acknowledge_dind": false,
+      "allow_legacy_socket_mount": false,
+      "strict_workflows": false,
+      "timeout_s": 1800
+    },
+    "self_hosted": {
+      "runner_dir": null,
+      "systemd_unit": null,
+      "systemd_scope": "system",
+      "labels": null,
+      "timeout_s": 1800,
+      "supervise_listener": false,
+      "allow_start": false,
+      "ephemeral": false,
+      "isolated_work_folder": false,
+      "log_stale_s": 900
+    },
+    "jenkins": {
+      "url": null,
+      "job_path": null,
+      "jenkinsfile_path": null,
+      "local_runner": null,
+      "crumb_required": true,
+      "parameters": [],
+      "credential_ids": {
+        "bitbucket_checkout": null,
+        "bitbucket_status": null
+      },
+      "report_status": false,
+      "webhook_relay": false,
+      "timeout_s": 1800
+    },
+    "scm": {
+      "kind": "server",
+      "bitbucket_url": null,
+      "project_key": null,
+      "repo_slug": null,
+      "workspace": null
     }
   }
 }

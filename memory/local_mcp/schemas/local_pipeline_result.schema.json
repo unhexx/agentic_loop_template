@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "agentix://local_mcp/local_pipeline_result.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok", "skipped", "backend", "config_backend", "exit_code", "duration_ms",
+    "timed_out", "cancelled", "truncated", "lines_dropped", "queue_risk",
+    "status", "job", "log_tail", "log_path", "probe", "warnings",
+    "status_target", "status_posted_by", "scm", "error"
+  ],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "skipped": { "type": "boolean" },
+    "backend": { "enum": ["act", "self_hosted", "jenkins"] },
+    "config_backend": { "enum": ["act", "self_hosted", "jenkins"] },
+    "exit_code": { "type": "integer", "enum": [0, 1, 2, 124, 130] },
+    "duration_ms": { "type": "integer", "minimum": 0 },
+    "timed_out": { "type": "boolean" },
+    "cancelled": { "type": "boolean" },
+    "truncated": { "type": "boolean" },
+    "lines_dropped": { "type": "integer", "minimum": 0 },
+    "queue_risk": { "type": "boolean" },
+    "status": { "enum": ["succeeded", "failed", "refused", "cancelled", "timed_out", "idle"] },
+    "job": {
+      "type": "object",
+      "description": "Declared on this object so additionalProperties accepts it. The allOf/if/then branches below constrain the shape. Do not add unevaluatedProperties beside additionalProperties."
+    },
+    "log_tail": { "type": "string", "maxLength": 8192 },
+    "log_path": { "type": "string" },
+    "status_target": { "enum": ["local", "github_actions_ui", "bitbucket_commit_status"] },
+    "status_posted_by": { "enum": ["jenkins", "harness", null] },
+    "warnings": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "message"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1, "maxLength": 64 },
+          "message": { "type": "string", "maxLength": 500 }
+        }
+      }
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "docker": { "type": "boolean" },
+        "docker_server": { "type": ["string", "null"] },
+        "act_version": { "type": ["string", "null"] },
+        "runner_image": { "type": ["string", "null"] },
+        "runner_log_fresh": { "type": "boolean" },
+        "jenkins": { "type": "boolean" }
+      }
+    },
+    "scm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "host", "ref", "commit"],
+      "properties": {
+        "kind": { "enum": ["server", "cloud", null] },
+        "host": { "enum": ["local", "github", "bitbucket"] },
+        "ref": { "type": ["string", "null"] },
+        "commit": { "type": ["string", "null"] }
+      }
+    },
+    "error": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["code", "message"],
+          "properties": {
+            "code": { "type": "string", "minLength": 1, "maxLength": 64 },
+            "message": { "type": "string", "maxLength": 500 }
+          }
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "ok": { "const": true } }, "required": ["ok"] },
+      "then": {
+        "properties": {
+          "exit_code": { "const": 0 },
+          "cancelled": { "const": false },
+          "timed_out": { "const": false },
+          "skipped": { "const": false },
+          "status": { "const": "succeeded" },
+          "error": { "type": "null" }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "ok": { "const": false } }, "required": ["ok"] },
+      "then": { "properties": { "error": { "type": "object" } } }
+    },
+    {
+      "if": { "properties": { "backend": { "const": "act" } }, "required": ["backend"] },
+      "then": {
+        "properties": {
+          "status_target": { "const": "local" },
+          "job": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["workflow_file", "job_name"],
+            "properties": {
+              "workflow_file": { "type": "string" },
+              "job_name": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "backend": { "const": "self_hosted" } }, "required": ["backend"] },
+      "then": {
+        "properties": {
+          "status_target": { "const": "github_actions_ui" },
+          "job": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["runner_labels"],
+            "properties": {
+              "runner_labels": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "backend": { "const": "jenkins" } }, "required": ["backend"] },
+      "then": {
+        "properties": {
+          "status_target": { "const": "bitbucket_commit_status" },
+          "job": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "job_path": { "type": "string" },
+              "jenkinsfile_path": { "type": "string" }
+            }
+          }
+        },
+        "oneOf": [
+          { "properties": { "job": { "required": ["job_path"], "not": { "required": ["jenkinsfile_path"] } } } },
+          { "properties": { "job": { "required": ["jenkinsfile_path"], "not": { "required": ["job_path"] } } } }
+        ]
+      }
+    }
+  ]
+}

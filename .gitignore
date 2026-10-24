@@ -235,3 +235,6 @@ __marimo__/
 .venv/
 deploy/compose.env
 deploy/searxng/.cache/
+.secrets
+.vars
+.agent/local-pipeline-runs/
