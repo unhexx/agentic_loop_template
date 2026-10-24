@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- TypeScript Cursor SDK runner in `sdk/` (`@cursor/sdk` 1.0.40). `zod` is a direct dependency. `package-lock.json` pins the SDK and the platform packages. Local agent; default model `composer-2.5`.
 - Local client-side xAI Tools as separate repositories (`tool-code-execution`, `tool-collections-search`, `tool-browse-page`, `tool-web-search`, `tool-view-image`, `tool-mcp-bridge`, `tool-x-search`). `tools/select.py --intent xai`, `tools/blocks/common/xai_tools.md`, overlay `deploy/xai-local-tools.compose.yaml` (loopback, cap_drop ALL), `docs/xai-local-tools.md`. X search and view_x_video stay xAI server-side; the local facade refuses by default.
 - P11 Local MCP SSOT: `memory/local_mcp/` (19 tools), `agentix-local-mcp`, minimal `memory/integrations/`, hermetic `memory/test_local_mcp.py`. Spec: `docs/superpowers/specs/2026-10-24-p11-local-mcp-ssot-design.md`.
 - Operator doctor: `python -m memory doctor` / `agentix-doctor` (proxy health, port ledger 8100–8112/8080/5000, stack contract, P10-safe Gemini env check). Contract: `memory/test_doctor.py`.
@@ -18,6 +19,7 @@
 - `SYSTEM_PROMPT.md` template version → 3.13.0; consumer-starter gitignore SSOT symlink without trailing slash; knowledge readonly + non-mutating state snapshot (hub parity for MCP).
 
 ### Fixed
+- agy-pxpipe recipe matches the live warp path. The CLI models are `gemini-3.8-flash-*`. Compression stays on `:8101` (`scripts/pxpipe-agy/proxy.mjs`). The wrapper does not set `GOOGLE_GEMINI_BASE_URL` or `PORT`. `shim.py` is not the inbound service. P10 still must not call this path.
 - Performance ledger counts `total_cycles` after the 50-row window, omits null `proxy_stats`/`details`, and no longer inserts `cycle=0` META_APPLIED rows that compact away real cycles. `update_performance_ledger` writes `LOOP_PERFORMANCE.md` and the JSON ledger in one `"ledger"` section.
 - Playbooks skip `updated_at` / overview rewrite when bullet bodies did not change; human views use tmp+replace.
 - Gitignore hub lock files `.agent/stream_leases.json` and `.agent/streams_state.json` (root + consumer starter).

@@ -117,89 +117,60 @@ PLAN + SPEC: OK
 
 ---
 
-## pxpipe для agy (Gemini 3.7 Flash)
+## pxpipe для agy (Gemini 3.8 Flash)
 
-Опциональный **второй** pxpipe на хосте, чтобы Antigravity CLI (`agy`) сжимал объёмный контекст для `gemini-3.7-flash-high` / `gemini-3.7-flash-medium`. Imager Grok на `:8100` не трогаем. Agentix **не** оборачивает `agy` автоматически. Полный контракт: [`docs/proxy.md`](docs/proxy.md#agy-antigravity-cli-optional-second-pxpipe) (English).
+Опциональный путь на хосте, чтобы Antigravity CLI (`agy`) сжимал объёмный контекст. Imager Grok на `:8100` не трогаем. Agentix **не** оборачивает `agy` автоматически. Полный контракт: [`docs/proxy.md`](docs/proxy.md#agy-antigravity-cli-optional-second-pxpipe) (English).
+
+`agy` принимает только `gemini-3.8-flash-high`, `gemini-3.8-flash-medium` и `gemini-3.8-flash-low`. Обёртка переписывает суффикс `gemini-3.7-flash-*` в парный id 3.8 и по умолчанию ставит `gemini-3.8-flash-high`. `--model` передавайте до `--print`. Внутри прокси измеренный ключ имагера остаётся `gemini-3.7-flash`.
 
 ```
-agy-pxpipe --print --model gemini-3.7-flash-high '...'
-  GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:8101
-    → shim inbound (suffix → gemini-3.7-flash + thinkingLevel, prefix /google-ai-studio)
-    → pxpipe :8103 (PXPIPE_MODELS=gemini-3.7-flash)
-    → shim outbound (strip prefix)
-    → generativelanguage.googleapis.com
+agy-pxpipe --model gemini-3.8-flash-high --print '...'
+  pxpipe warp
+    daily-cloudcode-pa.googleapis.com/* → http://127.0.0.1:8101
+    api.anthropic.com/v1/messages* → http://127.0.0.1:8103
+      (перекрывает встроенную цель 127.0.0.1:47821, там никто не слушает)
+  proxy.mjs :8101
+    сжимает streamGenerateContent / generateContent на месте
+    шлёт HTTPS на daily-cloudcode-pa.googleapis.com
 ```
 
-Зачем shim: pxpipe 0.13.2 имажит только `/google-ai-studio/…:generateContent` и измеренный ключ `gemini-3.7-flash`. agy говорит Gemini REST (`/v1beta/models/gemini-3.7-flash-high:generateContent`); суффикс даёт `unsupported_model` без переписывания.
+Не задавайте `GOOGLE_GEMINI_BASE_URL` и `PORT` в этой обёртке. `PORT` уводит встроенный маршрут Anthropic на `${PORT:-47821}`. P10 не вызывает `agy-pxpipe`. Дошедший запрос всё равно может вернуться как `User location is not supported`: это не обход региона.
+
+`scripts/pxpipe-agy/shim.py` — старый сайдкар. Он занимает и `:8101`, и `:8102`. Не запускайте его, пока `:8101` держит `proxy.mjs`.
 
 ### Установка (user systemd, loopback)
 
 ```bash
 mkdir -p ~/.config/pxpipe-agy ~/.pxpipe-agy ~/.config/systemd/user
-install -m 755 scripts/pxpipe-agy/shim.py ~/.config/pxpipe-agy/shim.py
-install -m 755 scripts/pxpipe-agy/agy-pxpipe ~/.local/bin/agy-pxpipe
+install -m 755 scripts/pxpipe-agy/proxy.mjs ~/.config/pxpipe-agy/proxy.mjs
+install -m 755 scripts/pxpipe-agy/agy-pxpipe scripts/pxpipe-agy/agy-pxpipe-run ~/.local/bin/
 install -m 644 scripts/systemd/pxpipe-agy-shim.service.example \
   ~/.config/systemd/user/pxpipe-agy-shim.service
-install -m 644 scripts/systemd/pxpipe-agy.service.example \
-  ~/.config/systemd/user/pxpipe-agy.service
-printf '%s\n' '{"models": ["gemini-3.7-flash"]}' > ~/.config/pxpipe-agy/config.json
 systemctl --user daemon-reload
-systemctl --user enable --now pxpipe-agy-shim.service pxpipe-agy.service
+systemctl --user enable --now pxpipe-agy-shim.service
 ```
 
 **Не** перезапускайте `pxpipe.service` (`:8100`). Проверка:
 
 ```bash
-systemctl --user is-active pxpipe.service pxpipe-agy.service pxpipe-agy-shim.service
+systemctl --user is-active pxpipe.service pxpipe-agy-shim.service
 curl -sS http://127.0.0.1:8101/health
-# Grok still on :8100, agy imager on :8103
-ss -tln | grep -E '8100|8101|8102|8103'
+ss -tln | grep -E '8100|8101'
 ```
+
+`:8103` (`pxpipe-agy.service`) только ловит тень маршрута Anthropic. Upstream там `http://127.0.0.1:8102`, и на этом порту никто не слушает, поэтому `GET :8103/health` даёт 502. Этот 502 не про путь Gemini.
 
 ### Примеры
 
-Короткий print (промпт **должен** стоять на `--print=`, не хвостовым аргументом):
-
 ```bash
-agy-pxpipe --model gemini-3.7-flash-high --print='Reply with exactly PONG and nothing else.'
-agy-pxpipe --model gemini-3.7-flash-medium --print='Summarize scripts/pxpipe-agy/shim.py in 5 bullets.'
+agy-pxpipe --model gemini-3.8-flash-high --print 'Reply with exactly PONG and nothing else.'
 ```
 
-Интерактивная сессия через imager:
+Обычный `agy` не меняется.
 
-```bash
-agy-pxpipe --model gemini-3.7-flash-high
-```
+Если `--print` висит в `SYN-SENT` на мёртвый адрес, резолвер VPN ответил на имя Cloud Code или `antigravity-unleash.goog` адресом, с которым TCP не устанавливается. `/etc/hosts` не перекрывает это, когда nsswitch сначала спрашивает systemd-resolved. Эти имена направьте на локальную заглушку, которая отвечает из DNS-over-HTTPS. Остальные имена остаются на резолвере туннеля.
 
-Обычный `agy` не меняется (InstantLegalBot / неподписанные сессии остаются на публичном Gemini).
-
-Синтетическая проверка, что `-high` действительно имажится (401/400 от Google на фиктивном ключе нормальны, если `compressed` равен true):
-
-```bash
-python3 - <<'PY'
-import json, urllib.request, urllib.error
-slab = ("CONTEXT_LINE_%04d: " + ("lorem ipsum dolor sit amet " * 12) + "\n")
-text = "".join(slab % i for i in range(80))
-body = json.dumps({
-    "systemInstruction": {"parts": [{"text": text}]},
-    "contents": [{"role": "user", "parts": [{"text": "PONG"}]}],
-    "generationConfig": {"maxOutputTokens": 8},
-}).encode()
-url = "http://127.0.0.1:8101/v1beta/models/gemini-3.7-flash-high:generateContent"
-req = urllib.request.Request(url, data=body, method="POST",
-    headers={"Content-Type": "application/json", "x-goog-api-key": "test"})
-try:
-    urllib.request.urlopen(req, timeout=60)
-except urllib.error.HTTPError:
-    pass
-print(json.load(urllib.request.urlopen("http://127.0.0.1:8101/health")))
-# events: ~/.pxpipe-agy/events.jsonl  compressed=true, model=gemini-3.7-flash
-PY
-```
-
-Контроль: `POST :8103/google-ai-studio/v1beta/models/gemini-3.7-flash-high:generateContent` должен оставаться `compressed=false` / `unsupported_model`. Тот же путь без суффикса сжимается.
-
-Логи: `journalctl --user -u pxpipe-agy.service -u pxpipe-agy-shim.service -f` и `~/.pxpipe-agy/events.jsonl`. Не цитируйте биллируемый `measured_saved_pct`, пока пробы `:countTokens` не прошли.
+Логи: `journalctl --user -u pxpipe-agy-shim.service -f` и `~/.pxpipe-agy/events.jsonl`. Поле `status` в событии прокси — это HTTP-статус upstream. Не цитируйте биллируемый `measured_saved_pct`, пока пробы `:countTokens` не прошли.
 
 ---
 
@@ -348,7 +319,7 @@ python -m memory.playbooks export --format hub
 | `python -m memory.stack check` | Контракт `deploy/compose.yaml` (loopback, профили, JSON) |
 | `bash scripts/agentix-stack.sh up` | SearXNG на `127.0.0.1:8080`; `--research` добавляет LDR через шлюз→pxpipe |
 | `python -m memory.stack search --q "…" --json` | Локальный JSON-клиент SearXNG |
-| `agy-pxpipe --model gemini-3.7-flash-high --print='…'` | Опциональный второй pxpipe для Antigravity CLI; см. [pxpipe для agy](#pxpipe-для-agy-gemini-37-flash) |
+| `agy-pxpipe --model gemini-3.8-flash-high --print '…'` | Опциональный путь Antigravity; см. [pxpipe для agy](#pxpipe-для-agy-gemini-38-flash) |
 | `python -m memory.meta_harvester export-sft` | Локальный SFT JSONL из золотых траекторий DONE (без GPU) |
 
 Супервизор гоняет ходы O→C→T→R, валидирует handoff и на `PR_READY` открывает PR через `gh pr create` (`main` не мержит). Для локальных/CI прогонов — `--no-pr`. Конфиг лежит в `supervisor` внутри `.agent/project_config.json` (см. `project_config.example.json`).

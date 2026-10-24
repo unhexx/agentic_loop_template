@@ -7,6 +7,11 @@ Wants=network-online.target pxpipe-agy-shim.service
 [Service]
 Type=simple
 # Не путать с Grok-юнитом на :8100 (scripts/systemd/pxpipe.service.example).
+# Этот юнит только перехватывает anthropic-маршрут warp (см. agy-pxpipe).
+# Gemini идёт в proxy.mjs на :8101 и этот upstream не использует.
+# Пока на :8102 никто не слушает, GET :8103/health отвечает 502.
+# Не поднимать scripts/pxpipe-agy/shim.py, чтобы «закрыть» :8102:
+# он также занимает :8101.
 ExecStart=%h/.local/bin/pxpipe
 Restart=on-failure
 RestartSec=2

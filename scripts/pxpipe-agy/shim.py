@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Сайдкар между agy (Gemini REST) и pxpipe (префикс /google-ai-studio).
+"""Старый сайдкар между agy (Gemini REST) и pxpipe (префикс /google-ai-studio).
+
+Не запускать на живом хосте. Процесс слушает и :8101, и :8102.
+Сейчас вход agy — это scripts/pxpipe-agy/proxy.mjs на :8101
+(pxpipe-agy-shim.service). Этот файл его перебьёт.
 
 Вход  :8101  agy  /v1beta/models/{id}:generateContent
              →    /google-ai-studio/v1beta/models/{canonical}:…

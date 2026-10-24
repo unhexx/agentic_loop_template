@@ -84,39 +84,35 @@ Cursor / Claude Code / Blackbox / Antigravity (`agy`) do **not** honor `GROK_CLI
 
 ### agy (Antigravity CLI) — optional second pxpipe
 
-`agy` in API-key mode (`security.auth.selectedType=gemini-api-key`) posts to `generativelanguage.googleapis.com/v1beta/models/{id}:generateContent`. pxpipe 0.13.2 only transforms `/google-ai-studio/(v1|v1beta)/models/{id}:(generateContent|streamGenerateContent)` and the measured key `gemini-3.7-flash`. Ids `gemini-3.7-flash-high` / `-medium` hit `hasGeminiMeasuredProfile` → `unsupported_model` even if they are on `PXPIPE_MODELS`. `PXPIPE_GPT_PROFILES` does not clear that Google-transformer gate. Warp MITM does not rewrite the path.
+The live CLI posts Cloud Code traffic to `daily-cloudcode-pa.googleapis.com` (`/v1internal:streamGenerateContent` and `/v1internal:loadCodeAssist`). It accepts only `gemini-3.8-flash-high`, `gemini-3.8-flash-medium`, and `gemini-3.8-flash-low`. pxpipe's measured imager key is still `gemini-3.7-flash`. `proxy.mjs` calls `transformGoogleGenerateContent` with that key, then forwards the envelope to the same Cloud Code host over HTTPS.
 
-Stand up a **second** instance. Do not add Gemini to the Grok unit (`scripts/systemd/pxpipe.service.example`, host `:8100`).
+Do not add Gemini to the Grok unit (`scripts/systemd/pxpipe.service.example`, host `:8100`).
 
 | Port | Unit | Role |
 |------|------|------|
 | `:8100` | `pxpipe.service` | Grok imager — leave it |
-| `:8101` | `pxpipe-agy-shim` | agy-facing rewrite |
-| `:8103` | `pxpipe-agy` | `PXPIPE_MODELS=gemini-3.7-flash` |
-| `:8102` | shim outbound | strip `/google-ai-studio` → Google |
+| `:8101` | `pxpipe-agy-shim` | `proxy.mjs`: compress, then HTTPS to Cloud Code |
+| `:8103` | `pxpipe-agy` | Anthropic shadow only. Upstream `:8102` is closed, so `/health` is 502 |
+| `:47821` | — | warp's built-in Anthropic target. Closed. The wrapper shadows it with `:8103` |
 
-Templates: [`scripts/pxpipe-agy/shim.py`](../scripts/pxpipe-agy/shim.py), [`scripts/pxpipe-agy/agy-pxpipe`](../scripts/pxpipe-agy/agy-pxpipe), [`scripts/systemd/pxpipe-agy.service.example`](../scripts/systemd/pxpipe-agy.service.example), [`scripts/systemd/pxpipe-agy-shim.service.example`](../scripts/systemd/pxpipe-agy-shim.service.example). Copy-paste install and print examples: [README — pxpipe for agy](../README.md#pxpipe-for-agy-gemini-37-flash).
+Templates: [`scripts/pxpipe-agy/proxy.mjs`](../scripts/pxpipe-agy/proxy.mjs), [`scripts/pxpipe-agy/agy-pxpipe`](../scripts/pxpipe-agy/agy-pxpipe), [`scripts/pxpipe-agy/agy-pxpipe-run`](../scripts/pxpipe-agy/agy-pxpipe-run), [`scripts/systemd/pxpipe-agy-shim.service.example`](../scripts/systemd/pxpipe-agy-shim.service.example). [`scripts/pxpipe-agy/shim.py`](../scripts/pxpipe-agy/shim.py) is the old sidecar and binds both `:8101` and `:8102`. Do not start it. Copy-paste install: [README — pxpipe for agy](../README.md#pxpipe-for-agy-gemini-38-flash).
 
-Shim rewrite:
-
-1. `/v1beta/models/gemini-3.7-flash-high:generateContent` → `/google-ai-studio/v1beta/models/gemini-3.7-flash:generateContent`
-2. If the body has no `generationConfig.thinkingConfig`, inject `thinkingLevel` `HIGH` / `MEDIUM` / `LOW` from the suffix
-3. Forward `x-goog-api-key` / `key=` / `Authorization` as-is; do not log bodies
+The wrapper does not set `GOOGLE_GEMINI_BASE_URL` or `PORT`. It writes the agy argv to a mode-600 NUL file so `pxpipe warp` does not log the `--print` prompt, then routes `daily-cloudcode-pa.googleapis.com/*` to `:8101`.
 
 ```bash
-# health + last rewrite
 curl -sS http://127.0.0.1:8101/health
-# live
-agy-pxpipe --model gemini-3.7-flash-high --print='Reply with exactly PONG and nothing else.'
-# events (compressed=true, model=gemini-3.7-flash)
-tail -n 1 ~/.pxpipe-agy/events.jsonl
+agy-pxpipe --model gemini-3.8-flash-high --print 'Reply with exactly PONG and nothing else.'
 ```
 
-Tests stay skip/exempt for this frontend (`memory/test_proxy.py` still requires pxpipe only for live Grok under `mode=required`). Geo eligibility (`agy` “not available in your location”) fails before generateContent — then only the synthetic POST to `:8101` proves imaging.
+`status` in `~/.pxpipe-agy/events.jsonl` for a `proxy.mjs` line is the upstream HTTP status. A line with `error: upstream_error: fetch failed` on `/health` is `:8103` talking to the closed `:8102`, not a failure of `:8101`.
+
+A hang in `SYN-SENT` means DNS returned an address that never accepts TCP (seen for Cloud Code names and `antigravity-unleash.goog` when the VPN resolver answers `89.39.161.8`). systemd-resolved is consulted before `/etc/hosts`, so a hosts pin does not fix `getaddrinfo`. Route only those names at a loopback stub that answers from DNS-over-HTTPS. Leave every other name on the tunnel resolver.
+
+Tests stay skip/exempt for this frontend (`memory/test_proxy.py` still requires pxpipe only for live Grok under `mode=required`). Geo eligibility fails as HTTP 400 `FAILED_PRECONDITION` / `User location is not supported for the API use.` on `loadCodeAssist` even after DNS and compression succeed. That is not a proxy bug and not something this path can bypass.
 
 Do not claim billed `measured_saved_pct` until Google `:countTokens` probes populate on this instance.
 
-The OAuth token stored by the VS Code extension Universal Chat Provider (`antigravity-*.json`) is a `cloudcode-pa` grant, not the Gemini API key this shim forwards. A 2026-09-28 probe got `API_KEY_INVALID` for that token and `unsupported_model` for `gemini-3.1-*` when `agy` itself was pointed at `:8101`. Planned P10 in [ROADMAP.md](../ROADMAP.md) does not call this shim: the delegate uses `GEMINI_API_KEY` and talks to Google directly. Grok traffic stays on `:8100`.
+The OAuth token stored by the VS Code extension Universal Chat Provider (`antigravity-*.json`) is a `cloudcode-pa` grant, not a Gemini API key. A 2026-09-28 probe got `API_KEY_INVALID` for that token. Planned P10 in [ROADMAP.md](../ROADMAP.md) does not call `agy-pxpipe` and does not set `GOOGLE_GEMINI_BASE_URL`: the delegate uses `GEMINI_API_KEY` and talks to Google directly. Grok traffic stays on `:8100`.
 
 ## Rollback
 

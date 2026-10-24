@@ -1,5 +1,57 @@
 #!/bin/bash
-# agy через отдельный pxpipe-agy (Gemini 3.7 Flash). Обычный agy не трогаем.
+# Run Antigravity CLI (agy) through pxpipe warp.
+# agy accepts gemini-3.8-flash-high/medium/low. The 3.7 flash suffix ids are rejected.
+# The proxy maps a flash id onto the measured imager key gemini-3.7-flash.
+# Do not export GOOGLE_GEMINI_BASE_URL or PORT. PORT would make warp's built-in
+# Anthropic route use ${PORT:-47821}, and nothing listens there.
 set -euo pipefail
-export GOOGLE_GEMINI_BASE_URL="${GOOGLE_GEMINI_BASE_URL:-http://127.0.0.1:8101}"
-exec "$(command -v agy)" "$@"
+
+default_model=gemini-3.8-flash-high
+args=()
+seen_model=0
+prev=
+for arg in "$@"; do
+  if [[ "$prev" == "--model" || "$prev" == "-m" ]]; then
+    case "$arg" in
+      gemini-3.7-flash-high) arg=gemini-3.8-flash-high ;;
+      gemini-3.7-flash-medium) arg=gemini-3.8-flash-medium ;;
+      gemini-3.7-flash-low) arg=gemini-3.8-flash-low ;;
+    esac
+  fi
+  case "$arg" in
+    --model=gemini-3.7-flash-high) arg=--model=gemini-3.8-flash-high; seen_model=1 ;;
+    --model=gemini-3.7-flash-medium) arg=--model=gemini-3.8-flash-medium; seen_model=1 ;;
+    --model=gemini-3.7-flash-low) arg=--model=gemini-3.8-flash-low; seen_model=1 ;;
+    --model|--model=*|-m) seen_model=1 ;;
+  esac
+  args+=("$arg")
+  prev=$arg
+done
+if [[ "$seen_model" -eq 0 ]]; then
+  args=(--model "$default_model" "${args[@]}")
+fi
+
+here=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
+agy_bin=$(command -v agy) || { echo "agy-pxpipe: agy not on PATH" >&2; exit 127; }
+pxpipe_bin=$(command -v pxpipe) || { echo "agy-pxpipe: pxpipe not on PATH" >&2; exit 127; }
+run_bin=$here/agy-pxpipe-run
+if [[ ! -x "$run_bin" ]]; then
+  echo "agy-pxpipe: missing $run_bin" >&2
+  exit 127
+fi
+
+# pxpipe warp logs the child command. Keep the --print prompt in a mode-600
+# NUL file so that banner stays short.
+old_umask=$(umask)
+umask 077
+args_file=$(mktemp "${TMPDIR:-/tmp}/agy-pxpipe-args.XXXXXX")
+umask "$old_umask"
+trap 'rm -f "$args_file"' EXIT
+printf '%s\0' "$agy_bin" "${args[@]}" > "$args_file"
+
+# First match wins. The second route shadows warp's built-in
+# api.anthropic.com/v1/messages* → 127.0.0.1:${PORT:-47821}.
+exec "$pxpipe_bin" warp \
+  --route 'daily-cloudcode-pa.googleapis.com/*=http://127.0.0.1:8101' \
+  --route 'api.anthropic.com/v1/messages*=http://127.0.0.1:8103' \
+  -- "$run_bin" "$args_file"

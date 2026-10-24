@@ -1,0 +1,23 @@
+#!/bin/bash
+# Exec a NUL-delimited argv file and delete it first.
+# agy-pxpipe uses this so `pxpipe warp` logs a short command, not the --print prompt.
+set -euo pipefail
+
+file=${1:?agy-pxpipe-run: argv file required}
+if [[ ! -f "$file" ]]; then
+  echo "agy-pxpipe-run: missing argv file: $file" >&2
+  exit 2
+fi
+
+args=()
+while IFS= read -r -d '' arg; do
+  args+=("$arg")
+done < "$file"
+rm -f "$file"
+
+if [[ ${#args[@]} -eq 0 ]]; then
+  echo "agy-pxpipe-run: empty argv" >&2
+  exit 2
+fi
+
+exec "${args[@]}"

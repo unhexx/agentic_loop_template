@@ -117,89 +117,60 @@ PLAN + SPEC: OK
 
 ---
 
-## pxpipe for agy (Gemini 3.7 Flash)
+## pxpipe for agy (Gemini 3.8 Flash)
 
-Optional **second** pxpipe on the host so Antigravity CLI (`agy`) images bulky context for `gemini-3.7-flash-high` / `gemini-3.7-flash-medium`. The Grok imager on `:8100` stays as-is. Agentix does **not** auto-wrap `agy`. Full contract: [`docs/proxy.md`](docs/proxy.md#agy-antigravity-cli-optional-second-pxpipe).
+Optional host path so Antigravity CLI (`agy`) images bulky context. The Grok imager on `:8100` stays as-is. Agentix does **not** auto-wrap `agy`. Full contract: [`docs/proxy.md`](docs/proxy.md#agy-antigravity-cli-optional-second-pxpipe).
+
+`agy` only accepts `gemini-3.8-flash-high`, `gemini-3.8-flash-medium`, and `gemini-3.8-flash-low`. The wrapper rewrites a passed `gemini-3.7-flash-*` suffix onto the matching 3.8 id and defaults to `gemini-3.8-flash-high`. Pass `--model` before `--print`. Inside the proxy the measured imager key stays `gemini-3.7-flash`.
 
 ```
-agy-pxpipe --print --model gemini-3.7-flash-high '...'
-  GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:8101
-    → shim inbound (suffix → gemini-3.7-flash + thinkingLevel, prefix /google-ai-studio)
-    → pxpipe :8103 (PXPIPE_MODELS=gemini-3.7-flash)
-    → shim outbound (strip prefix)
-    → generativelanguage.googleapis.com
+agy-pxpipe --model gemini-3.8-flash-high --print '...'
+  pxpipe warp
+    daily-cloudcode-pa.googleapis.com/* → http://127.0.0.1:8101
+    api.anthropic.com/v1/messages* → http://127.0.0.1:8103
+      (shadows the built-in target 127.0.0.1:47821, which is closed)
+  proxy.mjs :8101
+    compresses streamGenerateContent / generateContent in process
+    forwards HTTPS to daily-cloudcode-pa.googleapis.com
 ```
 
-Why the shim: pxpipe 0.13.2 only images `/google-ai-studio/…:generateContent` and the measured key `gemini-3.7-flash`. agy talks Gemini REST (`/v1beta/models/gemini-3.7-flash-high:generateContent`); the suffix is `unsupported_model` without a rewrite.
+Do not set `GOOGLE_GEMINI_BASE_URL` or `PORT` on this wrapper. `PORT` makes warp send its built-in Anthropic route to `${PORT:-47821}`. P10 must not call `agy-pxpipe`. A completed request can still come back as `User location is not supported`; this path is not a region bypass.
+
+`scripts/pxpipe-agy/shim.py` is the old sidecar. It binds both `:8101` and `:8102`. Do not start it while `proxy.mjs` holds `:8101`.
 
 ### Install (user systemd, loopback)
 
 ```bash
 mkdir -p ~/.config/pxpipe-agy ~/.pxpipe-agy ~/.config/systemd/user
-install -m 755 scripts/pxpipe-agy/shim.py ~/.config/pxpipe-agy/shim.py
-install -m 755 scripts/pxpipe-agy/agy-pxpipe ~/.local/bin/agy-pxpipe
+install -m 755 scripts/pxpipe-agy/proxy.mjs ~/.config/pxpipe-agy/proxy.mjs
+install -m 755 scripts/pxpipe-agy/agy-pxpipe scripts/pxpipe-agy/agy-pxpipe-run ~/.local/bin/
 install -m 644 scripts/systemd/pxpipe-agy-shim.service.example \
   ~/.config/systemd/user/pxpipe-agy-shim.service
-install -m 644 scripts/systemd/pxpipe-agy.service.example \
-  ~/.config/systemd/user/pxpipe-agy.service
-printf '%s\n' '{"models": ["gemini-3.7-flash"]}' > ~/.config/pxpipe-agy/config.json
 systemctl --user daemon-reload
-systemctl --user enable --now pxpipe-agy-shim.service pxpipe-agy.service
+systemctl --user enable --now pxpipe-agy-shim.service
 ```
 
 Do **not** restart `pxpipe.service` (`:8100`). Check:
 
 ```bash
-systemctl --user is-active pxpipe.service pxpipe-agy.service pxpipe-agy-shim.service
+systemctl --user is-active pxpipe.service pxpipe-agy-shim.service
 curl -sS http://127.0.0.1:8101/health
-# Grok still on :8100, agy imager on :8103
-ss -tln | grep -E '8100|8101|8102|8103'
+ss -tln | grep -E '8100|8101'
 ```
+
+`:8103` (`pxpipe-agy.service`) only catches the Anthropic shadow. Its upstream is `http://127.0.0.1:8102`, and nothing listens there, so `GET :8103/health` is 502. That 502 is not the Gemini path.
 
 ### Examples
 
-Short print (prompt **must** sit on `--print=`, not as a trailing arg):
-
 ```bash
-agy-pxpipe --model gemini-3.7-flash-high --print='Reply with exactly PONG and nothing else.'
-agy-pxpipe --model gemini-3.7-flash-medium --print='Summarize scripts/pxpipe-agy/shim.py in 5 bullets.'
+agy-pxpipe --model gemini-3.8-flash-high --print 'Reply with exactly PONG and nothing else.'
 ```
 
-Interactive session through the imager:
+Plain `agy` is unchanged.
 
-```bash
-agy-pxpipe --model gemini-3.7-flash-high
-```
+If `--print` sits in `SYN-SENT` to a dead address, the VPN resolver answered a Cloud Code name or `antigravity-unleash.goog` with an address that never completes TCP. `/etc/hosts` does not win when nsswitch asks systemd-resolved first. Route only those names to a local stub that answers from DNS-over-HTTPS. Other names stay on the tunnel resolver.
 
-Plain `agy` is unchanged (InstantLegalBot / unsigned sessions keep the public Gemini path).
-
-Synthetic check that `-high` actually images (401/400 from Google on a dummy key is fine if `compressed` is true):
-
-```bash
-python3 - <<'PY'
-import json, urllib.request, urllib.error
-slab = ("CONTEXT_LINE_%04d: " + ("lorem ipsum dolor sit amet " * 12) + "\n")
-text = "".join(slab % i for i in range(80))
-body = json.dumps({
-    "systemInstruction": {"parts": [{"text": text}]},
-    "contents": [{"role": "user", "parts": [{"text": "PONG"}]}],
-    "generationConfig": {"maxOutputTokens": 8},
-}).encode()
-url = "http://127.0.0.1:8101/v1beta/models/gemini-3.7-flash-high:generateContent"
-req = urllib.request.Request(url, data=body, method="POST",
-    headers={"Content-Type": "application/json", "x-goog-api-key": "test"})
-try:
-    urllib.request.urlopen(req, timeout=60)
-except urllib.error.HTTPError:
-    pass
-print(json.load(urllib.request.urlopen("http://127.0.0.1:8101/health")))
-# events: ~/.pxpipe-agy/events.jsonl  compressed=true, model=gemini-3.7-flash
-PY
-```
-
-Control: `POST :8103/google-ai-studio/v1beta/models/gemini-3.7-flash-high:generateContent` must stay `compressed=false` / `unsupported_model`. The unsuffixed id on that same path compresses.
-
-Logs: `journalctl --user -u pxpipe-agy.service -u pxpipe-agy-shim.service -f` and `~/.pxpipe-agy/events.jsonl`. Do not quote a billed `measured_saved_pct` until `:countTokens` probes succeed.
+Logs: `journalctl --user -u pxpipe-agy-shim.service -f` and `~/.pxpipe-agy/events.jsonl`. `status` on a proxy event is the upstream HTTP status. Do not quote a billed `measured_saved_pct` until `:countTokens` probes succeed.
 
 ---
 
@@ -348,7 +319,7 @@ python -m memory.playbooks export --format hub
 | `python -m memory.stack check` | Validate `deploy/compose.yaml` contract (loopback, profiles, JSON) |
 | `bash scripts/agentix-stack.sh up` | SearXNG on `127.0.0.1:8080`; `--research` adds LDR via gateway→pxpipe |
 | `python -m memory.stack search --q "…" --json` | Local SearXNG JSON client |
-| `agy-pxpipe --model gemini-3.7-flash-high --print='…'` | Optional second pxpipe for Antigravity CLI; see [pxpipe for agy](#pxpipe-for-agy-gemini-37-flash) |
+| `agy-pxpipe --model gemini-3.8-flash-high --print '…'` | Optional Antigravity path; see [pxpipe for agy](#pxpipe-for-agy-gemini-38-flash) |
 | `python -m memory.meta_harvester export-sft` | Local SFT JSONL from golden DONE trajectories (no GPU) |
 
 Supervisor drives O→C→T→R turns, validates handoffs, and on `PR_READY` opens a PR via `gh pr create` (never merges to `main`). Use `--no-pr` for local/CI dry runs. Config lives under `supervisor` in `.agent/project_config.json` (see `project_config.example.json`).
