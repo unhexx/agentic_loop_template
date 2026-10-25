@@ -74,7 +74,15 @@ def encoding_for_model(model: str) -> str:
 
 
 def _fallback_tokens(text: str) -> int:
-    return max(1, len(text) // 4)
+    """Без tiktoken: латиница ~4 символа на токен, нелатиница ~2.
+
+    Эвристика «len//4» занижает кириллицу примерно вдвое относительно типичного BPE.
+    """
+    if not text:
+        return 1
+    non_latin = sum(1 for ch in text if ord(ch) > 127)
+    latin = len(text) - non_latin
+    return max(1, (latin // 4) + (non_latin // 2))
 
 
 def _load_encoder(name: str) -> Any:

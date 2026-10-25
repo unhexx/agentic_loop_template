@@ -40,6 +40,36 @@ def test_empty_fallback_is_one(monkeypatch, clean_cache):
     assert cb.estimate_tokens("") == 1
 
 
+def test_cyrillic_fallback_counts_about_two_chars(monkeypatch, clean_cache):
+    monkeypatch.setattr(cb, "_tiktoken_missing", True)
+    assert cb.estimate_tokens("a" * 40) == 10
+    assert cb.estimate_tokens("я" * 40) == 20
+
+
+def test_cyrillic_crosses_compress_threshold(tmp_path, monkeypatch, clean_cache):
+    monkeypatch.setattr(cb, "_tiktoken_missing", True)
+    called: dict[str, int] = {"n": 0}
+
+    def fake(_files, _budget):
+        called["n"] += 1
+        return {"tokens_out": 1, "within_budget": True}
+
+    import memory.compressor as compressor
+
+    monkeypatch.setattr(compressor, "compress_files", fake)
+    ru = tmp_path / "ru.md"
+    ru.write_text("я" * 40, encoding="utf-8")
+    over = cb.check_files([ru], budget=15, compress=True)
+    assert called["n"] == 1
+    assert over["within_budget"] is True
+    en = tmp_path / "en.md"
+    en.write_text("a" * 40, encoding="utf-8")
+    under = cb.check_files([en], budget=15, compress=True)
+    assert called["n"] == 1
+    assert under["within_budget"] is True
+    assert "compression" not in under
+
+
 def test_explicit_encoding_overrides_model(monkeypatch, clean_cache):
     class _Enc:
         def encode(self, text):
