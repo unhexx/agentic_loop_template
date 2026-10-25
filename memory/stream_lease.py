@@ -87,12 +87,41 @@ def _lease_pid(rec: Any) -> Optional[int]:
         return None
 
 
+def _proc_starttime(pid: int) -> Optional[str]:
+    """starttime из /proc/<pid>/stat (поле 22). None, если procfs недоступен."""
+    try:
+        raw = Path(f"/proc/{pid}/stat").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    end = raw.rfind(")")
+    if end < 0:
+        return None
+    fields = raw[end + 2 :].split()
+    # После ')' первое поле — state (номер 3). starttime — номер 22, индекс 19.
+    if len(fields) <= 19:
+        return None
+    token = fields[19]
+    return token if token.isdigit() else None
+
+
 def _lease_pid_dead(rec: Any) -> bool:
-    """Мёртвый или нечитаемый PID можно забрать; живой — никогда."""
+    """Мёртвый PID или чужой starttime можно забрать. TTL срок не освобождает запись.
+
+    Живой PID с тем же starttime не крадём: expires_at только для отображения.
+    Старые записи без starttime сравниваем только по PID.
+    """
     pid = _lease_pid(rec)
     if pid is None:
         return True
-    return _pid_dead(pid)
+    if _pid_dead(pid):
+        return True
+    recorded = rec.get("starttime") if isinstance(rec, dict) else None
+    if not isinstance(recorded, str) or not recorded:
+        return False
+    current = _proc_starttime(pid)
+    if current is None:
+        return False
+    return current != recorded
 
 
 def _overlap_pair(
@@ -181,7 +210,7 @@ def _new_record(
     claimed_at: Optional[str] = None,
 ) -> Dict[str, Any]:
     now = _now()
-    return {
+    rec: Dict[str, Any] = {
         "owned_paths": list(owned_paths),
         "worktree": worktree,
         "pid": pid,
@@ -189,6 +218,10 @@ def _new_record(
         "expires_at": _iso(now + timedelta(seconds=int(ttl_s))),
         "branch": branch,
     }
+    starttime = _proc_starttime(pid)
+    if starttime:
+        rec["starttime"] = starttime
+    return rec
 
 
 def claim(
@@ -200,7 +233,10 @@ def claim(
     ttl_s: int = DEFAULT_TTL_S,
     branch: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Занять owned_paths. Живой PID не крадём, TTL только для отображения."""
+    """Занять owned_paths. Живой PID с тем же starttime не крадём.
+
+    expires_at — только отображение, протухший по часам lease не освобождается.
+    """
     name = _norm_name(name)
     paths = _norm_paths(owned_paths)
     my_pid = os.getpid()
@@ -227,6 +263,9 @@ def claim(
                 raise ValueError(f"lease {name!r} held by live pid {holder}")
             existing["owned_paths"] = paths
             existing["pid"] = my_pid
+            starttime = _proc_starttime(my_pid)
+            if starttime:
+                existing["starttime"] = starttime
             existing["expires_at"] = _iso(_now() + timedelta(seconds=int(ttl_s)))
             if wt is not None:
                 existing["worktree"] = wt

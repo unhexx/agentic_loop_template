@@ -81,6 +81,29 @@ def test_claim_overlap_live_raises(tmp_path: Path) -> None:
     assert "other" not in _read(tmp_path)["leases"]
 
 
+def test_claim_records_proc_starttime(tmp_path: Path) -> None:
+    if not Path("/proc/self/stat").is_file():
+        pytest.skip("no procfs")
+    claim(tmp_path, "harness", ["memory/"])
+    stored = _read(tmp_path)["leases"]["harness"]["starttime"]
+    assert stored == stream_lease._proc_starttime(os.getpid())
+    assert stored
+
+
+def test_reused_pid_with_other_starttime_can_be_claimed(tmp_path: Path, monkeypatch) -> None:
+    claim(tmp_path, "harness", ["memory/"])
+    data = _read(tmp_path)
+    data["leases"]["harness"]["starttime"] = "1"
+    _leases_file(tmp_path).write_text(
+        json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    monkeypatch.setattr(stream_lease, "_proc_starttime", lambda _pid: "999")
+    claim(tmp_path, "other", ["memory/state.py"])
+    leases = _read(tmp_path)["leases"]
+    assert "harness" not in leases
+    assert leases["other"]["pid"] == os.getpid()
+
+
 def test_live_pid_past_expires_at_is_not_stolen(tmp_path: Path) -> None:
     rec = claim(tmp_path, "harness", ["memory/"], ttl_s=7200)
     data = _read(tmp_path)
