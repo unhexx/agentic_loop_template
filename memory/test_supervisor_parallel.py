@@ -133,6 +133,15 @@ def test_run_parallel_two_streams_pr_ready(tmp_path, monkeypatch):
     assert result["terminal"] in (Terminal.PR_READY, Terminal.PR_READY_LOCAL, "PR_READY", "PR_READY_LOCAL")
     assert result["streams"]["harness"]["status"] in ("STREAM_READY", "MERGED")
     assert len(result["streams"]) == 2
+    from memory.validate_handoff import validate_handoff
+
+    saved = json.loads((hub / ".agent" / "last_handoff.json").read_text(encoding="utf-8"))
+    ok, errors = validate_handoff(saved, strict_done=True)
+    assert ok, errors
+    assert saved["role"] == "Reviewer"
+    assert saved["status"] == "DONE"
+    assert isinstance(saved["metrics"], dict)
+    assert "tests_failed" in saved["metrics"]
 
 
 def test_run_parallel_blocks_on_ownership(tmp_path, monkeypatch):

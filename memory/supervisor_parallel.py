@@ -27,6 +27,7 @@ from memory.stream_lease import (
 )
 from memory.streams import StreamPlan, provision_stream_worktrees, validate_stream_plans
 from memory.supervisor import Terminal, load_config, maybe_create_pr, run_loop, save_handoff
+from memory.validate_handoff import validate_handoff
 
 log = get_logger("memory.supervisor_parallel")
 
@@ -415,23 +416,26 @@ def run_parallel(
             "integration_branch": integration_branch,
         }
         _tick(payload)
-        save_handoff(
-            hub_workdir,
-            {
-                "handoff_to": "None",
-                "role": "Reviewer",
-                "current_phase": "finalization",
-                "cycle_number": 0,
-                "summary": f"parallel integration {integration_branch}: {list(stream_results)}",
-                "status": "DONE",
-                "confidence": 0.9,
-                "lessons_learned": ["parallel streams"],
-                "sync_waived": "integration PR path",
-                "process_tags": ["parallel_integration"],
-                "stream": "cross",
-                "merge_gate": "after-tests-green",
-            },
-        )
+        done = {
+            "handoff_to": "None",
+            "role": "Reviewer",
+            "current_phase": "finalization",
+            "cycle_number": 0,
+            "summary": f"parallel integration {integration_branch}: {list(stream_results)}"[:800],
+            "context_delta": "integration merged",
+            "status": "DONE",
+            "confidence": 0.9,
+            "lessons_learned": ["parallel streams"],
+            "metrics": {"tests_total": len(stream_results), "tests_failed": 0, "tool_calls": 0},
+            "sync_waived": "integration PR path",
+            "process_tags": ["parallel_integration"],
+            "stream": "cross",
+            "merge_gate": "after-tests-green",
+        }
+        ok, errors = validate_handoff(done, strict_done=True)
+        if not ok:
+            return _fail_blocked("parallel DONE rejected: " + "; ".join(errors))
+        save_handoff(hub_workdir, done)
 
         exit_code = 0 if final_term in (Terminal.PR_READY, Terminal.PR_READY_LOCAL) else 1
         return {
