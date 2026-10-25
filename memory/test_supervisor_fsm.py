@@ -245,6 +245,23 @@ def test_load_config_reads_project_config(tmp_path: Path):
     assert loaded["supervisor"]["max_cycles"] == 3
 
 
+def test_load_config_merges_example_under_local(tmp_path: Path):
+    agent = tmp_path / ".agent"
+    agent.mkdir()
+    (agent / "project_config.example.json").write_text(
+        json.dumps({"supervisor": {"adapter": "grok", "max_cycles": 5}, "proxy": {"mode": "required"}}),
+        encoding="utf-8",
+    )
+    (agent / "project_config.json").write_text(
+        json.dumps({"supervisor": {"adapter": "mock"}}),
+        encoding="utf-8",
+    )
+    loaded = load_config(tmp_path)
+    assert loaded["supervisor"]["adapter"] == "mock"
+    assert loaded["supervisor"]["max_cycles"] == 5
+    assert loaded["proxy"]["mode"] == "required"
+
+
 def test_load_config_falls_back_to_example(tmp_path: Path):
     agent = tmp_path / ".agent"
     agent.mkdir()

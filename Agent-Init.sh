@@ -33,10 +33,9 @@ fi
 # shellcheck disable=SC1091
 source .venv/bin/activate
 python -m pip install -U pip -q
-python -m pip install -e ".[dev]" \
-  || python -m pip install 'jsonschema>=4.18,<5' 'pytest>=8.0,<9'
-if ! python -c "import memory, memory.supervisor" >/dev/null 2>&1; then
-  export PYTHONPATH="${ROOT}${PYTHONPATH:+:$PYTHONPATH}"
+if ! python -m pip install -e ".[dev]"; then
+  log "editable install failed: pip install -e \".[dev]\""
+  exit 1
 fi
 
 python -m memory.proxy install-venv >/dev/null 2>&1 || python -m memory.proxy install-venv || true

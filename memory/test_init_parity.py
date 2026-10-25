@@ -31,11 +31,12 @@ def test_shared_cold_start_ritual():
         assert token in ps1, f"нет {token!r} в Agent-Init.ps1"
 
 
-def test_unix_editable_install_and_jsonschema_fallback():
+def test_unix_editable_install_fails_closed():
     sh = SH.read_text(encoding="utf-8")
     assert 'pip install -e ".[dev]"' in sh
-    assert "|| python -m pip install" in sh
-    assert "jsonschema" in sh
+    assert "editable install failed" in sh
+    assert "export PYTHONPATH" not in sh
+    assert "|| python -m pip install" not in sh
 
 
 def test_windows_editable_install_extras_syntax():

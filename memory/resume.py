@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Partial resume / error recovery (P7).
+Устаревший сбор контекста из last_handoff.json и LOOP_STATE.md.
 
-Восстанавливает контекст цикла из last_handoff.json и LOOP_STATE.
+Команда `supervisor resume` — это alias `run` и этот модуль не вызывает.
+Оставлен для старых тестов P7. Новый код должен читать state/handoff напрямую.
 """
 from __future__ import annotations
 
