@@ -775,14 +775,14 @@ def test_grok_adapter_calls_assert_ready(monkeypatch=None) -> None:
 
     def _no_spawn(*_a, **_k):
         called["subproc"] += 1
-        raise AssertionError("subprocess.run не должен вызываться до assert_ready")
+        raise AssertionError("run_cli не должен вызываться до assert_ready")
 
     orig = grok_mod.assert_ready
     orig_which = grok_mod.shutil.which
-    orig_run = grok_mod.subprocess.run
+    orig_run = grok_mod.run_cli
     grok_mod.assert_ready = _boom  # type: ignore[assignment]
     grok_mod.shutil.which = lambda _cmd: "/usr/bin/grok"  # type: ignore[assignment]
-    grok_mod.subprocess.run = _no_spawn  # type: ignore[assignment]
+    grok_mod.run_cli = _no_spawn  # type: ignore[assignment]
     try:
         ad = GrokAdapter({"command": "grok"})
         with tempfile.TemporaryDirectory() as tmp:
@@ -803,7 +803,7 @@ def test_grok_adapter_calls_assert_ready(monkeypatch=None) -> None:
     finally:
         grok_mod.assert_ready = orig
         grok_mod.shutil.which = orig_which
-        grok_mod.subprocess.run = orig_run
+        grok_mod.run_cli = orig_run
 
 
 def test_run_loop_grok_blocked_without_pxpipe() -> None:
@@ -1001,9 +1001,9 @@ def test_grok_adapter_off_does_not_pass_gateway_to_subprocess() -> None:
         return R()
 
     orig_which = grok_mod.shutil.which
-    orig_run = grok_mod.subprocess.run
+    orig_run = grok_mod.run_cli
     grok_mod.shutil.which = lambda _cmd: "/usr/bin/grok"  # type: ignore[assignment]
-    grok_mod.subprocess.run = _fake_run  # type: ignore[assignment]
+    grok_mod.run_cli = _fake_run  # type: ignore[assignment]
     try:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1027,7 +1027,7 @@ def test_grok_adapter_off_does_not_pass_gateway_to_subprocess() -> None:
             assert "AGENTIX_GATEWAY_URL" not in env
     finally:
         grok_mod.shutil.which = orig_which
-        grok_mod.subprocess.run = orig_run
+        grok_mod.run_cli = orig_run
 
 
 def test_workdir_beats_agentix_project_root() -> None:

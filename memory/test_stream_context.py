@@ -110,7 +110,7 @@ def test_grok_child_env_includes_stream(tmp_path, monkeypatch, clean_stream_env)
         "memory.adapters.grok.shutil.which", lambda _cmd: "/usr/bin/grok"
     )
     monkeypatch.setattr(
-        "memory.adapters.grok.subprocess.run", _FakeRun(stdout, captured)
+        "memory.adapters.grok.run_cli", _FakeRun(stdout, captured)
     )
     monkeypatch.setattr("memory.adapters.grok.assert_ready", lambda *a, **k: None)
     before = _stream_snapshot()
@@ -146,7 +146,7 @@ def test_cursor_passes_env(tmp_path, monkeypatch, clean_stream_env):
         "memory.adapters.cursor.shutil.which", lambda _cmd: "/usr/bin/cursor"
     )
     monkeypatch.setattr(
-        "memory.adapters.cursor.subprocess.run", _FakeRun(stdout, captured)
+        "memory.adapters.cursor.run_cli", _FakeRun(stdout, captured)
     )
     before = _stream_snapshot()
     ad = CursorAdapter({"command": "cursor"})

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import os
 import shutil
-import subprocess
 from pathlib import Path
 from typing import Optional
 
@@ -11,6 +10,7 @@ from memory.stream_context import apply_stream_env
 
 from .grok import extract_handoff
 from .persist import persist_role_handoff
+from .proc import CliTimeoutError, run_cli
 
 
 class CursorAdapter:
@@ -36,14 +36,10 @@ class CursorAdapter:
             raise RuntimeError(f"{self.command} not on PATH")
         cmd = [str(self.command), "-p", prompt]
         env = apply_stream_env(os.environ.copy())
-        r = subprocess.run(
-            cmd,
-            cwd=str(workdir),
-            capture_output=True,
-            text=True,
-            timeout=timeout_s,
-            env=env,
-        )
+        try:
+            r = run_cli(cmd, cwd=Path(workdir), timeout_s=timeout_s, env=env)
+        except CliTimeoutError:
+            raise RuntimeError(f"cursor timed out after {timeout_s}s") from None
         combined = (r.stdout or "") + "\n" + (r.stderr or "")
         if r.returncode != 0 and not combined.strip():
             raise RuntimeError(

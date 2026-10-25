@@ -8,12 +8,15 @@ from pathlib import Path
 import pytest
 
 from memory.adapters import get_adapter
+from memory.adapters.cursor import CursorAdapter
 from memory.adapters.grok import (
     HandoffExtractError,
+    GrokAdapter,
     extract_handoff,
     extract_json_object,
 )
 from memory.adapters.persist import persist_role_handoff
+from memory.adapters.proc import CliTimeoutError
 
 
 def test_extract_json_object_from_prose():
@@ -165,3 +168,40 @@ def test_greedy_garbage_raises_handoff_extract_error():
         pytest.fail("raw JSONDecodeError")
     except HandoffExtractError:
         pass
+
+
+def test_grok_timeout_uses_process_group(tmp_path, monkeypatch):
+    monkeypatch.setattr("memory.adapters.grok.shutil.which", lambda _cmd: "/usr/bin/grok")
+    monkeypatch.setattr("memory.adapters.grok.assert_ready", lambda *a, **k: None)
+
+    def _boom(*_a, **_k):
+        raise CliTimeoutError("timed out")
+
+    monkeypatch.setattr("memory.adapters.grok.run_cli", _boom)
+    with pytest.raises(RuntimeError, match="grok timed out after 5s"):
+        GrokAdapter({"command": "grok"}).run_role_turn(
+            role="Coder",
+            prompt="x",
+            handoff_in_path=None,
+            workdir=tmp_path,
+            timeout_s=5,
+        )
+
+
+def test_cursor_timeout_uses_process_group(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "memory.adapters.cursor.shutil.which", lambda _cmd: "/usr/bin/cursor"
+    )
+
+    def _boom(*_a, **_k):
+        raise CliTimeoutError("timed out")
+
+    monkeypatch.setattr("memory.adapters.cursor.run_cli", _boom)
+    with pytest.raises(RuntimeError, match="cursor timed out after 7s"):
+        CursorAdapter({"command": "cursor"}).run_role_turn(
+            role="Coder",
+            prompt="x",
+            handoff_in_path=None,
+            workdir=tmp_path,
+            timeout_s=7,
+        )

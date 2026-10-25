@@ -239,3 +239,7 @@ deploy/searxng/.cache/
 .secrets
 .vars
 .agent/local-pipeline-runs/
+
+# локальный мусор рабочего стола / черновики, не исходники
+.directory
+.write_test*

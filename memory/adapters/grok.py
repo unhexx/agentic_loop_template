@@ -6,7 +6,6 @@ import logging
 import os
 import re
 import shutil
-import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -15,6 +14,7 @@ from memory.stream_context import apply_stream_env
 from memory.validate_handoff import validate_handoff
 
 from .persist import persist_role_handoff
+from .proc import CliTimeoutError, run_cli
 
 log = logging.getLogger("memory.adapters")
 
@@ -166,16 +166,12 @@ class GrokAdapter:
         except Exception as exc:
             raise ProxyNotReady(f"proxy env: {exc}") from exc
         env = apply_stream_env(env)
-        # grok --help: -p/--single PROMPT for single-turn stdout; cwd via subprocess
+        # grok --help: -p/--single PROMPT for single-turn stdout
         cmd = [self.command, "-p", prompt]
-        r = subprocess.run(
-            cmd,
-            cwd=str(workdir),
-            capture_output=True,
-            text=True,
-            timeout=timeout_s,
-            env=env,
-        )
+        try:
+            r = run_cli(cmd, cwd=Path(workdir), timeout_s=timeout_s, env=env)
+        except CliTimeoutError:
+            raise RuntimeError(f"grok timed out after {timeout_s}s") from None
         combined = (r.stdout or "") + "\n" + (r.stderr or "")
         if r.returncode != 0 and not combined.strip():
             raise RuntimeError(
