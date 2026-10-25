@@ -14,8 +14,13 @@ RestartSec=2
 Environment=HOST=127.0.0.1
 Environment=PORT=8101
 Environment=PXPIPE_LOG=%h/.pxpipe-agy/events.jsonl
+Environment=PXPIPE_MAX_BODY=8388608
 WorkingDirectory=%h
 NoNewPrivileges=true
+ProtectSystem=strict
+PrivateTmp=true
+MemoryMax=512M
+ReadWritePaths=%h/.pxpipe-agy %h/.config/pxpipe-agy
 
 [Install]
 WantedBy=default.target
