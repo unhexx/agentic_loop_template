@@ -127,6 +127,43 @@ def load_state(path: Optional[Path] = None, *, agent_dir: Optional[Path] = None)
         return default_state()
 
 
+def _save_state_unlocked(
+    state: Dict[str, Any],
+    path: Path,
+    agent: Path,
+) -> None:
+    """Запись LOOP_STATE. Вызывающий уже держит agent_lock(name='state')."""
+    state = dict(state)
+    state["updated_at"] = _now_iso()
+    # Cap lists
+    deltas = list(state.get("recent_deltas") or [])
+    if len(deltas) > MAX_DELTAS:
+        # Archive overflow
+        overflow = deltas[:-MAX_DELTAS]
+        _append_history(
+            {"type": "deltas_overflow", "items": overflow, "ts": _now_iso()},
+            agent_dir=agent,
+        )
+        deltas = deltas[-MAX_DELTAS:]
+    state["recent_deltas"] = deltas
+    invest = list(state.get("open_invest") or [])
+    state["open_invest"] = invest[:MAX_OPEN_INVEST]
+
+    text = json.dumps(state, ensure_ascii=False, indent=2)
+    if len(text.encode("utf-8")) > MAX_WORKING_JSON_BYTES:
+        # Drop notes and trim command lists
+        gs = state.get("git_sync") or {}
+        if isinstance(gs, dict) and isinstance(gs.get("commands_run"), list):
+            gs["commands_run"] = gs["commands_run"][-3:]
+        state["notes"] = "truncated"
+        text = json.dumps(state, ensure_ascii=False, indent=2)
+
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(path)
+    _write_md_projection(state, agent_dir=agent)
+
+
 def save_state(
     state: Dict[str, Any],
     path: Optional[Path] = None,
@@ -137,35 +174,27 @@ def save_state(
     path = path or (agent / "LOOP_STATE.json")
     _ensure_dirs(agent)
     with agent_lock(agent, name="state"):
-        state = dict(state)
-        state["updated_at"] = _now_iso()
-        # Cap lists
-        deltas = list(state.get("recent_deltas") or [])
-        if len(deltas) > MAX_DELTAS:
-            # Archive overflow
-            overflow = deltas[:-MAX_DELTAS]
-            _append_history(
-                {"type": "deltas_overflow", "items": overflow, "ts": _now_iso()},
-                agent_dir=agent,
-            )
-            deltas = deltas[-MAX_DELTAS:]
-        state["recent_deltas"] = deltas
-        invest = list(state.get("open_invest") or [])
-        state["open_invest"] = invest[:MAX_OPEN_INVEST]
+        _save_state_unlocked(state, path, agent)
 
-        text = json.dumps(state, ensure_ascii=False, indent=2)
-        if len(text.encode("utf-8")) > MAX_WORKING_JSON_BYTES:
-            # Drop notes and trim command lists
-            gs = state.get("git_sync") or {}
-            if isinstance(gs, dict) and isinstance(gs.get("commands_run"), list):
-                gs["commands_run"] = gs["commands_run"][-3:]
-            state["notes"] = "truncated"
-            text = json.dumps(state, ensure_ascii=False, indent=2)
 
-        tmp = path.with_suffix(".json.tmp")
-        tmp.write_text(text, encoding="utf-8")
-        tmp.replace(path)
-        _write_md_projection(state, agent_dir=agent)
+def update_state(
+    patch: Optional[Dict[str, Any]] = None,
+    *,
+    agent_dir: Optional[Path] = None,
+    mutate: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """load → правка → write под одним agent_lock(name='state')."""
+    agent = _agent_dir(agent_dir)
+    _ensure_dirs(agent)
+    path = agent / "LOOP_STATE.json"
+    with agent_lock(agent, name="state"):
+        cur = _read_state_readonly(agent)
+        if mutate is not None:
+            mutate(cur)
+        if patch:
+            cur.update(patch)
+        _save_state_unlocked(cur, path, agent)
+        return cur
 
 
 def _write_md_projection(state: Dict[str, Any], *, agent_dir: Optional[Path] = None) -> None:
@@ -301,12 +330,16 @@ def snapshot(window: int = 3, *, agent_dir: Optional[Path] = None) -> Dict[str, 
 
 def append_delta(text: str, role: str = "", *, agent_dir: Optional[Path] = None) -> Dict[str, Any]:
     agent = _agent_dir(agent_dir)
-    st = load_state(agent_dir=agent)
+    if not (agent / "LOOP_STATE.json").is_file():
+        load_state(agent_dir=agent)
+    path = agent / "LOOP_STATE.json"
     entry = {"ts": _now_iso(), "role": role, "text": text.strip()[:500]}
-    deltas = list(st.get("recent_deltas") or [])
-    deltas.append(entry)
-    st["recent_deltas"] = deltas
-    save_state(st, agent_dir=agent)
+    with agent_lock(agent, name="state"):
+        st = _read_state_readonly(agent)
+        deltas = list(st.get("recent_deltas") or [])
+        deltas.append(entry)
+        st["recent_deltas"] = deltas
+        _save_state_unlocked(st, path, agent)
     _append_history({"type": "delta", **entry}, agent_dir=agent)
     return {"ok": True, "delta": entry}
 

@@ -103,19 +103,40 @@ def next_role(current_role: str, handoff: Dict[str, Any]) -> Next:
     return Terminal.BLOCKED
 
 
+def _merge_config(base: Dict[str, Any], overlay: Dict[str, Any]) -> Dict[str, Any]:
+    """Глубокое слияние: ключи overlay побеждают, вложенные объекты сливаются."""
+    merged = dict(base)
+    for key, value in overlay.items():
+        current = merged.get(key)
+        if isinstance(current, dict) and isinstance(value, dict):
+            merged[key] = _merge_config(current, value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def _read_config_file(path: Path) -> Optional[Dict[str, Any]]:
+    if not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        log.warning("load_config failed for %s: %s", path, exc)
+        return None
+    if isinstance(data, dict):
+        return data
+    return None
+
+
 def load_config(workdir: Path) -> Dict[str, Any]:
-    """Load .agent/project_config.json, falling back to example, else {}."""
+    """Локальный project_config поверх example. Битый локальный файл не затирает example."""
     workdir = Path(workdir)
-    for name in ("project_config.json", "project_config.example.json"):
-        p = workdir / ".agent" / name
-        if p.is_file():
-            try:
-                data = json.loads(p.read_text(encoding="utf-8"))
-                if isinstance(data, dict):
-                    return data
-            except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-                log.warning("load_config failed for %s: %s", p, exc)
-    return {}
+    agent = workdir / ".agent"
+    example = _read_config_file(agent / "project_config.example.json") or {}
+    local = _read_config_file(agent / "project_config.json")
+    if local is None:
+        return example
+    return _merge_config(example, local)
 
 
 def load_last_handoff(workdir: Path) -> Optional[Dict[str, Any]]:
@@ -630,9 +651,7 @@ def run_loop(
             return state_mod.load_state(agent_dir=agent)
 
         def _save(patch: Dict[str, Any]) -> None:
-            cur = _load()
-            cur.update(patch)
-            state_mod.save_state(cur, agent_dir=agent)
+            state_mod.update_state(patch, agent_dir=agent)
 
         while turns < max_turns:
             if (workdir / ".agent" / "STOP").exists():
@@ -786,14 +805,13 @@ def run_loop(
                     # Multi-cycle within one call: start next O→… from Orchestrator
                     role = "Orchestrator"
                     handoff = None
-                    cur = _load()
-                    _save(
-                        {
-                            "active_role": "Orchestrator",
-                            "status": "IN_PROGRESS",
-                            "cycle_number": int(cur.get("cycle_number") or 0) + 1,
-                        }
-                    )
+
+                    def _next_cycle(cur: Dict[str, Any]) -> None:
+                        cur["active_role"] = "Orchestrator"
+                        cur["status"] = "IN_PROGRESS"
+                        cur["cycle_number"] = int(cur.get("cycle_number") or 0) + 1
+
+                    state_mod.update_state(agent_dir=agent, mutate=_next_cycle)
                     continue
 
                 _save({"status": term.value, "active_role": role})

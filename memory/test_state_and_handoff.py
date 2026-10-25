@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import threading
 from pathlib import Path
 
 import pytest
@@ -144,6 +145,47 @@ def test_snapshot_agent_dir_without_chdir(tmp_path, monkeypatch):
     assert (agent / "LOOP_STATE.json").is_file()
     assert (agent / "LOOP_STATE.md").is_file()
     assert not (cwd / ".agent").exists()
+
+
+def test_concurrent_updates_do_not_drop_deltas(tmp_path):
+    agent = tmp_path / ".agent"
+    state_mod.save_state(state_mod.default_state(), agent_dir=agent)
+    # Ниже MAX_DELTAS, иначе хвост законно уезжает в history.
+    barrier = threading.Barrier(3)
+    errors: list[BaseException] = []
+
+    def add(text: str) -> None:
+        try:
+            barrier.wait(timeout=5)
+            state_mod.append_delta(text, role="Coder", agent_dir=agent)
+        except BaseException as exc:
+            errors.append(exc)
+
+    def patch() -> None:
+        try:
+            barrier.wait(timeout=5)
+            state_mod.update_state(
+                {"status": "IN_PROGRESS", "notes": "patched"},
+                agent_dir=agent,
+            )
+        except BaseException as exc:
+            errors.append(exc)
+
+    threads = [
+        threading.Thread(target=add, args=("one",)),
+        threading.Thread(target=add, args=("two",)),
+        threading.Thread(target=patch),
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=10)
+    assert errors == []
+    assert not any(thread.is_alive() for thread in threads)
+    st = state_mod.load_state(agent_dir=agent)
+    texts = {item["text"] for item in st["recent_deltas"]}
+    assert texts == {"one", "two"}
+    assert st["notes"] == "patched"
 
 
 def test_append_delta_agent_dir_writes_history_under_tmp(tmp_path, monkeypatch):
