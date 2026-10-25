@@ -233,6 +233,7 @@ __marimo__/
 .agent/jira-from-commits-state.json
 .agent/blackbox_prompt.txt
 .venv/
+node_modules/
 deploy/compose.env
 deploy/searxng/.cache/
 .secrets

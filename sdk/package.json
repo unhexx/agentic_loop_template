@@ -1,0 +1,24 @@
+{
+  "name": "agentix-cursor-sdk",
+  "private": true,
+  "version": "3.13.0",
+  "type": "module",
+  "description": "Local Cursor agent runner. Runtime deps ship in this package (including the zod peer).",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "agent": "npm run build && node dist/run.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "check-deps": "node scripts/check-deps.mjs"
+  },
+  "dependencies": {
+    "@cursor/sdk": "1.0.40",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3"
+  }
+}
