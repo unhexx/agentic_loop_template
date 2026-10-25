@@ -1,7 +1,7 @@
 {
   "name": "agentix-cursor-sdk",
   "private": true,
-  "version": "3.13.0",
+  "version": "3.14.0",
   "type": "module",
   "description": "Local Cursor agent runner. Runtime deps ship in this package (including the zod peer).",
   "engines": {

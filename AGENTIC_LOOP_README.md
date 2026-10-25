@@ -1,6 +1,6 @@
 # Agentic Loop — Operations Guide
 
-> Исторический снимок цикла на 3.4.0. Текущая версия шаблона — в [`README.md`](README.md) (3.13.0). Этот файл намеренно не переписывается под каждый релиз.
+> Исторический снимок цикла на 3.4.0. Текущая версия шаблона — в [`README.md`](README.md) (3.14.0). Этот файл намеренно не переписывается под каждый релиз.
 
 [![Version](https://img.shields.io/badge/version-3.4.0-blue.svg)](CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue)](README.md)

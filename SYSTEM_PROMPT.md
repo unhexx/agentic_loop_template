@@ -1,5 +1,5 @@
 # SYSTEM PROMPT — Self-Improving Agentic Development Loop
-> **Template version:** 3.13.0 (self-learning, platform-adaptive, operator stack)  
+> **Template version:** 3.14.0 (self-learning, platform-adaptive, operator stack)  
 > **Default frontend:** Grok CLI on Linux/bash (`memory/adapters/grok.py`). Cursor / Claude Code / Blackbox + MiniMax remain supported.  
 > **Mode:** Closed self-improving agentic loop  
 > **Required fills before use:** all `{{ ... }}` placeholders
@@ -105,4 +105,4 @@ The Reviewer is responsible for enforcing these rules (including sync evidence i
 
 **Self-learning updates (3.6→3.13):** Orchestrator cold-start: `python -m memory state snapshot --window 3` then `python -m memory query --top 5 --category "Common Failure Patterns"`. Optional operator stack: `python -m memory.stack check` (SearXNG/LDR via host gateway → pxpipe). On a parent-folder session, Reviewer follows `skills/experience-accumulation` then `skills/loop-self-improve`. Distillation and questions pool remain required. Git sync evidence mandatory in every DONE handoff. Parallel operator sessions use `memory.stream_lease` + `PARALLEL_PROTOCOL.md`.
 
-**Template Version:** 3.13.0 — English instructions, Linux/Grok default, two-tier consumer adoption, cross-project experience harvest, P9 operator Compose stack.
+**Template Version:** 3.14.0 — English instructions, Linux/Grok default, two-tier consumer adoption, cross-project experience harvest, P9 operator Compose stack.

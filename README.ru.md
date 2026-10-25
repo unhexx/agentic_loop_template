@@ -1,6 +1,6 @@
 # Agentix
 
-[![Version](https://img.shields.io/badge/version-3.13.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.14.0-blue?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](docs/ru/getting-started.md)
 [![Platform](https://img.shields.io/badge/platform-Linux_%7C_macOS_%7C_Windows-lightgrey?style=flat-square)](docs/cross-platform.md)
@@ -443,4 +443,4 @@ bash scripts/agentix-init.sh /path/to/your-project \
 
 ## Лицензия
 
-[MIT](LICENSE) · **Agentix 3.13.0** · Поддерживается **exception.expert**
+[MIT](LICENSE) · **Agentix 3.14.0** · Поддерживается **exception.expert**

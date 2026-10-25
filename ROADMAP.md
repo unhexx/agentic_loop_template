@@ -1,10 +1,10 @@
 # Agentix Public Roadmap
 
-[![Version](https://img.shields.io/badge/version-3.13.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.14.0-blue?style=flat-square)](CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](README.md)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen?style=flat-square)](docs/README.md)
 
-**Status Date:** 2026-10-25 · **Initiative:** Business Efficiency — **COMPLETE** · **P9 Operator Compose Stack** — **COMPLETE (v3.13.0)** · **P11 Local MCP SSOT** — **IN TREE (Unreleased)** · **Next:** local closeout only; VERSION stays 3.13.0; P10 stays Planned until geo-eligible
+**Status Date:** 2026-10-25 · **Initiative:** Business Efficiency — **COMPLETE** · **P9 Operator Compose Stack** — **COMPLETE (v3.13.0)** · **P11 Local MCP SSOT** — **v3.14.0** · **Next:** P10 stays Planned until geo-eligible
 
 ---
 
@@ -68,9 +68,9 @@ Spec: [2026-09-08-p9-operator-stack-design.md](docs/superpowers/specs/2026-09-08
 
 ---
 
-## P11 — Local MCP SSOT (in tree, Unreleased)
+## P11 — Local MCP SSOT (v3.14.0)
 
-Port of hub `memory/local_mcp` into this template so consumers get stdlib MCP tools + `run_local_pipeline` without a second memory tree. This closeout does not cut a new version.
+Port of hub `memory/local_mcp` into this template so consumers get stdlib MCP tools + `run_local_pipeline` without a second memory tree. Shipped in v3.14.0 with `agentix-doctor` and the local supervisor hooks. P10 stays Planned.
 
 | ID | Task | Status |
 |----|------|--------|
@@ -124,6 +124,7 @@ The call is `agy --print` with `modelProvider` `gemini` and `GEMINI_API_KEY` set
 
 | Version | Highlight |
 |---------|-----------|
+| **v3.14.0** | P11 local MCP, operator doctor, `adapters_by_role`, stack check on start, opt-in harvest on DONE; P10 stays Planned |
 | **v3.13.0** | P9: operator Compose stack (SearXNG JSON, LDR LangGraph, optional Ollama); live LLM still pxpipe |
 | **v3.12.0** | P8-10: optional embeddings extra; hybrid 0.2 cosine; fail-open substring |
 | **v3.11.4** | P8-12: thin loaders + `memory/meta/` + `memory/experience/` + Init.ps1 dotsource |

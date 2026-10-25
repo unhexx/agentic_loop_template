@@ -36,4 +36,4 @@ Host agent tools (`read_file`, `search_replace`, `run_terminal_command`, `grep`,
 4. Full multi-repo `gh` verbatim blocks are **opt-in** (`STRICT_MULTI_REPO=1` or `project_config.git.strict_multi_repo`).  
 5. UTF-8 for all handoff and log files.
 
-**Template version:** see `VERSION` (3.13.0+). Live leader adapter is Grok+pxpipe; do not use Blackbox for new routing.
+**Template version:** see `VERSION` (3.14.0+). Live leader adapter is Grok+pxpipe; do not use Blackbox for new routing.

@@ -1,6 +1,6 @@
 # Agentix
 
-[![Version](https://img.shields.io/badge/version-3.13.0-blue?style=flat-square)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.14.0-blue?style=flat-square)](CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](docs/getting-started.md)
 [![Platform](https://img.shields.io/badge/platform-Linux_%7C_macOS_%7C_Windows-lightgrey?style=flat-square)](docs/cross-platform.md)
@@ -447,4 +447,4 @@ The command symlinks this repo, creates `.venv`, installs `.[dev]`, and fills `A
 
 ## License
 
-[MIT](LICENSE) · **Agentix 3.13.0** · Maintained by **exception.expert**
+[MIT](LICENSE) · **Agentix 3.14.0** · Maintained by **exception.expert**

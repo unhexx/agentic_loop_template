@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [3.14.0] - 2026-10-25
+
 ### Added
 - TypeScript Cursor SDK runner in `sdk/` (`@cursor/sdk` 1.0.40). `zod` is a direct dependency. `package-lock.json` pins the SDK and the platform packages. Local agent; default model `composer-2.5`.
 - Local client-side xAI Tools as separate repositories (`tool-code-execution`, `tool-collections-search`, `tool-browse-page`, `tool-web-search`, `tool-view-image`, `tool-mcp-bridge`, `tool-x-search`). `tools/select.py --intent xai`, `tools/blocks/common/xai_tools.md`, overlay `deploy/xai-local-tools.compose.yaml` (loopback, cap_drop ALL), `docs/xai-local-tools.md`. X search and view_x_video stay xAI server-side; the local facade refuses by default.
@@ -16,8 +18,8 @@
 - Root `Jenkinsfile` mirroring GitHub Actions harness + stdlib-collect (Bitbucket Jenkins Test configuration). Contract: `memory/test_ci_parity.py`.
 
 ### Changed
-- Living plans and TOP10 describe the in-tree line; VERSION unchanged.
-- `SYSTEM_PROMPT.md` template version → 3.13.0; consumer-starter gitignore SSOT symlink without trailing slash; knowledge readonly + non-mutating state snapshot (hub parity for MCP).
+- Living plans and TOP10 describe the in-tree line. `VERSION` → 3.14.0. ROADMAP: milestone v3.14.0 for P11, doctor, and local tools; P10 stays Planned.
+- `SYSTEM_PROMPT.md` template version → 3.14.0; consumer-starter gitignore SSOT symlink without trailing slash; knowledge readonly + non-mutating state snapshot (hub parity for MCP).
 
 ### Fixed
 - agy-pxpipe recipe matches the live warp path. The CLI models are `gemini-3.8-flash-*`. Compression stays on `:8101` (`scripts/pxpipe-agy/proxy.mjs`). The wrapper does not set `GOOGLE_GEMINI_BASE_URL` or `PORT`. `shim.py` is not the inbound service. P10 still must not call this path.

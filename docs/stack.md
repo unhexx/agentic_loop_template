@@ -1,7 +1,7 @@
 # Operator Compose stack
 
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](../README.md)
-[![Version](https://img.shields.io/badge/version-3.13.0-blue?style=flat-square)](../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.14.0-blue?style=flat-square)](../CHANGELOG.md)
 
 Local Deep Research–style tooling for Agentix: **SearXNG** (JSON metasearch, always on with the project), optional **Local Deep Research** (LangGraph agent), optional **Ollama**. Live model calls stay on the existing path:
 

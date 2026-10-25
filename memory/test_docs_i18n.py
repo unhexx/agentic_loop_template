@@ -29,10 +29,10 @@ def test_version_anchors_and_cli_names():
     assert "agentix-local-mcp" in readme
     assert "paste-prompt" in readme
     memory_readme = (REPO / "memory" / "README.md").read_text(encoding="utf-8")
-    assert "version-3.13.0" in memory_readme
+    assert "version-3.14.0" in memory_readme
     assert "agentic_loop_template.memory" not in memory_readme
     proxy = (REPO / "docs" / "proxy.md").read_text(encoding="utf-8")
-    assert "version-3.13.0" in proxy
+    assert "version-3.14.0" in proxy
     historical = (REPO / "AGENTIC_LOOP_README.md").read_text(encoding="utf-8")
     assert "Исторический снимок" in historical
     assert "version-3.4.0" in historical

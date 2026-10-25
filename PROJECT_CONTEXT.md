@@ -8,16 +8,16 @@
 |-----------|-------|
 | **Project** | Agentix (agentic_loop_template) |
 | **Goal** | Self-improving agentic dev loop template |
-| **Version** | 3.13.0 |
-| **Initiative** | P9 is complete on main. P11 is in tree, unreleased, at 3.13.0. |
+| **Version** | 3.14.0 |
+| **Initiative** | P9 is complete on main. P11, doctor, and local tools are 3.14.0. P10 stays Planned. |
 
 ## Current Status
 
 | Field | Value |
 |-------|-------|
-| **Cycle** | Unreleased closeout, local, on main, not a tag |
-| **Phase** | Local closeout on main |
-| **Status** | On main. Not a tag. |
+| **Cycle** | 3.14.0 |
+| **Phase** | Released on main |
+| **Status** | v3.14.0 on this commit. |
 | **Confidence** | 0.9 |
 
 ## Final Deliverables
@@ -28,4 +28,4 @@
 
 ## Reviewer Notes
 
-Control plane stays on host loopback. Ollama is not the default LLM (pxpipe/Grok is). P9 is already on main. Do not revive the old P9 feature branch. Do not tag. Do not push.
+Control plane stays on host loopback. Ollama is not the default LLM (pxpipe/Grok is). P9 is already on main. Do not revive the old P9 feature branch. P10 stays parked.
