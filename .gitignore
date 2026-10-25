@@ -236,6 +236,7 @@ __marimo__/
 node_modules/
 deploy/compose.env
 deploy/searxng/.cache/
+deploy/searxng/settings.local.yml
 .secrets
 .vars
 .agent/local-pipeline-runs/

@@ -23,7 +23,7 @@
 ## Содержание
 
 - [Быстрый старт](#быстрый-старт)
-- [pxpipe для agy (Gemini 3.7 Flash)](#pxpipe-для-agy-gemini-37-flash)
+- [pxpipe для agy (Gemini 3.8 Flash)](#pxpipe-для-agy-gemini-38-flash)
 - [Как это устроено](#как-это-устроено)
 - [Пример: один полный цикл](#пример-один-полный-цикл)
 - [Инструменты CLI](#инструменты-cli)
@@ -45,7 +45,7 @@
 |------------|--------|
 | Python | 3.10+ |
 | Git | любая свежая |
-| Фронтенд агента | [Grok CLI](docs/multi-frontend.md) (English) (по умолчанию на этом хосте), Cursor, Claude Code, Blackbox |
+| Фронтенд агента | [Grok CLI](docs/multi-frontend.md) (English) (по умолчанию на этом хосте), Cursor, Blackbox. Claude Code — вставка промпта, не адаптер |
 
 ### 1. Bootstrap (выберите платформу)
 
@@ -109,7 +109,7 @@ PLAN + SPEC: OK
 
 ### 3. Запуск цикла агента
 
-1. Откройте проект в **Grok**, **Cursor**, **Claude Code** или **Blackbox**.
+1. Откройте проект в **Grok**, **Cursor** или **Blackbox**. Claude Code получает тот же промпт вручную: это не адаптер супервизора.
 2. Вставьте содержимое [`prompts/short_orchestrator_prompt.md`](prompts/short_orchestrator_prompt.md) как **первое сообщение**.
 3. Агент стартует как **Orchestrator**, читает `.agent/PLAN.md` и начинает цикл.
 
@@ -317,12 +317,18 @@ python -m memory.playbooks export --format hub
 | `python -m memory.knowledge query --q "…" --category playbook` | Локальный SQLite knowledge (ingest-docs / upsert / stats) |
 | `python -m memory.proxy health\|serve\|stats` | Прокси запросов: фронт pxpipe, шлюз `:8110`, статистика токенов |
 | `python -m memory.stack check` | Контракт `deploy/compose.yaml` (loopback, профили, JSON) |
+| `agentix-doctor` / `python -m memory.doctor` | Здоровье прокси, порты, контракт стека |
+| `agentix-local-mcp` / `python -m memory.local_mcp` | Локальные MCP-инструменты в рабочем каталоге оператора |
 | `bash scripts/agentix-stack.sh up` | SearXNG на `127.0.0.1:8080`; `--research` добавляет LDR через шлюз→pxpipe |
 | `python -m memory.stack search --q "…" --json` | Локальный JSON-клиент SearXNG |
 | `agy-pxpipe --model gemini-3.8-flash-high --print '…'` | Опциональный путь Antigravity; см. [pxpipe для agy](#pxpipe-для-agy-gemini-38-flash) |
 | `python -m memory.meta_harvester export-sft` | Локальный SFT JSONL из золотых траекторий DONE (без GPU) |
 
-Супервизор гоняет ходы O→C→T→R, валидирует handoff и на `PR_READY` открывает PR через `gh pr create` (`main` не мержит). Для локальных/CI прогонов — `--no-pr`. Конфиг лежит в `supervisor` внутри `.agent/project_config.json` (см. `project_config.example.json`).
+Супервизор гоняет ходы O→C→T→R. Debugger входит только при `tests_failed > 0` или `handoff_to == Debugger`. На `PR_READY` открывает PR через `gh pr create` (`main` не мержит). Для локальных/CI прогонов — `--no-pr`. Конфиг лежит в `supervisor` внутри `.agent/project_config.json` (см. `project_config.example.json`).
+
+`model_routing` — совет в тексте промпта. Супервизор сам модель по числу раундов не переключает. `auto_harvest_on_done` включается только явным `true`.
+
+Ядро — супервизор, JSON-handoff, mock-адаптер и состояние в `.agent/`. Прокси, дашборд, local MCP и Compose-стек необязательны. `sdk/` — экспериментальный раннер Cursor, это не команда адаптера `cursor` по умолчанию.
 
 Полная документация слоя памяти: [`memory/README.md`](memory/README.md) (English).
 
@@ -349,7 +355,7 @@ v1 **не** слушает IP tailnet. TeleGrok 0.1.0 не поставляет 
 | **Контекст** | Ограниченный LOOP_STATE, гейт `context_budget` (лимиты супервизора из config/env), компрессор по правилам, локальный SQLite knowledge, [прокси запросов](docs/proxy.md) (English) (**pxpipe по умолчанию** + шлюз Agentix) |
 | **Параллельные потоки** | `run-parallel` с `owned_paths` + git worktree; по умолчанию serial, опционально `--concurrent`, один интеграционный PR |
 | **Кросс-платформа** | `Agent-Init.ps1` + `Agent-Init.sh`, платформенные промпты |
-| **Несколько фронтендов** | Адаптеры Grok (по умолчанию), Cursor, Claude Code, Blackbox |
+| **Несколько фронтендов** | Адаптеры Grok (по умолчанию), Cursor, Blackbox, mock. Claude Code — вставка промпта |
 | **Harvest опыта** | Скан соседних `AGENTS.md` / playbook; `audit` + `cycle` self-improve |
 | **Продуктизация** | сайт `docs/`, consumer-starter, Agentix Hub |
 | **Enterprise** | Audit log, образцы policy, GitHub Actions / Jenkinsfile |

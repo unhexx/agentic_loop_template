@@ -121,7 +121,8 @@ def test_searxng_settings_beyond_validator():
     assert "- html" in text
     assert "- json" in text
     assert 'secret_key: "ultrasecretkey"' not in text
-    assert "agentix-local-dev-not-ultrasecretkey" in text
+    assert "agentix-local-dev-not-ultrasecretkey" not in text
+    assert "CHANGE_ME_ON_STACK_UP" in text
 
 
 def test_searxng_secret_is_settings_not_env():
@@ -136,7 +137,7 @@ def test_searxng_volumes_named_and_readonly_config():
     text = COMPOSE.read_text(encoding="utf-8")
     assert "./deploy/searxng:/etc/searxng" not in text
     assert "searxng_data:/etc/searxng" in text
-    assert "settings.yml:/etc/searxng/settings.yml:ro" in text
+    assert "settings.local.yml:/etc/searxng/settings.yml:ro" in text
     assert "limiter.toml:/etc/searxng/limiter.toml:ro" in text
 
 

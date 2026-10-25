@@ -23,7 +23,7 @@ Maintained by [exception.expert](https://exception.expert).
 ## Table of Contents
 
 - [Quick Start](#quick-start)
-- [pxpipe for agy (Gemini 3.7 Flash)](#pxpipe-for-agy-gemini-37-flash)
+- [pxpipe for agy (Gemini 3.8 Flash)](#pxpipe-for-agy-gemini-38-flash)
 - [How It Works](#how-it-works)
 - [Example: One Full Cycle](#example-one-full-cycle)
 - [CLI Tools](#cli-tools)
@@ -45,7 +45,7 @@ Maintained by [exception.expert](https://exception.expert).
 |-------------|---------|
 | Python | 3.10+ |
 | Git | any recent |
-| Agent frontend | [Grok CLI](docs/multi-frontend.md) (default on this host), Cursor, Claude Code, Blackbox |
+| Agent frontend | [Grok CLI](docs/multi-frontend.md) (default on this host), Cursor, Blackbox. Claude Code is a paste-prompt, not an adapter |
 
 ### 1. Bootstrap (choose your platform)
 
@@ -109,7 +109,7 @@ PLAN + SPEC: OK
 
 ### 3. Launch the agent loop
 
-1. Open your project in **Grok**, **Cursor**, **Claude Code**, or **Blackbox**.
+1. Open your project in **Grok**, **Cursor**, or **Blackbox**. Claude Code gets the same prompt pasted by hand; it is not a supervisor adapter.
 2. Paste the contents of [`prompts/short_orchestrator_prompt.md`](prompts/short_orchestrator_prompt.md) as the **first message**.
 3. The agent starts as **Orchestrator**, reads `.agent/PLAN.md`, and begins the cycle.
 
@@ -317,12 +317,18 @@ python -m memory.playbooks export --format hub
 | `python -m memory.knowledge query --q "…" --category playbook` | Local SQLite knowledge (ingest-docs / upsert / stats) |
 | `python -m memory.proxy health\|serve\|stats` | Request proxy: pxpipe front, gateway `:8110`, token stats |
 | `python -m memory.stack check` | Validate `deploy/compose.yaml` contract (loopback, profiles, JSON) |
+| `agentix-doctor` / `python -m memory.doctor` | Proxy health, port ledger, stack contract |
+| `agentix-local-mcp` / `python -m memory.local_mcp` | Local MCP tools for the operator's workdir |
 | `bash scripts/agentix-stack.sh up` | SearXNG on `127.0.0.1:8080`; `--research` adds LDR via gateway→pxpipe |
 | `python -m memory.stack search --q "…" --json` | Local SearXNG JSON client |
 | `agy-pxpipe --model gemini-3.8-flash-high --print '…'` | Optional Antigravity path; see [pxpipe for agy](#pxpipe-for-agy-gemini-38-flash) |
 | `python -m memory.meta_harvester export-sft` | Local SFT JSONL from golden DONE trajectories (no GPU) |
 
-Supervisor drives O→C→T→R turns, validates handoffs, and on `PR_READY` opens a PR via `gh pr create` (never merges to `main`). Use `--no-pr` for local/CI dry runs. Config lives under `supervisor` in `.agent/project_config.json` (see `project_config.example.json`).
+Supervisor drives O→C→T→R turns. Debugger runs only when `tests_failed > 0` or `handoff_to` is Debugger. On `PR_READY` it opens a PR via `gh pr create` (never merges to `main`). Use `--no-pr` for local/CI dry runs. Config lives under `supervisor` in `.agent/project_config.json` (see `project_config.example.json`).
+
+`model_routing` is advisory text in the role prompt. The supervisor does not switch models when a round count is hit. `auto_harvest_on_done` runs only when that flag is explicitly `true`.
+
+The core loop is the supervisor, the JSON handoff, the mock adapter, and `.agent/` state. The request proxy, dashboard, local MCP, and Compose stack are optional. `sdk/` is an experimental Cursor runner and is not the default `cursor` adapter command.
 
 Full memory layer docs: [`memory/README.md`](memory/README.md).
 
@@ -350,7 +356,7 @@ v1 does **not** listen on a tailnet IP. TeleGrok 0.1.0 does not ship runtime Tai
 | **Operator stack** | Compose profiles: SearXNG JSON, optional LDR (LangGraph), optional unpublished Ollama; [docs/stack.md](docs/stack.md) |
 | **Parallel streams** | `run-parallel` with `owned_paths` + git worktrees; serial default, opt-in `--concurrent`, one integration PR |
 | **Cross-platform** | `Agent-Init.ps1` + `Agent-Init.sh`, platform-adaptive prompts |
-| **Multi-frontend** | Grok (default), Cursor, Claude Code, Blackbox adapters |
+| **Multi-frontend** | Adapters: Grok (default), Cursor, Blackbox, mock. Claude Code is a paste-prompt |
 | **Experience harvest** | Scan sibling `AGENTS.md` / playbooks; `audit` + `cycle` self-improve |
 | **Productization** | `docs/` site, consumer-starter, Agentix Hub |
 | **Enterprise** | Audit log, policy samples, GitHub Actions / Jenkinsfile |

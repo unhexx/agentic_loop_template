@@ -37,7 +37,26 @@ if [[ ! -f "$ENV_FILE" && -f "$ENV_EX" ]]; then
   echo "wrote $ENV_FILE from example" >&2
 fi
 
+ensure_searxng_local() {
+  local src="$ROOT/deploy/searxng/settings.yml"
+  local dst="$ROOT/deploy/searxng/settings.local.yml"
+  if [[ -f "$dst" ]] && ! grep -q 'CHANGE_ME_ON_STACK_UP' "$dst"; then
+    return 0
+  fi
+  python3 - "$src" "$dst" <<'PY'
+import pathlib, secrets, sys
+src, dst = sys.argv[1:]
+text = pathlib.Path(src).read_text(encoding="utf-8")
+key = secrets.token_hex(32)
+path = pathlib.Path(dst)
+path.write_text(text.replace("CHANGE_ME_ON_STACK_UP", key), encoding="utf-8")
+path.chmod(0o600)
+PY
+  echo "wrote $dst" >&2
+}
+
 dc() {
+  ensure_searxng_local
   local args=(docker compose -f "$COMPOSE_FILE" --project-directory "$ROOT")
   if [[ -f "$ENV_FILE" ]]; then
     args+=(--env-file "$ENV_FILE")

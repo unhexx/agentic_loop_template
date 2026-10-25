@@ -1,6 +1,6 @@
 # Agentic Loop Memory System
 
-[![Version](https://img.shields.io/badge/version-3.10.1-blue?style=flat-square)](../CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.13.0-blue?style=flat-square)](../CHANGELOG.md)
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](../README.md)
 [![Architecture](https://img.shields.io/badge/docs-architecture-green?style=flat-square)](../docs/architecture.md)
 
@@ -32,7 +32,7 @@ Example for this repo:
 - The user's `X:\LocalRepo\your-project` and Grok's `C:\Users\ROOT\.grok\worktrees\...` automatically see the same memory (once the `.md` file exists in the home directory).
 - Different remotes (forks, different orgs) get separate memory files — correct isolation.
 
-Run `python -m agentic_loop_template.memory info` (or the PS1) to see the ID and paths for the current workspace.
+Run `python -m memory info` (or the PS1) to see the ID and paths for the current workspace.
 
 ## Request proxy (`memory.proxy`, v3.7)
 
@@ -81,11 +81,11 @@ Scans `AGENTS.md`, playbooks, living plans, LOOP_STATE drift — not only `LESSO
 
 New helper for non-blocking operation when external clarifications are needed:
 
-- `python -m agentic_loop_template.memory.questions_collector append --question "..." --context "..." --cycle 12 --source_role orchestrator`
-- `python -m agentic_loop_template.memory.questions_collector list`
-- `python -m agentic_loop_template.memory.questions_collector check-escalate --cycle 15`
-- `python -m agentic_loop_template.memory.questions_collector resolve --ids Q-007 --notes "Answer from PO: use Win10 + Arch only for demo." --by product_owner`
-- `python -m agentic_loop_template.memory.questions_collector sync-handoff --handoff .agent/last_handoff.json --cycle 15`
+- `python -m memory.questions_collector append --question "..." --context "..." --cycle 12 --source_role orchestrator`
+- `python -m memory.questions_collector list`
+- `python -m memory.questions_collector check-escalate --cycle 15`
+- `python -m memory.questions_collector resolve --ids Q-007 --notes "Answer from PO: use Win10 + Arch only for demo." --by product_owner`
+- `python -m memory.questions_collector sync-handoff --handoff .agent/last_handoff.json --cycle 15`
 
 See: DEVELOPMENT_STANDARDS.md §10, .agent/QUESTIONS_POOL.md (human view for PO/PM), project_config.example.json, HANDOFF_SCHEMA.md.
 
@@ -106,15 +106,15 @@ The collector maintains .agent/QUESTIONS_POOL.json (state) + auto .md report. Ca
 
 ```powershell
 # После успешного Reviewer-цикла (если качество позволяет по конфигу)
-& ".\.venv\Scripts\python.exe" -m agentic_loop_template.memory.meta_harvester harvest `
+& ".\.venv\Scripts\python.exe" -m memory.meta_harvester harvest `
     --handoff .agent/last_handoff.json --cycle 17 --outcome DONE
 
 # Анализ и генерация предложений
-& ".\.venv\Scripts\python.exe" -m agentic_loop_template.memory.meta_harvester analyze --recent 5
-& ".\.venv\Scripts\python.exe" -m agentic_loop_template.memory.meta_harvester propose --limit 3
+& ".\.venv\Scripts\python.exe" -m memory.meta_harvester analyze --recent 5
+& ".\.venv\Scripts\python.exe" -m memory.meta_harvester propose --limit 3
 
 # Применение безопасных (dry-run по умолчанию)
-& ".\.venv\Scripts\python.exe" -m agentic_loop_template.memory.meta_harvester apply-safe --dry-run
+& ".\.venv\Scripts\python.exe" -m memory.meta_harvester apply-safe --dry-run
 ```
 
 **Хранение:**
@@ -187,8 +187,8 @@ $mem.patterns.'Common Failure Patterns'   # review before writing SPRINTPLAN
 Direct Python (when you have already activated the venv or are inside a tool that gives you the full path):
 
 ```powershell
-& ".\\.venv\\Scripts\\python.exe" -m agentic_loop_template.memory snapshot
-& ".\\.venv\\Scripts\\python.exe" -m agentic_loop_template.memory query --top 3
+& ".\\.venv\\Scripts\\python.exe" -m memory snapshot
+& ".\\.venv\\Scripts\\python.exe" -m memory query --top 3
 ```
 
 ---
@@ -196,7 +196,7 @@ Direct Python (when you have already activated the venv or are inside a tool tha
 ## Python API (for advanced use or future tools)
 
 ```python
-from agentic_loop_template.memory import (
+from memory import (
     get_workspace_id,
     memory_paths,
     read_memory,
