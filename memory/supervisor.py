@@ -51,38 +51,56 @@ _TERMINAL_STATE_STATUSES = frozenset(
     {
         Terminal.PR_READY.value,
         Terminal.PR_READY_LOCAL.value,
-        Terminal.STOPPED.value,
         Terminal.STOPPED_LIMIT.value,
         "DONE",
     }
 )
+_ALLOWED_HANDOFF = {
+    "Orchestrator": {"Coder"},
+    "Coder": {"Tester"},
+    "Tester": {"Reviewer", "Debugger"},
+    "Debugger": {"Tester"},
+    "Reviewer": {"Orchestrator"},
+}
+_DEFAULT_CHAIN = {
+    "Orchestrator": "Coder",
+    "Coder": "Tester",
+    "Debugger": "Tester",
+    "Reviewer": "Orchestrator",
+}
+
+
+def _tests_failed(metrics: Any) -> int:
+    if not isinstance(metrics, dict):
+        return 0
+    raw = metrics.get("tests_failed", 0)
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return 0
 
 
 def next_role(current_role: str, handoff: Dict[str, Any]) -> Next:
     status = (handoff.get("status") or "").upper()
     if status == "BLOCKED":
         return Terminal.BLOCKED
-    if current_role == "Reviewer" and status == "DONE":
-        return Terminal.PR_READY
+    if status == "DONE":
+        if current_role == "Reviewer":
+            return Terminal.PR_READY
+        return Terminal.BLOCKED
     if current_role == "Tester":
-        metrics = handoff.get("metrics") or {}
-        failed = int(metrics.get("tests_failed") or 0)
-        if failed > 0:
-            return "Debugger"
-        to = handoff.get("handoff_to") or "Reviewer"
-        if to == "Debugger":
+        failed = _tests_failed(handoff.get("metrics"))
+        to = handoff.get("handoff_to")
+        if failed > 0 or to == "Debugger":
             return "Debugger"
         return "Reviewer"
     to = handoff.get("handoff_to")
-    if to and to != "None":
+    allowed = _ALLOWED_HANDOFF.get(current_role, set())
+    if to in allowed:
         return str(to)
-    chain = {
-        "Orchestrator": "Coder",
-        "Coder": "Tester",
-        "Debugger": "Tester",
-        "Reviewer": "Orchestrator",
-    }
-    return chain.get(current_role, Terminal.BLOCKED)
+    if to in (None, "", "None"):
+        return _DEFAULT_CHAIN.get(current_role, Terminal.BLOCKED)
+    return Terminal.BLOCKED
 
 
 def load_config(workdir: Path) -> Dict[str, Any]:
@@ -282,6 +300,7 @@ def build_role_prompt(
     role: str,
     handoff_in: Optional[Dict[str, Any]],
     workdir: Path,
+    retry_note: str = "",
 ) -> str:
     """
     Assemble cold prompt for one role turn:
@@ -352,6 +371,9 @@ def build_role_prompt(
                     f"{debug_escalation.get('provider', '')}/{debug_escalation['model']}\n"
                 )
 
+    retry = ""
+    if retry_note:
+        retry = "\n## Retry\nFix the previous attempt. " + str(retry_note)[:2000] + "\n"
     prompt = (
         f"You are the **{role}** in the Agentix loop. "
         "Driven by supervisor — do not wait for human «продолжай».\n"
@@ -359,7 +381,7 @@ def build_role_prompt(
         "(HANDOFF_SCHEMA / schemas/handoff.schema.json / last_handoff).\n"
         "Do NOT read .agent/history/* archives. "
         "Use tools/select.py for tools (do not inline full tool docs).\n\n"
-        f"{body}\n{routing_note}{prev}\n## State snapshot\n{snap}\n{knowledge}"
+        f"{body}\n{routing_note}{prev}\n## State snapshot\n{snap}\n{knowledge}{retry}"
     )
     # Забор после compress: иначе компрессор его выкинет. Запас — FENCE_OVERHEAD_CHARS.
     return _maybe_compress_prompt(prompt, workdir) + fence_block()
@@ -507,8 +529,9 @@ def run_loop(
     Drive role turns via adapter until PR_READY / BLOCKED / STOP* terminal.
 
     ``max_cycles`` is the number of PR_READY completions allowed in this call
-    (default 1 full O→C→T→R then stop). Inner turns are capped by
-    ``max_turns = max(20, max_cycles * 8)``.
+    (default 5). Inner turns are capped by
+    ``max_turns = max(max_turns_floor, max_cycles * max_turns_factor)``
+    (defaults 20 and 8, both overridable in supervisor config).
 
     Пути состояния — ``agent_dir=workdir/.agent``. Процесс cwd не меняем:
     адаптер уже передаёт cwd=workdir в subprocess.
@@ -538,7 +561,9 @@ def run_loop(
     else:
         max_role_retries = int(max_role_retries)
     role_timeout_s = int(sup.get("role_timeout_s") or role_timeout_s)
-    max_turns = max(20, max_cycles * 8)
+    turns_floor = int(sup.get("max_turns_floor") or 20)
+    turns_factor = int(sup.get("max_turns_factor") or 8)
+    max_turns = max(turns_floor, max_cycles * turns_factor)
 
     stack_err = _maybe_stack_check(workdir, sup)
     if stack_err:
@@ -599,6 +624,7 @@ def run_loop(
 
         turns = 0
         pr_ready_count = 0
+        retry_note = ""
 
         def _load() -> Dict[str, Any]:
             return state_mod.load_state(agent_dir=agent)
@@ -634,7 +660,7 @@ def run_loop(
                         "reason": str(exc),
                         "role": role,
                     }
-                prompt = build_role_prompt(role, handoff, workdir)
+                prompt = build_role_prompt(role, handoff, workdir, retry_note=retry_note)
                 last_path = workdir / ".agent" / "last_handoff.json"
                 # Свой Event на ход: clear() общего флага оживлял бы старый тикер.
                 hb_stop = threading.Event()
@@ -659,6 +685,7 @@ def run_loop(
                     handoff = json.loads(Path(out_path).read_text(encoding="utf-8"))
                 except Exception as exc:
                     retries += 1
+                    retry_note = f"exception: {exc}"
                     if retries > max_role_retries:
                         _save(
                             {
@@ -680,6 +707,7 @@ def run_loop(
                 ok, errors = validate_handoff(handoff, strict_done=strict)
                 if not ok:
                     retries += 1
+                    retry_note = "validation errors: " + "; ".join(errors)
                     if retries > max_role_retries:
                         _save(
                             {
@@ -694,6 +722,7 @@ def run_loop(
                             "role": role,
                         }
                     continue
+                retry_note = ""
                 break
 
             turns += 1

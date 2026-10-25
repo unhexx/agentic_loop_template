@@ -142,8 +142,8 @@ def test_mock_cycle_without_stream_has_no_fence(
     captured: list[str] = []
     real = s.build_role_prompt
 
-    def wrapped(role, handoff_in, workdir):
-        prompt = real(role, handoff_in, workdir)
+    def wrapped(role, handoff_in, workdir, retry_note=""):
+        prompt = real(role, handoff_in, workdir, retry_note=retry_note)
         captured.append(prompt)
         return prompt
 

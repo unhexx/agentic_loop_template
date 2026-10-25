@@ -49,6 +49,65 @@ def test_fsm_blocked():
     assert next_role("Coder", h) == Terminal.BLOCKED
 
 
+def test_fsm_rejects_skip_and_non_reviewer_done():
+    skipped = {"status": "IN_PROGRESS", "handoff_to": "Reviewer", "metrics": {}}
+    assert next_role("Orchestrator", skipped) == Terminal.BLOCKED
+    done = {"status": "DONE", "handoff_to": "None", "metrics": {"tests_failed": 0}}
+    assert next_role("Tester", done) == Terminal.BLOCKED
+    assert next_role(
+        "Tester",
+        {"status": "IN_PROGRESS", "handoff_to": "Reviewer", "metrics": {"tests_failed": "2"}},
+    ) == "Debugger"
+    assert next_role(
+        "Tester",
+        {"status": "IN_PROGRESS", "handoff_to": "Reviewer", "metrics": {"tests_failed": "nope"}},
+    ) == "Reviewer"
+
+
+def test_mock_debugger_step_and_persist_failure(tmp_path: Path, monkeypatch):
+    ad = MockAdapter()
+    out = ad.run_role_turn(
+        role="Debugger",
+        prompt="fix",
+        handoff_in_path=None,
+        workdir=tmp_path,
+        timeout_s=5,
+    )
+    data = json.loads(Path(out).read_text(encoding="utf-8"))
+    assert data["role"] == "Debugger"
+    assert data["handoff_to"] == "Tester"
+    assert ad._step == 0
+
+    def boom(*_a, **_k):
+        raise OSError("disk full")
+
+    monkeypatch.setattr("memory.adapters.mock.persist_role_handoff", boom)
+    other = MockAdapter()
+    try:
+        other.run_role_turn(
+            role="Orchestrator",
+            prompt="plan",
+            handoff_in_path=None,
+            workdir=tmp_path,
+            timeout_s=5,
+        )
+        raise AssertionError("persist must fail")
+    except OSError:
+        pass
+    assert other._step == 0
+
+
+def test_retry_note_is_in_the_prompt(tmp_path: Path):
+    prompt = build_role_prompt(
+        "Coder",
+        {"summary": "ok", "status": "IN_PROGRESS"},
+        tmp_path,
+        retry_note="validation errors: metrics.tests_failed is string",
+    )
+    assert "validation errors: metrics.tests_failed is string" in prompt
+    assert "## Retry" in prompt
+
+
 from memory.supervisor import build_role_prompt, load_config, load_last_handoff, save_handoff
 
 

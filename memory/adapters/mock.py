@@ -48,10 +48,13 @@ class MockAdapter:
             ("Tester", "Reviewer", "testing", "IN_PROGRESS"),  # green tests → skip Debugger
             ("Reviewer", "None", "finalization", "DONE"),
         ]
+        if role == "Debugger":
+            data = _base("Debugger", "Tester", "debugging", "IN_PROGRESS")
+            data["metrics"] = {"tests_total": 1, "tests_failed": 1, "tool_calls": 1}
+            return persist_role_handoff(workdir, data)
         if self._step >= len(seq):
             self._step = 0
         r, to, phase, status = seq[self._step]
-        self._step += 1
         data = _base(r, to, phase, status)
         stream = stream_name()
         if stream:
@@ -66,4 +69,6 @@ class MockAdapter:
         if status == "DONE":
             data["sync_waived"] = "mock adapter CI cycle"
             data["git_sync_status"] = {"verified": False}
-        return persist_role_handoff(workdir, data)
+        out = persist_role_handoff(workdir, data)
+        self._step += 1
+        return out
