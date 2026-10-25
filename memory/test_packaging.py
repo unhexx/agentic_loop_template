@@ -46,6 +46,46 @@ def test_load_schema_reads_packaged_copy(monkeypatch):
     assert loaded == json.loads(SSOT.read_text(encoding="utf-8"))
 
 
+def _dashboard_extra_from_text(text: str) -> list[str]:
+    """Разбор extra dashboard без tomllib (его нет в stdlib до Python 3.11).
+
+    Закрывающая скобка массива ищется вне кавычек: в ``uvicorn[standard]``
+    символ ``]`` стоит внутри строки и массив не заканчивает.
+    """
+    match = re.search(r"(?m)^dashboard\s*=\s*\[", text)
+    assert match, "dashboard extra не найден в pyproject.toml"
+    items: list[str] = []
+    i = match.end()
+    n = len(text)
+    while i < n:
+        ch = text[i]
+        if ch == "]":
+            return items
+        if ch != '"':
+            i += 1
+            continue
+        i += 1
+        buf: list[str] = []
+        while i < n:
+            c = text[i]
+            if c == "\\":
+                i += 1
+                if i >= n:
+                    break
+                esc = text[i]
+                buf.append({"n": "\n", "t": "\t", '"': '"', "\\": "\\"}.get(esc, esc))
+            elif c == '"':
+                items.append("".join(buf))
+                break
+            else:
+                buf.append(c)
+            i += 1
+        else:
+            raise AssertionError("dashboard extra: незакрытая строка в pyproject.toml")
+        i += 1
+    raise AssertionError("dashboard extra не закрыт в pyproject.toml")
+
+
 def _dashboard_extra_items(text: str) -> list[str]:
     try:
         import tomllib
@@ -53,21 +93,20 @@ def _dashboard_extra_items(text: str) -> list[str]:
         data = tomllib.loads(text)
         return list(data["project"]["optional-dependencies"]["dashboard"])
     except ModuleNotFoundError:
-        pass
-    match = re.search(r"(?ms)^dashboard\s*=\s*\[(.*?)\]", text)
-    assert match, "dashboard extra не найден в pyproject.toml"
-    return re.findall(r'"([^"]+)"', match.group(1))
+        return _dashboard_extra_from_text(text)
 
 
 def test_dashboard_extra_matches_requirements_dashboard():
-    extra = _dashboard_extra_items(PYPROJECT.read_text(encoding="utf-8"))
+    text = PYPROJECT.read_text(encoding="utf-8")
     req = [
         line.strip()
         for line in REQ_DASH.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.strip().startswith("#")
     ]
-    assert extra == req
-    assert "httpx>=0.27" in extra
+    # tomllib на 3.11+ скрывает ошибку фолбэка; сверяем оба пути.
+    assert _dashboard_extra_items(text) == req
+    assert _dashboard_extra_from_text(text) == req
+    assert "httpx>=0.27" in req
 
 
 def test_windows_extras_syntax_has_no_dot():
