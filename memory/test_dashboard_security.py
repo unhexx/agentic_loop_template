@@ -375,8 +375,36 @@ def test_extract_token_query_beats_cookie():
 
 def test_empty_dashboard_token_disables_check(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "")
+    monkeypatch.setenv("AGENTIX_DASHBOARD_ALLOW_OPEN", "1")
     with _token_client(tmp_path, monkeypatch) as client:
         assert client.get("/health").status_code == 200
+
+
+def test_loopback_peer_empty_token_is_unauthorized(tmp_path: Path, monkeypatch):
+    """ssh -L оставляет peer 127.0.0.1. Пустой токен это не доверяет."""
+    monkeypatch.setenv("DASHBOARD_TOKEN", "")
+    monkeypatch.delenv("AGENTIX_DASHBOARD_ALLOW_OPEN", raising=False)
+    with _token_client(tmp_path, monkeypatch) as client:
+        response = client.get("/health")
+        assert response.status_code == 401
+
+
+def test_serve_rejects_empty_or_short_token(tmp_path: Path, monkeypatch):
+    from memory.dashboard.server import TokenConfigError, serve
+
+    monkeypatch.delenv("AGENTIX_DASHBOARD_ALLOW_OPEN", raising=False)
+    monkeypatch.setenv("DASHBOARD_TOKEN", "")
+    try:
+        serve(workdir=tmp_path, host="127.0.0.1", port=8112)
+        raise AssertionError("empty token must not serve")
+    except TokenConfigError as exc:
+        assert ".env" in str(exc)
+    monkeypatch.setenv("DASHBOARD_TOKEN", "short-token")
+    try:
+        serve(workdir=tmp_path, host="127.0.0.1", port=8112)
+        raise AssertionError("short token must not serve")
+    except TokenConfigError:
+        pass
 
 
 def test_header_preferred_over_query(tmp_path: Path, monkeypatch):

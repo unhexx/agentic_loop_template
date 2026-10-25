@@ -24,7 +24,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.cmd == "serve":
         try:
-            from memory.dashboard.server import BindError, serve
+            from memory.dashboard.server import BindError, TokenConfigError, serve
         except ImportError:
             print(
                 "нужен extra: pip install -r requirements-dashboard.txt",
@@ -33,7 +33,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return 2
         try:
             serve(workdir=args.workdir, host=args.host, port=args.port)
-        except BindError as exc:
+        except (BindError, TokenConfigError) as exc:
             print(str(exc), file=sys.stderr)
             return 2
         except KeyboardInterrupt:

@@ -25,6 +25,8 @@ from memory.dashboard.redact import install_log_redaction, redact_tokens
 from memory.dashboard.routes import register_routes
 from memory.dashboard.security import (
     MAX_BODY_BYTES,
+    MIN_TOKEN_LEN,
+    allow_open_dashboard,
     consume_capped,
     content_length_too_large,
     csrf_ok,
@@ -52,6 +54,10 @@ REFERRER_POLICY = "same-origin"
 
 class BindError(RuntimeError):
     """Не loopback или порт уже занят."""
+
+
+class TokenConfigError(RuntimeError):
+    """Пустой или короткий DASHBOARD_TOKEN без явного opt-in."""
 
 
 def _iso_now() -> str:
@@ -341,6 +347,14 @@ def serve(
     if not bind_host_allowed(cfg.host):
         raise BindError(
             f"дашборд только loopback (TeleGrok SR-04), отказ: {cfg.host}"
+        )
+    tok = (cfg.token or "").strip()
+    if not allow_open_dashboard() and len(tok) < MIN_TOKEN_LEN:
+        raise TokenConfigError(
+            "DASHBOARD_TOKEN пуст или короче "
+            f"{MIN_TOKEN_LEN} символов. Экспортируйте его в окружение процесса "
+            "(systemd EnvironmentFile) или задайте AGENTIX_DASHBOARD_ALLOW_OPEN=1. "
+            "Файл .env сам не загружается."
         )
     _raise_if_addr_in_use(cfg.host, int(cfg.port))
     install_log_redaction(ensure_handler=True)

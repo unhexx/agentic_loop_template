@@ -5,7 +5,8 @@ Host и peer только loopback: 127/8 и ::1 через ipaddress.
 Prefix 127. не используем — иначе 127.0.0.1.nip.io прошёл бы как свой.
 
 CSRF — синхронизатор: cookie HttpOnly + тот же токен в hx-headers.
-DASHBOARD_TOKEN: пустой — проверка выключена (включая /ws/ui).
+DASHBOARD_TOKEN: пустой не проходит проверку. Открытый loopback только
+при AGENTIX_DASHBOARD_ALLOW_OPEN=1. Копирование .env само по себе токен не задаёт.
 Порядок: X-API-Token → Bearer → ?token= → cookie agentix_token.
 Заголовок важнее query; query нужен WS/первому GET после туннеля и бьёт протухший cookie.
 Значение в логи не пишем — см. redact.py (DASHBOARD_TOKEN, Authorization).
@@ -15,12 +16,14 @@ from __future__ import annotations
 
 import hmac
 import ipaddress
+import os
 import secrets
 from typing import Any, AsyncIterator, Mapping, Optional
 from urllib.parse import urlparse
 
 
 MAX_BODY_BYTES = 64 * 1024
+MIN_TOKEN_LEN = 16
 CSRF_COOKIE = "agentix_csrf"
 TOKEN_COOKIE = "agentix_token"
 CSRF_HEADER = "x-csrf-token"
@@ -92,10 +95,14 @@ def is_same_origin(request: Any) -> bool:
     return got == exp
 
 
+def allow_open_dashboard() -> bool:
+    return os.environ.get("AGENTIX_DASHBOARD_ALLOW_OPEN", "").strip() == "1"
+
+
 def token_ok(expected: str, provided: Optional[str]) -> bool:
     exp = (expected or "").strip()
     if not exp:
-        return True
+        return allow_open_dashboard()
     if not provided:
         return False
     return hmac.compare_digest(str(provided), exp)

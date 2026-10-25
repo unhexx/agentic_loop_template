@@ -188,6 +188,7 @@ def test_ws_cookie_token_ok(tmp_path: Path, monkeypatch):
 
 def test_ws_empty_token_disables_check(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("DASHBOARD_TOKEN", "")
+    monkeypatch.setenv("AGENTIX_DASHBOARD_ALLOW_OPEN", "1")
     with _client(tmp_path, monkeypatch) as client:
         with client.websocket_connect(_WS) as ws:
             assert ws.receive_json()["type"] == "connected"
@@ -338,6 +339,7 @@ def test_watcher_run_survives_tick_error(tmp_path: Path):
 def test_watcher_tick_reaches_ws_client(tmp_path: Path, monkeypatch):
     monkeypatch.setattr("memory.dashboard.watcher.POLL_INTERVAL_S", 60.0)
     monkeypatch.setenv("DASHBOARD_TOKEN", "")
+    monkeypatch.setenv("AGENTIX_DASHBOARD_ALLOW_OPEN", "1")
     monkeypatch.setenv("AGENTIX_DASHBOARD_PORT", "8112")
     try:
         import httpx2  # noqa: F401

@@ -90,6 +90,7 @@ def dashboard_client(tmp_path: Path, monkeypatch):
 
     # матрица токена живёт в своих тестах; здесь пустой токен и порт 8112
     monkeypatch.setenv("DASHBOARD_TOKEN", "")
+    monkeypatch.setenv("AGENTIX_DASHBOARD_ALLOW_OPEN", "1")
     monkeypatch.setenv("AGENTIX_DASHBOARD_PORT", "8112")
 
     prev = os.getcwd()

@@ -55,7 +55,7 @@ python -m memory.dashboard serve --workdir PATH
 scripts/agentix-dashboard serve --workdir PATH
 ```
 
-Loopback `http://127.0.0.1:8112` (not pxpipe `:8100`, not the gateway `:8110`). Optional `DASHBOARD_TOKEN` — empty is local trust; **set a token before SSH `-L` / funnel**. See [README Dashboard security](../README.md#dashboard-security) and [docs/architecture.md](../docs/architecture.md).
+Loopback `http://127.0.0.1:8112` (not pxpipe `:8100`, not the gateway `:8110`). `DASHBOARD_TOKEN` (16+ characters) is required unless `AGENTIX_DASHBOARD_ALLOW_OPEN=1`. Export it; `.env` is not loaded. See [README Dashboard security](../README.md#dashboard-security) and [docs/architecture.md](../docs/architecture.md).
 
 ## Local knowledge store (`memory.knowledge`, v3.6)
 
