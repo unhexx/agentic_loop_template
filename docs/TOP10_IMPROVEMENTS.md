@@ -47,3 +47,23 @@ Agent-Init.sh
 ## Metrics
 
 See `docs/metrics/baseline.json` and `docs/metrics/after.json`.
+
+## 3.13.0 / Unreleased — outcomes in tree (2026-10-25)
+
+Not a new top-10 ranking. P8–P9 already shipped. P11 is in the tree and still under `[Unreleased]`. Version file remains 3.13.0 until a human tags. P10 is not done.
+
+| Outcome | Shipped | Status | Proof |
+|---------|---------|--------|-------|
+| P8 packaging, entry points | 3.9.0 | Done | `pyproject.toml`, `memory/test_packaging.py` |
+| P8 warnings on critical swallows | 3.9.0 | Done | `memory/test_observability.py` |
+| P8 schema handoff + persist | 3.9.0 | Done | `memory/validate_handoff.py`, `memory/test_state_and_handoff.py` |
+| P8 Init.sh / Init.ps1 parity | 3.9.0 | Done | `memory/test_init_parity.py` |
+| P8 `agent_dir=` state DI (NG11 follow-on in 3.11.1) | 3.9.0 / 3.11.1 | Done | `memory/state.py`, `memory/test_meta_lock.py` |
+| P8 CI pytest + mock cycle | 3.9.0 | Done | `memory/test_supervisor_mock_cycle.py`, `.github/workflows/agentix-loop.yml` |
+| P9 operator Compose stack | 3.13.0 | Done on `main` (`c198787`) | `memory/test_stack.py`, `memory/test_search.py`, `docs/stack.md` |
+| P11 local MCP, 19 tools | Unreleased, in tree | In tree, not a new version | `memory/test_local_mcp.py::test_tools_list_matches_catalog_and_cursor` |
+| Doctor + live-verify classes | Unreleased, in tree | In tree | `memory/test_doctor.py`, `docs/live-verify.md` |
+| `adapters_by_role`, `stack_check_on_start`, `auto_harvest_on_done` | Unreleased, in tree | In tree, default harvest off | `memory/test_adapters_by_role.py` |
+| P10 `agy` delegate | — | **Planned.** Geo-blocked (400 location). No `memory/adapters/agy.py`. | `ROADMAP.md` P10 |
+
+Later 3.9–3.12 patches (token estimate, harvest/reflect split, embeddings, i18n, module split, ontology extract, concurrent fan-out, context budgets) stay on `ROADMAP.md` milestones. They are not re-opened here.

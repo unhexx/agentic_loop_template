@@ -9,15 +9,15 @@
 | **Project** | Agentix (agentic_loop_template) |
 | **Goal** | Self-improving agentic dev loop template |
 | **Version** | 3.13.0 |
-| **Initiative** | P9 Operator Compose Stack — **COMPLETE** (branch `feature/p9-operator-stack`) |
+| **Initiative** | P9 is complete on main. P11 is in tree, unreleased, at 3.13.0. |
 
 ## Current Status
 
 | Field | Value |
 |-------|-------|
-| **Cycle** | P9 release |
-| **Phase** | P9 done |
-| **Status** | DONE on feature branch |
+| **Cycle** | Unreleased closeout, local, on main, not a tag |
+| **Phase** | Local closeout on main |
+| **Status** | On main. Not a tag. |
 | **Confidence** | 0.9 |
 
 ## Final Deliverables
@@ -28,4 +28,4 @@
 
 ## Reviewer Notes
 
-Control plane stays on host loopback. Ollama is not the default LLM (pxpipe/Grok is). Branch is for evaluation before merge to main.
+Control plane stays on host loopback. Ollama is not the default LLM (pxpipe/Grok is). P9 is already on main. Do not revive the old P9 feature branch. Do not tag. Do not push.

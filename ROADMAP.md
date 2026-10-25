@@ -4,7 +4,7 @@
 [![Main README](https://img.shields.io/badge/Main-README-blue?style=flat-square)](README.md)
 [![Docs](https://img.shields.io/badge/docs-available-brightgreen?style=flat-square)](docs/README.md)
 
-**Status Date:** 2026-10-24 · **Initiative:** Business Efficiency — **COMPLETE** · **P9 Operator Compose Stack** — **COMPLETE (v3.13.0)** · **P11 Local MCP SSOT** — **IN TREE (Unreleased)** · **Next:** release hygiene + P10 when geo-eligible
+**Status Date:** 2026-10-25 · **Initiative:** Business Efficiency — **COMPLETE** · **P9 Operator Compose Stack** — **COMPLETE (v3.13.0)** · **P11 Local MCP SSOT** — **IN TREE (Unreleased)** · **Next:** local closeout only; VERSION stays 3.13.0; P10 stays Planned until geo-eligible
 
 ---
 
@@ -49,7 +49,7 @@ Leftover nice-to-haves (docs i18n, embeddings, …) moved to Future.
 
 ## P9 — done (v3.13.0)
 
-Shipped 2026-09-08 on `feature/p9-operator-stack`. Criteria:
+Shipped 2026-09-08 on `feature/p9-operator-stack`. `c198787` is on `main` (`929ff64`); `origin/feature/p9-operator-stack` at `c047efe` has 0 commits that `main` lacks (`HEAD..c047efe` is 0, `c047efe..HEAD` is 31). Criteria:
 
 - Compose profiles for SearXNG (JSON), optional Local Deep Research (LangGraph), optional unpublished Ollama.
 - Host bind `127.0.0.1` only; `host.docker.internal` for gateway → pxpipe.
@@ -70,7 +70,7 @@ Spec: [2026-09-08-p9-operator-stack-design.md](docs/superpowers/specs/2026-09-08
 
 ## P11 — Local MCP SSOT (in tree, Unreleased)
 
-Port of hub `memory/local_mcp` into this template so consumers get stdlib MCP tools + `run_local_pipeline` without a second memory tree.
+Port of hub `memory/local_mcp` into this template so consumers get stdlib MCP tools + `run_local_pipeline` without a second memory tree. This closeout does not cut a new version.
 
 | ID | Task | Status |
 |----|------|--------|

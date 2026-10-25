@@ -1,6 +1,6 @@
 # Post-P9 upgrade brainstorm (2026-10-24)
 
-**Status:** Research + plan (Orchestrator)  
+**Status:** Ideas 1–7 are in tree. Phase E.1 is the default-off gate, now tested. Phase E.2 is this TOP10 closeout. Phase E.3 deferred. Sibling harvest is not a finish criterion.  
 **Host probes:** `python -m memory.proxy health` → `ok=true`, `pxpipe_ok=true` `:8100`, `gateway_ok=true` `:8110`  
 **Constraint:** Live LLM path stays host pxpipe; P10 must not set `GOOGLE_GEMINI_BASE_URL` / use `agy-pxpipe` as a Gemini region bypass.  
 **Parallel:** Hub leases empty at plan time; streams may claim disjoint `owned_paths` per `PARALLEL_PROTOCOL.md`.

@@ -16,6 +16,7 @@
 - Root `Jenkinsfile` mirroring GitHub Actions harness + stdlib-collect (Bitbucket Jenkins Test configuration). Contract: `memory/test_ci_parity.py`.
 
 ### Changed
+- Living plans and TOP10 describe the in-tree line; VERSION unchanged.
 - `SYSTEM_PROMPT.md` template version → 3.13.0; consumer-starter gitignore SSOT symlink without trailing slash; knowledge readonly + non-mutating state snapshot (hub parity for MCP).
 
 ### Fixed

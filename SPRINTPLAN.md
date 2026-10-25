@@ -1,26 +1,24 @@
 # SPRINTPLAN.md
 
-**Sprint:** P9 Operator Compose Stack
-**Status:** COMPLETE (v3.13.0) on `feature/p9-operator-stack`
-**Goal:** Containerize article-matching research tools (SearXNG, LDR/LangGraph, optional Ollama) without moving pxpipe/gateway off the host.
+**Sprint:** Unreleased closeout (docs and verify)
+**Status:** COMPLETE
+**Goal:** Operator docs match the tree. No version bump.
 
-## Completed This Sprint
+## Not next
 
-- `deploy/compose.yaml` profiles `search` / `research` / `ollama`
-- SearXNG JSON (`deploy/searxng/settings.yml`)
-- LDR default LLM endpoint = host gateway `:8110` → pxpipe `:8100`
-- `memory.stack` contract CLI, `memory.search` JSON client
-- `scripts/agentix-stack.sh`, `docs/stack.md`
-- Hermetic tests `memory/test_stack.py`, `memory/test_search.py`
+Do not evaluate or merge the old P9 feature branch. P9 commits `c198787` and `c047efe` are ancestors of `929ff64`. The remote feature branch has 0 commits that `main` does not. `origin/main` is behind; do not push.
 
-## Loop 5 (post-P9, same branch)
+P9 is already on main. The Compose stack (SearXNG JSON, LDR via the host gateway, optional Ollama), `memory.stack` / `memory.search`, and the hermetic tests shipped with `c198787`. This sprint does not reopen that work.
 
-- Living PLAN/TODO for 3.13.0
-- Init.ps1 / Init.sh `memory.stack` parity
-- demo-loop.sh non-fatal stack check
-- SearXNG `limiter.toml`
-- consumer-starter stack pointer + `AGENTIX_SEARXNG_URL`
+## Exit
 
-## Next
+1. Loop 7 / P11 claims in `CHANGELOG.md` `[Unreleased]` are named against existing hermetic tests, including `memory/test_adapters_by_role.py`.
+2. `docs/TOP10_IMPROVEMENTS.md` has a 3.13.0 / Unreleased section. P10 is Planned, not Done.
+3. `.agent/PLAN.md`, `.agent/TODO.md`, and this file do not tell the operator to merge or evaluate the old P9 feature branch. `PROJECT_CONTEXT.md` identification, Current Status, and Reviewer Notes match the tree.
+4. `.agent/LOOP_STATE.md` is the state CLI projection: `template_version` 3.13.0, status READY. `last_commit` lags the docs commit by one.
+5. `docs/review/2026-10-25-unreleased-closeout.md` records pass or environment-blocked from the TCP and file checks.
+6. `VERSION` stays 3.13.0. No git tag. No push.
 
-Evaluate `feature/p9-operator-stack`, then merge/tag 3.13.0. Do not merge `main` from the loop.
+## Standards skip (Key Decision 7)
+
+This sprint runs none of `DEVELOPMENT_STANDARDS.md` §11, does not set `git_sync.verified`, does not create `SELF_IMPROVEMENT_LOG.md`, and does not run `experience_harvester` on sibling repos. See Key Decision 7. A later wake must not “correct” that skip.
