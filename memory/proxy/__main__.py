@@ -77,7 +77,7 @@ def cli(argv: Optional[Sequence[str]] = None) -> int:
         return 0 if report.get("ok") else 1
 
     if args.cmd == "serve":
-        from memory.proxy.gateway import BindError, serve
+        from memory.proxy.gateway import AuthConfigError, BindError, serve
 
         try:
             serve(
@@ -86,7 +86,7 @@ def cli(argv: Optional[Sequence[str]] = None) -> int:
                 upstream=args.upstream,
                 workdir=args.workdir,
             )
-        except BindError as exc:
+        except (BindError, AuthConfigError) as exc:
             print(str(exc), file=sys.stderr)
             return 2
         except KeyboardInterrupt:

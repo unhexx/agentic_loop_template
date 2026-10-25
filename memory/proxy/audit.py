@@ -17,6 +17,7 @@ REDACT_HEADERS = frozenset(
         "cookie",
         "proxy-authorization",
         "x-api-key",
+        "x-api-token",
         "x-auth-token",
     }
 )

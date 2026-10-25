@@ -426,6 +426,8 @@ def test_gateway_healthz_sse_roundtrip_and_redaction() -> None:
                     upstream=f"http://127.0.0.1:{up_port}",
                     workdir=root,
                     quiet=True,
+                    token="",
+                    allow_open=True,
                 )
                 _start_httpd(gw)
                 port = gw.server_address[1]
@@ -495,6 +497,8 @@ def test_gateway_required_no_public_fallback() -> None:
                 upstream="http://127.0.0.1:1",
                 workdir=root,
                 quiet=True,
+                token="",
+                allow_open=True,
             )
             _start_httpd(gw)
             port = gw.server_address[1]
@@ -730,6 +734,8 @@ def test_preferred_https_fallback_local_tls() -> None:
                     workdir=root,
                     quiet=True,
                     ssl_context=client_ctx,
+                    token="",
+                    allow_open=True,
                 )
                 _start_httpd(gw)
                 gport = gw.server_address[1]
@@ -1115,6 +1121,170 @@ def test_required_fails_if_dial_hop_down() -> None:
         srv.close()
 
 
+def test_gateway_token_stats_body_and_root() -> None:
+    from memory.proxy.audit import redact_headers
+    from memory.proxy.gateway import AuthConfigError, make_server, serve
+
+    redacted = redact_headers({"X-API-Token": "super-secret-token", "X-Request-Id": "1"})
+    assert redacted["X-API-Token"] == "***"
+    assert "super-secret-token" not in json.dumps(redacted)
+
+    with _env(AGENTIX_GATEWAY_TOKEN=None, AGENTIX_GATEWAY_ALLOW_OPEN=None):
+        try:
+            serve("127.0.0.1", 0)
+            raise AssertionError("empty token must refuse serve")
+        except AuthConfigError:
+            pass
+
+    _FakeUpstream.posts = 0
+    up = ThreadingHTTPServer(("127.0.0.1", 0), _FakeUpstream)
+    _start_httpd(up)
+    up_port = up.server_address[1]
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            root = base / "work"
+            outside = base / "outside"
+            root.mkdir()
+            outside.mkdir()
+            (root / ".agent").mkdir()
+            _write_cfg(
+                root,
+                {
+                    "proxy": {
+                        "mode": "required",
+                        "pxpipe_base": f"http://127.0.0.1:{up_port}",
+                    }
+                },
+            )
+            token = "gateway-token-ok"
+            gw = make_server(
+                "127.0.0.1",
+                0,
+                upstream=f"http://127.0.0.1:{up_port}",
+                workdir=root,
+                quiet=True,
+                token=token,
+                allow_open=False,
+            )
+            _start_httpd(gw)
+            port = gw.server_address[1]
+            try:
+                bare = urllib.request.Request(
+                    f"http://127.0.0.1:{port}/v1/responses",
+                    data=b"{}",
+                    method="POST",
+                )
+                try:
+                    urllib.request.urlopen(bare, timeout=2)
+                    raise AssertionError("expected 401")
+                except urllib.error.HTTPError as exc:
+                    assert exc.code == 401
+
+                stats = urllib.request.Request(f"http://127.0.0.1:{port}/stats")
+                try:
+                    urllib.request.urlopen(stats, timeout=2)
+                    raise AssertionError("stats expected 401")
+                except urllib.error.HTTPError as exc:
+                    assert exc.code == 401
+
+                with urllib.request.urlopen(
+                    f"http://127.0.0.1:{port}/healthz", timeout=2
+                ) as resp:
+                    assert resp.status == 200
+
+                huge = urllib.request.Request(
+                    f"http://127.0.0.1:{port}/v1/responses",
+                    data=b"{}",
+                    headers={
+                        "Content-Length": "99999999",
+                        "X-API-Token": token,
+                        "Content-Type": "application/json",
+                    },
+                    method="POST",
+                )
+                try:
+                    urllib.request.urlopen(huge, timeout=2)
+                    raise AssertionError("expected 413")
+                except urllib.error.HTTPError as exc:
+                    assert exc.code == 413
+
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{port}/v1/responses",
+                    data=b'{"model":"grok","input":[]}',
+                    headers={
+                        "Content-Type": "application/json",
+                        "X-API-Token": token,
+                        "Authorization": "Bearer SUPERSECRET_TOKEN",
+                        "X-Agentix-Root": str(outside),
+                    },
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=3) as resp:
+                    body = resp.read()
+                    assert resp.status == 200
+                assert b"data:" in body
+                assert (outside / ".agent").exists() is False
+                events = (root / ".agent" / "proxy_events.jsonl").read_text(encoding="utf-8")
+                assert "SUPERSECRET_TOKEN" not in events
+                assert token not in events
+            finally:
+                gw.shutdown()
+    finally:
+        up.shutdown()
+
+
+def test_preferred_fallback_drops_authorization() -> None:
+    from memory.proxy.gateway import make_server
+
+    up = ThreadingHTTPServer(("127.0.0.1", 0), _FakeUpstream)
+    _start_httpd(up)
+    up_port = up.server_address[1]
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / ".agent").mkdir()
+            _write_cfg(
+                root,
+                {
+                    "proxy": {
+                        "mode": "preferred",
+                        "pxpipe_base": "http://127.0.0.1:1",
+                        "upstream_fallback": f"http://127.0.0.1:{up_port}",
+                    }
+                },
+            )
+            gw = make_server(
+                "127.0.0.1",
+                0,
+                upstream="http://127.0.0.1:1",
+                workdir=root,
+                quiet=True,
+                token="",
+                allow_open=True,
+            )
+            _start_httpd(gw)
+            port = gw.server_address[1]
+            try:
+                req = urllib.request.Request(
+                    f"http://127.0.0.1:{port}/v1/responses",
+                    data=b'{"model":"grok","input":[]}',
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": "Bearer FALLBACK_SECRET",
+                    },
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=3) as resp:
+                    assert resp.status == 200
+                hdrs = {k.lower(): v for k, v in _FakeUpstream.last_headers.items()}
+                assert "authorization" not in hdrs
+            finally:
+                gw.shutdown()
+    finally:
+        up.shutdown()
+
+
 def _run_all() -> None:
     tests = [
         test_tcp_ok_open_and_closed_port,
@@ -1146,6 +1316,8 @@ def _run_all() -> None:
         test_workdir_beats_agentix_project_root,
         test_keep_recent_turns_zero_preserved,
         test_required_fails_if_dial_hop_down,
+        test_gateway_token_stats_body_and_root,
+        test_preferred_fallback_drops_authorization,
     ]
     for fn in tests:
         fn()

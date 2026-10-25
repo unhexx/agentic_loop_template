@@ -207,6 +207,8 @@ def test_gateway_middleware_exception_logs_and_continues(
             upstream=up_url,
             workdir=tmp_path,
             quiet=True,
+            token="",
+            allow_open=True,
         )
         threading.Thread(target=gw.serve_forever, daemon=True).start()
         try:

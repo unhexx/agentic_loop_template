@@ -8,7 +8,9 @@ stdlib ThreadingHTTPServer. Тело стрима копируем чанкам�
 
 from __future__ import annotations
 
+import hmac
 import json
+import os
 import ssl
 import time
 from http.client import HTTPConnection, HTTPSConnection
@@ -48,6 +50,18 @@ HOP_BY_HOP = {
 }
 CHUNK = 8192
 CONNECT_TIMEOUT = 2.0
+MAX_BODY_BYTES = 8 * 1024 * 1024
+MIN_TOKEN_LEN = 16
+SECRET_HEADERS = frozenset(
+    {
+        "authorization",
+        "cookie",
+        "proxy-authorization",
+        "x-api-key",
+        "x-api-token",
+        "x-auth-token",
+    }
+)
 log = get_logger("memory.proxy.gateway")
 
 
@@ -55,16 +69,85 @@ class BindError(RuntimeError):
     """Пытались слушать не loopback."""
 
 
+class AuthConfigError(RuntimeError):
+    """Пустой токен без явного opt-in."""
+
+
+def _within(candidate: Path, base: Path) -> bool:
+    try:
+        candidate.resolve().relative_to(base.resolve())
+    except ValueError:
+        return False
+    return True
+
+
 def resolve_project_root(
     headers: Optional[Dict[str, str]] = None,
     env_root: Optional[str] = None,
+    *,
+    allow_header: bool = False,
 ) -> Optional[Path]:
-    hdrs = {str(k).lower(): str(v) for k, v in (headers or {}).items()}
-    raw = hdrs.get("x-agentix-root") or (env_root or "").strip()
-    if not raw:
+    """Корень только из явного workdir. Заголовок — путь внутри него."""
+    env_raw = (env_root or "").strip()
+    if not env_raw:
         return None
-    p = Path(raw)
-    return p if p.exists() else None
+    base = Path(env_raw).expanduser()
+    try:
+        base_resolved = base.resolve()
+    except OSError:
+        return None
+    if not base_resolved.is_dir():
+        return None
+    hdrs = {str(k).lower(): str(v) for k, v in (headers or {}).items()}
+    header_raw = hdrs.get("x-agentix-root", "").strip() if allow_header else ""
+    if header_raw:
+        cand = Path(header_raw).expanduser()
+        if cand.exists() and _within(cand, base_resolved):
+            return cand.resolve()
+    return base_resolved
+
+
+def configured_token(explicit: Optional[str] = None) -> str:
+    if explicit is not None:
+        return explicit.strip()
+    return os.environ.get("AGENTIX_GATEWAY_TOKEN", "").strip()
+
+
+def configured_allow_open(explicit: Optional[bool] = None) -> bool:
+    if explicit is not None:
+        return bool(explicit)
+    return os.environ.get("AGENTIX_GATEWAY_ALLOW_OPEN", "").strip() == "1"
+
+
+def max_body_bytes() -> int:
+    raw = os.environ.get("AGENTIX_GATEWAY_MAX_BODY", "").strip()
+    if not raw:
+        return MAX_BODY_BYTES
+    try:
+        n = int(raw)
+    except ValueError:
+        return MAX_BODY_BYTES
+    return n if n > 0 else MAX_BODY_BYTES
+
+
+def token_matches(expected: str, provided: Optional[str]) -> bool:
+    exp = (expected or "").strip()
+    if not exp or not provided:
+        return False
+    return hmac.compare_digest(str(provided), exp)
+
+
+def extract_gateway_token(headers: Dict[str, str]) -> Optional[str]:
+    hdrs = {str(k).lower(): str(v) for k, v in headers.items()}
+    raw = hdrs.get("x-api-token", "").strip()
+    if raw:
+        return raw
+    auth = hdrs.get("authorization", "")
+    if auth.lower().startswith("bearer "):
+        token = auth[7:].strip()
+        if token:
+            return token
+    return None
 
 
 def _open_upstream(
@@ -104,6 +187,8 @@ class GatewayHandler(BaseHTTPRequestHandler):
             self._healthz()
             return
         if path == "/stats":
+            if not self._require_auth(dict(self.headers.items())):
+                return
             self._stats()
             return
         self._proxy()
@@ -133,6 +218,28 @@ class GatewayHandler(BaseHTTPRequestHandler):
     def _env_root(self) -> Optional[str]:
         return getattr(self.server, "agentix_env_root", None)  # type: ignore[attr-defined]
 
+    def _allow_root_header(self) -> bool:
+        return bool(getattr(self.server, "agentix_allow_root_header", False))
+
+    def _project_root(self, headers: Dict[str, str]) -> Optional[Path]:
+        return resolve_project_root(
+            headers,
+            self._env_root(),
+            allow_header=self._allow_root_header(),
+        )
+
+    def _authorized(self, headers: Dict[str, str]) -> bool:
+        if bool(getattr(self.server, "agentix_allow_open", False)):
+            return True
+        expected = str(getattr(self.server, "agentix_token", "") or "")
+        return token_matches(expected, extract_gateway_token(headers))
+
+    def _require_auth(self, headers: Dict[str, str]) -> bool:
+        if self._authorized(headers):
+            return True
+        self._json(401, {"error": "unauthorized"})
+        return False
+
     def _json(self, code: int, payload: Dict[str, Any]) -> None:
         raw = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(code)
@@ -157,7 +264,8 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
     def _stats(self) -> None:
         cfg = self._cfg()
-        root = resolve_project_root(dict(self.headers.items()), self._env_root())
+        headers = {k: v for k, v in self.headers.items()}
+        root = self._project_root(headers)
         from memory.proxy.cache import stats as cache_stats
 
         self._json(
@@ -170,9 +278,16 @@ class GatewayHandler(BaseHTTPRequestHandler):
         )
 
     def _read_body(self) -> bytes:
-        length = int(self.headers.get("Content-Length") or 0)
-        if length <= 0:
+        limit = int(getattr(self.server, "agentix_max_body", MAX_BODY_BYTES))
+        raw = self.headers.get("Content-Length")
+        if raw is None or str(raw).strip() == "":
             return b""
+        try:
+            length = int(raw)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("bad content-length") from exc
+        if length < 0 or length > limit:
+            raise ValueError("body too large")
         return self.rfile.read(length)
 
     def _proxy(self) -> None:
@@ -180,10 +295,17 @@ class GatewayHandler(BaseHTTPRequestHandler):
         if not path.startswith("/v1/"):
             self._json(404, {"error": "not found", "path": path})
             return
-        cfg = self._cfg()
         headers = {k: v for k, v in self.headers.items()}
-        body = self._read_body() if self.command in {"POST", "PUT", "PATCH"} else b""
-        root = resolve_project_root(headers, self._env_root())
+        if not self._require_auth(headers):
+            return
+        cfg = self._cfg()
+        try:
+            body = self._read_body() if self.command in {"POST", "PUT", "PATCH"} else b""
+        except ValueError as exc:
+            code = 413 if "too large" in str(exc) else 400
+            self._json(code, {"error": str(exc)})
+            return
+        root = self._project_root(headers)
         meta: Dict[str, Any] = {
             "sha256": "",
             "cache_hit": False,
@@ -228,11 +350,13 @@ class GatewayHandler(BaseHTTPRequestHandler):
         upstream = self._upstream_base()
         host, port = split_host_port(upstream, 8100)
         mode = str(cfg.get("mode") or "required")
+        strip_secrets = False
         if not tcp_ok(host, port, timeout=CONNECT_TIMEOUT):
             if mode == "preferred":
                 fallback = str(cfg.get("upstream_fallback") or "")
                 if fallback:
                     upstream = fallback
+                    strip_secrets = True
                 else:
                     self._fail_upstream(path, headers, meta, t0, root)
                     return
@@ -242,7 +366,12 @@ class GatewayHandler(BaseHTTPRequestHandler):
 
         try:
             status, content_type, collected = self._forward(
-                upstream, path, headers, body, idle_timeout=float(cfg.get("timeout_s") or 900)
+                upstream,
+                path,
+                headers,
+                body,
+                idle_timeout=float(cfg.get("timeout_s") or 900),
+                strip_secrets=strip_secrets,
             )
         except Exception as exc:
             write_audit(
@@ -332,6 +461,7 @@ class GatewayHandler(BaseHTTPRequestHandler):
         headers: Dict[str, str],
         body: bytes,
         idle_timeout: float,
+        strip_secrets: bool = False,
     ) -> Tuple[int, str, Optional[bytes]]:
         parsed = urlparse(upstream if "://" in upstream else "http://" + upstream)
         scheme = parsed.scheme or "http"
@@ -341,6 +471,8 @@ class GatewayHandler(BaseHTTPRequestHandler):
             if k.lower() in HOP_BY_HOP:
                 continue
             if k.lower() == "host":
+                continue
+            if strip_secrets and k.lower() in SECRET_HEADERS:
                 continue
             fwd[k] = v
         fwd["Host"] = host_header(host, port, scheme)
@@ -398,6 +530,10 @@ class AgentixServer(ThreadingHTTPServer):
         env_root: Optional[str] = None,
         quiet: bool = False,
         ssl_context: Optional[ssl.SSLContext] = None,
+        token: str = "",
+        allow_open: bool = False,
+        allow_root_header: bool = False,
+        max_body: int = MAX_BODY_BYTES,
     ) -> None:
         super().__init__(addr, GatewayHandler)
         self.agentix_cfg = cfg
@@ -405,6 +541,10 @@ class AgentixServer(ThreadingHTTPServer):
         self.agentix_env_root = env_root
         self.agentix_quiet = bool(quiet)
         self.agentix_ssl_context = ssl_context
+        self.agentix_token = token
+        self.agentix_allow_open = bool(allow_open)
+        self.agentix_allow_root_header = bool(allow_root_header)
+        self.agentix_max_body = int(max_body)
 
 
 def bind_host_allowed(host: str) -> bool:
@@ -420,12 +560,18 @@ def make_server(
     workdir: Optional[Path] = None,
     quiet: bool = False,
     ssl_context: Optional[ssl.SSLContext] = None,
+    token: Optional[str] = None,
+    allow_open: Optional[bool] = None,
 ) -> AgentixServer:
     if not bind_host_allowed(host):
         raise BindError(f"шлюз только loopback, отказ: {host}")
     cfg = load_proxy_config(workdir)
     up = (upstream or cfg.get("pxpipe_base") or DEFAULT_PXPIPE_BASE).rstrip("/")
-    env_root = str(workdir) if workdir is not None else None
+    env_root = str(workdir.resolve()) if workdir is not None else None
+    got_token = configured_token(token)
+    open_ok = configured_allow_open(allow_open)
+    if got_token and len(got_token) < MIN_TOKEN_LEN:
+        raise AuthConfigError(f"AGENTIX_GATEWAY_TOKEN короче {MIN_TOKEN_LEN} символов")
     return AgentixServer(
         (host, int(port)),
         cfg,
@@ -433,6 +579,10 @@ def make_server(
         env_root=env_root,
         quiet=quiet,
         ssl_context=ssl_context,
+        token=got_token,
+        allow_open=open_ok,
+        allow_root_header=workdir is not None,
+        max_body=max_body_bytes(),
     )
 
 
@@ -443,7 +593,20 @@ def serve(
     upstream: Optional[str] = None,
     workdir: Optional[Path] = None,
 ) -> None:
-    httpd = make_server(host, port, upstream=upstream, workdir=workdir)
+    token = configured_token()
+    allow = configured_allow_open()
+    if not token and not allow:
+        raise AuthConfigError(
+            "AGENTIX_GATEWAY_TOKEN пуст; задайте его или AGENTIX_GATEWAY_ALLOW_OPEN=1"
+        )
+    httpd = make_server(
+        host,
+        port,
+        upstream=upstream,
+        workdir=workdir,
+        token=token,
+        allow_open=allow,
+    )
     try:
         httpd.serve_forever()
     finally:
