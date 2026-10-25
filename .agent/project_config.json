@@ -13,7 +13,7 @@
       "tests_failed": 0,
       "process_violations": 0
     },
-    "auto_apply_safe": true,
+    "auto_apply_safe": false,
     "max_proposals_per_cycle": 3,
     "last_harvested_cycle": 0
   },
@@ -58,7 +58,7 @@
   },
   "playbooks": {
     "enabled": true,
-    "auto_curate": true
+    "auto_curate": false
   },
   "audit": {
     "enabled": true,

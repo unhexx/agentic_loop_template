@@ -93,7 +93,7 @@ def load_config(agent_dir: Optional[Path] = None) -> Dict[str, Any]:
             "tests_failed": 0,
             "process_violations": 0,
         },
-        "auto_apply_safe": True,
+        "auto_apply_safe": False,
         "auto_harvest_on_done": False,
         "max_proposals_per_cycle": 3,
         "last_harvested_cycle": 0,

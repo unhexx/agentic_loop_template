@@ -127,6 +127,7 @@ def apply_safe_proposals(
             to_apply = [p for p in to_apply if p.get("id") in idset]
         guide_path = Path("PROMPT_COMPRESSION_GUIDE.md")  # cwd, не agent_dir
         applied = 0
+        dirty = False
         for p in to_apply:
             target = p.get("target_file", "")
             if dry_run:
@@ -151,14 +152,23 @@ def apply_safe_proposals(
                     except Exception:
                         pass  # не ломаем цикл на ошибке применения
 
-            # Всегда маркируем как applied (даже если редактирование не удалось — Reviewer увидит)
+            needs_file = (
+                "PROMPT_COMPRESSION_GUIDE.md" in str(target)
+                and p.get("change_type") == "add_few_shot_example"
+            )
+            if needs_file and not did_edit:
+                p["status"] = "failed"
+                p["notes"] = (p.get("notes") or "") + " (file edit failed)"
+                dirty = True
+                continue
             p["status"] = "applied"
             p["applied_at"] = _now_iso()
             if did_edit:
                 p["notes"] = p.get("notes", "") + " (auto-appended to file)"
             applied_ids.append((p["id"], p.get("expected_impact", "applied via meta")))
             applied += 1
-        if applied > 0:
+            dirty = True
+        if dirty:
             _write_index_unlocked(index, agent_dir)
     for pid, impact in applied_ids:
         update_performance_ledger(pid, impact, agent_dir=agent_dir)

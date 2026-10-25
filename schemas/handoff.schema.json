@@ -27,7 +27,7 @@
     },
     "cycle_number": { "type": "integer", "minimum": 0 },
     "summary": { "type": "string", "maxLength": 800 },
-    "context_delta": { "type": "string" },
+    "context_delta": { "type": "string", "maxLength": 8000 },
     "distillation_performed": { "type": "boolean" },
     "memory_updated": { "type": "boolean" },
     "proxy_stats": {

@@ -16,7 +16,7 @@
       "tests_failed": 0,
       "process_violations": 0
     },
-    "auto_apply_safe": true,
+    "auto_apply_safe": false,
     "auto_harvest_on_done": false,
     "max_proposals_per_cycle": 3,
     "last_harvested_cycle": 0
@@ -49,7 +49,7 @@
   },
   "playbooks": {
     "enabled": true,
-    "auto_curate": true,
+    "auto_curate": false,
     "max_bullets_per_playbook": 50,
     "default_k": 5,
     "min_effectiveness": 0.5,

@@ -49,7 +49,7 @@ from memory.logutil import get_logger
 log = get_logger("memory.playbooks")
 
 DEFAULT_ENABLED = True
-DEFAULT_AUTO_CURATE = True
+DEFAULT_AUTO_CURATE = False
 DEFAULT_MAX_BULLETS = 50
 DEFAULT_K = 5
 DEFAULT_MIN_EFFECT = 0.5
